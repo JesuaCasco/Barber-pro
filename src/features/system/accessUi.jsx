@@ -15,7 +15,7 @@ import {
 import { PASSWORD_MIN_LENGTH, ROLE_META, getPrimaryRole, styleTag } from '../app/shared';
 
 export function LoginScreen({ onSignIn, authBusy, authError }) {
-  const [email, setEmail] = useState('jesuajc15@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [showPassword, setShowPassword] = useState(false);

@@ -2520,7 +2520,15 @@ export default function App() {
       serviceTotal,
       promotionId: saleDraft?.promotion?.id || null,
       promotionName: saleDraft?.promotion?.name || '',
-      notes: saleDraft?.promotion?.name ? `Promoción aplicada: ${saleDraft.promotion.name}` : '',
+      discountLabel: saleDraft?.promotion?.name
+        || (saleDraft?.manualDiscount
+          ? `Descuento manual ${saleDraft.manualDiscount.type === 'percentage' ? `${saleDraft.manualDiscount.value}%` : `C$ ${Number(saleDraft.manualDiscount.value || 0).toLocaleString('es-NI')}`}`
+          : ''),
+      notes: saleDraft?.promotion?.name
+        ? `Promoción aplicada: ${saleDraft.promotion.name}`
+        : (saleDraft?.manualDiscount
+          ? `Descuento manual aplicado: ${saleDraft.manualDiscount.type === 'percentage' ? `${saleDraft.manualDiscount.value}%` : `C$ ${Number(saleDraft.manualDiscount.value || 0).toLocaleString('es-NI')}`}`
+          : ''),
       barbershopId: currentBarbershopId || null,
       branchId: currentBranchId || null,
       createdAt: new Date().toISOString(),
@@ -3106,7 +3114,7 @@ function PosSaleReceiptModal({ data, onClose, onCancelSale }) {
             {Number(sale.discountTotal || 0) > 0 ? (
               <div className="flex justify-between text-emerald-700 border-b border-slate-200 pb-3">
                 <span className="text-[10px] font-black uppercase">
-                  {sale.promotionName ? `Promo: ${sale.promotionName}` : 'Descuento'}
+                  {sale.discountLabel || sale.promotionName ? `${sale.discountLabel || sale.promotionName}` : 'Descuento'}
                 </span>
                 <span className="font-bold">- C$ {Number(sale.discountTotal || 0).toLocaleString()}</span>
               </div>

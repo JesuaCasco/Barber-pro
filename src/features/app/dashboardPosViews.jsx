@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { memo, useDeferredValue, useMemo, useState } from 'react';
 import {
   Activity,
   Check,
@@ -23,6 +23,24 @@ import {
   standardizeDate,
 } from './shared';
 import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
+
+const ProductCard = memo(function ProductCard({ service, onAdd }) {
+  return (
+    <button onClick={() => onAdd(service)} className="bg-slate-900 p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-800 hover:border-indigo-600 hover:bg-slate-800 transition-all text-left shadow-xl active:scale-95 group flex flex-col justify-between min-h-[160px] md:min-h-[180px] text-white">
+      <div><p className="text-[8px] font-black text-indigo-400 uppercase mb-2 tracking-widest leading-none italic">{service.category}</p><h5 className="text-sm font-black uppercase italic mb-4 text-white group-hover:text-indigo-400 transition-colors leading-tight">{service.name}</h5></div>
+      <div className="flex items-center justify-between mt-auto text-white"><p className="text-xl font-black text-emerald-400 italic leading-none">C$ {service.price}</p><div className="p-2.5 bg-indigo-600/20 rounded-xl text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg text-white"><Plus size={18} /></div></div>
+    </button>
+  );
+});
+
+const CartLine = memo(function CartLine({ item, onRemove }) {
+  return (
+    <div className="bg-slate-900 p-5 rounded-[1.5rem] flex justify-between items-center border border-white/5 animate-in slide-in-from-right-4 group text-white">
+      <div className="min-w-0 text-white"><p className="text-[10px] font-black uppercase italic text-white truncate pr-2 leading-none mb-1">{item.name}</p><p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">{item.qty} unidad{item.qty > 1 ? 'es' : ''} @ C$ {item.price}</p></div>
+      <div className="flex items-center gap-4 text-white"><p className="text-sm font-black italic text-emerald-400 leading-none">C$ {item.price * item.qty}</p><button onClick={() => onRemove(item.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-colors text-white"><X size={14} /></button></div>
+    </div>
+  );
+});
 
 export function DashboardView({ appointments, clients, onUpdate, barbers, onNewWalkin, posSales = [] }) {
   const [activeBarber, setActiveBarber] = useState('Global');
@@ -251,13 +269,17 @@ export function POSView({ services, onSale }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
+  const [manualDiscountType, setManualDiscountType] = useState('fixed');
+  const [manualDiscountValue, setManualDiscountValue] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+  const normalizedSearch = deferredSearch.trim().toLowerCase();
   const filtered = useMemo(() => (
     (services || []).filter((service) => (
       service.category === 'Producto'
-      && service.name.toLowerCase().includes(search.toLowerCase())
+      && service.name.toLowerCase().includes(normalizedSearch)
     ))
-  ), [services, search]);
+  ), [services, normalizedSearch]);
   const availablePromotions = useMemo(
     () => getApplicablePromotions(services, cart, 'Producto'),
     [services, cart],
@@ -270,7 +292,16 @@ export function POSView({ services, onSale }) {
     () => calculatePromotionDiscount(selectedPromotion, cart),
     [selectedPromotion, cart],
   );
-  const discountTotal = promotionPreview.amount;
+  const manualDiscountPreview = useMemo(() => {
+    const rawValue = Number(manualDiscountValue || 0);
+    if (!rawValue || rawValue <= 0 || subtotal <= 0) return 0;
+    if (manualDiscountType === 'percentage') {
+      return Math.round((subtotal * Math.min(Math.max(rawValue, 0), 100) / 100) * 100) / 100;
+    }
+    return Math.min(rawValue, subtotal);
+  }, [manualDiscountType, manualDiscountValue, subtotal]);
+  const promotionDiscount = promotionPreview.amount;
+  const discountTotal = promotionDiscount + manualDiscountPreview;
   const totalToCharge = Math.max(subtotal - discountTotal, 0);
 
   const addItem = (item) => setCart((prev) => {
@@ -297,10 +328,7 @@ export function POSView({ services, onSale }) {
         </div>
         <div className="flex-1 p-4 md:p-8 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 content-start custom-scrollbar text-white">
           {filtered.map((service) => (
-            <button key={service.id} onClick={() => addItem(service)} className="bg-slate-900 p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-800 hover:border-indigo-600 hover:bg-slate-800 transition-all text-left shadow-xl active:scale-95 group flex flex-col justify-between min-h-[160px] md:min-h-[180px] text-white">
-              <div><p className="text-[8px] font-black text-indigo-400 uppercase mb-2 tracking-widest leading-none italic">{service.category}</p><h5 className="text-sm font-black uppercase italic mb-4 text-white group-hover:text-indigo-400 transition-colors leading-tight">{service.name}</h5></div>
-              <div className="flex items-center justify-between mt-auto text-white"><p className="text-xl font-black text-emerald-400 italic leading-none">C$ {service.price}</p><div className="p-2.5 bg-indigo-600/20 rounded-xl text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg text-white"><Plus size={18} /></div></div>
-            </button>
+            <ProductCard key={service.id} service={service} onAdd={addItem} />
           ))}
         </div>
       </div>
@@ -308,10 +336,7 @@ export function POSView({ services, onSale }) {
         <div className="p-5 md:p-10 border-b border-slate-900 flex items-center gap-4 text-white"><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/40"><ShoppingBag size={20} /></div><h3 className="text-xl font-black uppercase italic tracking-tighter leading-none text-white">Ticket de Venta</h3></div>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar text-white">
           {cart.map((item) => (
-            <div key={item.id} className="bg-slate-900 p-5 rounded-[1.5rem] flex justify-between items-center border border-white/5 animate-in slide-in-from-right-4 group text-white">
-              <div className="min-w-0 text-white"><p className="text-[10px] font-black uppercase italic text-white truncate pr-2 leading-none mb-1">{item.name}</p><p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">{item.qty} unidad{item.qty > 1 ? 'es' : ''} @ C$ {item.price}</p></div>
-              <div className="flex items-center gap-4 text-white"><p className="text-sm font-black italic text-emerald-400 leading-none">C$ {item.price * item.qty}</p><button onClick={() => removeItem(item.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-colors text-white"><X size={14} /></button></div>
-            </div>
+            <CartLine key={item.id} item={item} onRemove={removeItem} />
           ))}
         </div>
         <div className="p-5 md:p-10 border-t border-slate-900 bg-slate-950 text-white">
@@ -356,12 +381,81 @@ export function POSView({ services, onSale }) {
               </div>
             </div>
           ) : null}
+          <div className="mb-6 space-y-4 rounded-[1.8rem] border border-indigo-500/20 bg-black/30 p-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Descuento manual</p>
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Puedes aplicar un descuento directo sin crear promoción.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setManualDiscountType('fixed')}
+                className={`rounded-xl border px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
+                  manualDiscountType === 'fixed'
+                    ? 'border-indigo-400 bg-indigo-500/10 text-white'
+                    : 'border-slate-800 bg-slate-900 text-slate-400'
+                }`}
+              >
+                Córdobas
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualDiscountType('percentage')}
+                className={`rounded-xl border px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
+                  manualDiscountType === 'percentage'
+                    ? 'border-indigo-400 bg-indigo-500/10 text-white'
+                    : 'border-slate-800 bg-slate-900 text-slate-400'
+                }`}
+              >
+                Porcentaje
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder={manualDiscountType === 'percentage' ? 'Ej. 10' : 'Ej. 50'}
+                className="w-full rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-black italic text-white outline-none focus:border-indigo-500"
+                value={manualDiscountValue}
+                onChange={(event) => {
+                  const rawValue = event.target.value.replace(',', '.');
+                  if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                  setManualDiscountValue(rawValue);
+                }}
+              />
+              {manualDiscountValue ? (
+                <button type="button" onClick={() => setManualDiscountValue('')} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300">
+                  Quitar
+                </button>
+              ) : null}
+            </div>
+          </div>
           <div className="space-y-3 mb-8 text-white">
             <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString()}</span></div>
-            {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {discountTotal.toLocaleString('es-NI')}</span></div> : null}
+            {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
+            {manualDiscountPreview > 0 ? <div className="flex justify-between items-center text-white"><span className="text-indigo-300 text-[10px] font-black uppercase tracking-widest leading-none">Descuento manual {manualDiscountType === 'percentage' ? `${manualDiscountValue || 0}%` : ''}</span><span className="text-base font-black italic text-indigo-300">- C$ {manualDiscountPreview.toLocaleString('es-NI')}</span></div> : null}
             <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black text-indigo-400 italic tracking-tighter leading-none shadow-[0_0_15px_rgba(99,102,241,0.2)] text-white">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
           </div>
-          <button disabled={cart.length === 0} onClick={async () => { const result = await onSale({ items: cart, rawSubtotal: subtotal, discountTotal, subtotal: totalToCharge, promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null }); if (result) { setCart([]); setSelectedPromotionId(''); } }} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3 text-white"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+          <button disabled={cart.length === 0} onClick={async () => {
+            const result = await onSale({
+              items: cart,
+              rawSubtotal: subtotal,
+              discountTotal,
+              subtotal: totalToCharge,
+              promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null,
+              manualDiscount: manualDiscountPreview > 0 ? {
+                type: manualDiscountType,
+                value: Number(manualDiscountValue || 0),
+                amount: manualDiscountPreview,
+              } : null,
+            });
+            if (result) {
+              setCart([]);
+              setSelectedPromotionId('');
+              setManualDiscountValue('');
+              setManualDiscountType('fixed');
+            }
+          }} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3 text-white"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
         </div>
       </div>
     </div>

@@ -5774,7 +5774,7 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
     items: initial?.items || [],
     appliesTo: initial?.appliesTo || 'Servicio',
     discountType: initial?.discountType || 'percentage',
-    discountValue: initial?.discountValue || 0,
+    discountValue: initial?.discountValue !== undefined && initial?.discountValue !== null ? String(initial.discountValue) : '',
     isOptional: initial?.isOptional ?? true,
   });
   const [searchTerm, setSearchTerm] = useState('');
@@ -5813,6 +5813,7 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
             const normalized = {
               ...formData,
               price: formData.category === 'Promocion' ? 0 : Number(formData.price) || 0,
+              discountValue: Number(formData.discountValue) || 0,
               items: formData.category === 'Combo' ? formData.items : [],
               targetServiceIds: [],
             };
@@ -5863,12 +5864,15 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
                 </label>
                 <input
                   required
-                  type="number"
-                  min="0"
-                  max={formData.discountType === 'percentage' ? '100' : undefined}
+                  type="text"
+                  inputMode="decimal"
                   className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-lg font-black italic text-white outline-none focus:border-emerald-500 leading-none"
                   value={formData.discountValue}
-                  onChange={(event) => setFormData({ ...formData, discountValue: event.target.value ? Number(event.target.value) : 0 })}
+                  onChange={(event) => {
+                    const rawValue = event.target.value.replace(',', '.');
+                    if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                    setFormData({ ...formData, discountValue: rawValue });
+                  }}
                 />
               </div>
               <div className="space-y-5">

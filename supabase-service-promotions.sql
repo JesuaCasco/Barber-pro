@@ -36,3 +36,12 @@ alter table public.services
     discount_type is null
     or discount_type in ('percentage', 'fixed')
   );
+
+alter table public.services
+  drop constraint if exists services_category_check;
+
+alter table public.services
+  add constraint services_category_check
+  check (
+    category in ('Cortes', 'Barba', 'Producto', 'Combo', 'Promocion')
+  );

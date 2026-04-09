@@ -91,11 +91,13 @@ import {
 } from 'lucide-react';
 
 import {
+  CATEGORY_LABELS,
   BARBER_THEME_PALETTE,
   BUSINESS_PLANS,
   CATEGORIES,
   HOURS,
   MOCK_BARBERS,
+  LOYALTY_REWARD_VISITS,
   PASSWORD_MIN_LENGTH,
   ROLE_META,
   ensureBarberTheme,
@@ -108,6 +110,10 @@ import {
   getPrimaryRole,
   getTodayString,
   isValidPhoneNumber,
+  formatPromotionValue,
+  getApplicablePromotions,
+  calculatePromotionDiscount,
+  isPromotionService,
   makeId,
   mergeEntitiesById,
   parseLocalDate,
@@ -1386,6 +1392,17 @@ export default function App() {
       { id: '2', name: 'Perfilado Barba', price: 150, category: 'Barba' },
       { id: '3', name: 'Pomada Premium', price: 350, category: 'Producto' },
       { id: '4', name: 'Combo Master', price: 400, category: 'Combo', items: ['1', '2'] },
+      {
+        id: '5',
+        name: 'Corte gratis por fidelidad',
+        price: 0,
+        category: 'Promocion',
+        appliesTo: 'Servicio',
+        discountType: 'percentage',
+        discountValue: 100,
+        targetServiceIds: ['1'],
+        isOptional: true,
+      },
     ];
   });
   
@@ -2311,10 +2328,16 @@ export default function App() {
   };
 
   const handleSaveService = async (serviceData) => {
+    const isPromotion = serviceData.category === 'Promocion';
     const normalizedService = {
       ...serviceData,
-      price: Number(serviceData.price) || 0,
-      items: serviceData.category === 'Combo' ? serviceData.items : []
+      price: isPromotion ? 0 : Number(serviceData.price) || 0,
+      items: serviceData.category === 'Combo' ? serviceData.items : [],
+      appliesTo: isPromotion ? (serviceData.appliesTo || 'Servicio') : 'Servicio',
+      discountType: isPromotion ? (serviceData.discountType || 'percentage') : 'percentage',
+      discountValue: isPromotion ? Number(serviceData.discountValue) || 0 : 0,
+      targetServiceIds: [],
+      isOptional: isPromotion ? serviceData.isOptional !== false : true,
     };
     const savedService = selectedData.service?.id
       ? { ...selectedData.service, ...normalizedService }
@@ -2470,11 +2493,11 @@ export default function App() {
       notify('Debes seleccionar una sucursal antes de registrar una venta POS.', 'warning');
       return null;
     }
-    const subtotal = normalizedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
-    const productTotal = normalizedItems
-      .filter((item) => item.category === 'Producto')
-      .reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
-    const serviceTotal = subtotal - productTotal;
+    const rawSubtotal = Number(saleDraft?.rawSubtotal) || normalizedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
+    const discountTotal = Number(saleDraft?.discountTotal || 0);
+    const subtotal = Number(saleDraft?.subtotal) || Math.max(rawSubtotal - discountTotal, 0);
+    const productTotal = subtotal;
+    const serviceTotal = 0;
     const nextLocalTicketNumber = (posSales || []).reduce(
       (max, sale) => Math.max(max, Number(sale.ticketNumber || 0)),
       0,
@@ -2490,9 +2513,14 @@ export default function App() {
         price: Number(item.price) || 0,
         qty: Number(item.qty) || 0,
       })),
+      rawSubtotal,
+      discountTotal,
       subtotal,
       productTotal,
       serviceTotal,
+      promotionId: saleDraft?.promotion?.id || null,
+      promotionName: saleDraft?.promotion?.name || '',
+      notes: saleDraft?.promotion?.name ? `Promoción aplicada: ${saleDraft.promotion.name}` : '',
       barbershopId: currentBarbershopId || null,
       branchId: currentBranchId || null,
       createdAt: new Date().toISOString(),
@@ -2785,7 +2813,7 @@ export default function App() {
       {modals.appointment && <AppointmentModal onClose={() => setModals({...modals, appointment: false})} onSave={handleSaveAppointment} services={services} clients={clients} barbers={barbers} initial={selectedData.appointment || { date: viewDate, time: '09:00', barberId: defaultBarberId }} appointments={appointments} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
-      {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} initial={selectedData.finalize} />}
+      {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} clients={clients} initial={selectedData.finalize} />}
       {modals.service && <ServiceEditorModal services={services} onClose={() => setModals({...modals, service: false})} onSave={handleSaveService} initial={selectedData.service} />}
       {modals.paymentReceipt && <PaymentReceiptModal data={selectedData.paymentReceipt} onClose={() => setModals({...modals, paymentReceipt: false})} onConfirmPayment={handleConfirmPayment} />}
       {modals.posSaleReceipt && <PosSaleReceiptModal data={selectedData.posSaleReceipt} onClose={() => setModals({...modals, posSaleReceipt: false})} onCancelSale={handleCancelPosSale} />}
@@ -3061,6 +3089,12 @@ function PosSaleReceiptModal({ data, onClose, onCancelSale }) {
           </div>
 
           <div className="bg-slate-50 p-6 rounded-[2rem] space-y-3 mb-6">
+            {Number(sale.rawSubtotal || 0) > 0 ? (
+              <div className="flex justify-between text-slate-600">
+                <span className="text-[10px] font-black uppercase">Subtotal base:</span>
+                <span className="font-bold">C$ {Number(sale.rawSubtotal || 0).toLocaleString()}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-slate-600">
               <span className="text-[10px] font-black uppercase">Servicios:</span>
               <span className="font-bold">C$ {Number(sale.serviceTotal || 0).toLocaleString()}</span>
@@ -3069,6 +3103,14 @@ function PosSaleReceiptModal({ data, onClose, onCancelSale }) {
               <span className="text-[10px] font-black uppercase">Productos:</span>
               <span className="font-bold">C$ {Number(sale.productTotal || 0).toLocaleString()}</span>
             </div>
+            {Number(sale.discountTotal || 0) > 0 ? (
+              <div className="flex justify-between text-emerald-700 border-b border-slate-200 pb-3">
+                <span className="text-[10px] font-black uppercase">
+                  {sale.promotionName ? `Promo: ${sale.promotionName}` : 'Descuento'}
+                </span>
+                <span className="font-bold">- C$ {Number(sale.discountTotal || 0).toLocaleString()}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between pt-2">
               <span className="text-xs font-black uppercase text-slate-900">Total Pagado:</span>
               <span className="text-2xl font-black text-emerald-600 italic tracking-tighter">C$ {Number(sale.subtotal || 0).toLocaleString()}</span>
@@ -3437,6 +3479,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
       case 'Barba': return <BeardIcon size={32} />;
       case 'Combo': return <Zap size={32} />;
       case 'Producto': return <Package size={32} />;
+      case 'Promocion': return <Gift size={32} />;
       default: return <Tags size={32} />;
     }
   };
@@ -3449,10 +3492,10 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3>
           <p className="text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
         </div>
-        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> Nuevo Servicio</button>
+        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoción' : 'Nuevo Servicio'}</button>
       </div>
       <div className="grid w-full grid-cols-2 gap-3 p-3 bg-black border border-slate-800 rounded-[2.5rem] text-white sm:flex sm:flex-wrap sm:items-center sm:w-fit">
-        {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 md:px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>{cat}</button>)}
+        {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 md:px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>{CATEGORY_LABELS[cat] || cat}</button>)}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-8">
         {filteredServices.map(s => (
@@ -3462,18 +3505,33 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
             <div className="relative text-white">
               <div className="w-14 h-14 md:w-16 md:h-16 bg-black rounded-2xl flex items-center justify-center text-indigo-500 mb-6 md:mb-8 border border-slate-800 shadow-inner group-hover:scale-110 transition-transform group-hover:text-white group-hover:bg-indigo-600 text-white">{getIcon(s.category)}</div>
               <h4 className="text-xl md:text-2xl font-black uppercase italic leading-tight tracking-tighter group-hover:text-indigo-400 transition-colors text-white">{s.name}</h4>
-              <span className="inline-block mt-4 text-[9px] font-black bg-indigo-600/20 text-indigo-400 px-5 py-2 rounded-full uppercase border border-indigo-600/40 tracking-widest italic leading-none">{s.category}</span>
+              <span className="inline-block mt-4 text-[9px] font-black bg-indigo-600/20 text-indigo-400 px-5 py-2 rounded-full uppercase border border-indigo-600/40 tracking-widest italic leading-none">{CATEGORY_LABELS[s.category] || s.category}</span>
+              {s.category === 'Promocion' && (
+                <div className="mt-5 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-300">
+                      {s.appliesTo === 'Producto' ? 'Aplica a ventas' : 'Aplica a servicios'}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-300">
+                      {formatPromotionValue(s)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Aplicación manual al momento de cobrar
+                  </p>
+                </div>
+              )}
             </div>
             <div className="pt-6 md:pt-8 border-t border-slate-800 group-hover:border-indigo-500/30 mt-6 md:mt-8 flex justify-between items-center text-white">
               <div>
-                <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1 leading-none">Precio Final</p>
-                <p className="text-3xl md:text-4xl font-black italic text-emerald-400 tracking-tighter group-hover:text-white transition-all leading-none">C$ {s.price}</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1 leading-none">{s.category === 'Promocion' ? 'Descuento' : 'Precio Final'}</p>
+                <p className="text-3xl md:text-4xl font-black italic text-emerald-400 tracking-tighter group-hover:text-white transition-all leading-none">{s.category === 'Promocion' ? formatPromotionValue(s) : `C$ ${s.price}`}</p>
               </div>
               <div className="p-3 bg-black border border-slate-800 rounded-2xl text-slate-600 group-hover:text-indigo-500 transition-colors"><ChevronRight size={20} /></div>
             </div>
           </div>
         ))}
-        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[260px] md:min-h-[320px] text-white"><div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={28} /></div><p className="font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-white text-center">Añadir a {activeCategory}</p></div>
+        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[260px] md:min-h-[320px] text-white"><div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={28} /></div><p className="font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-white text-center">{activeCategory === 'Promocion' ? 'Añadir promoción' : `Añadir a ${CATEGORY_LABELS[activeCategory] || activeCategory}`}</p></div>
       </div>
     </div>
   );
@@ -5269,7 +5327,10 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     const phoneQuery = getPhoneDigits(searchTerm);
     return (clients || []).filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (phoneQuery.length > 0 && getPhoneDigits(c.phone).includes(phoneQuery))); 
   }, [searchTerm, clients, selectedClient]);
-  const filteredServices = useMemo(() => (services || []).filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())), [services, serviceSearch]);
+  const filteredServices = useMemo(
+    () => (services || []).filter((service) => !isPromotionService(service) && service.name.toLowerCase().includes(serviceSearch.toLowerCase())),
+    [services, serviceSearch],
+  );
   const isNewClient = searchTerm.trim().length >= 3 && filteredClients.length === 0 && !selectedClient;
   const duplicatePhoneClient = useMemo(() => {
     if (!isValidPhoneNumber(phoneVal)) return null;
@@ -5425,7 +5486,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   );
 }
 
-function FinalizeModal({ onClose, onConfirm, services, initial }) {
+function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
   const [billItems, setBillItems] = useState(() => {
     if (initial?.service && initial.service !== "POR DEFINIR") {
       const match = (services || []).find(s => s.name === initial.service);
@@ -5437,13 +5498,52 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
   const [rating, setRating] = useState(5);
+  const [selectedPromotionId, setSelectedPromotionId] = useState('');
 
+  const billingClient = useMemo(
+    () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
+    [clients, initial],
+  );
+  const completedVisits = Number(billingClient?.completedVisits || 0);
+  const projectedVisitCount = completedVisits + (initial?.status === 'Finalizada' ? 0 : 1);
+  const loyaltyPromotion = useMemo(() => {
+    if (!billingClient || projectedVisitCount <= 0 || projectedVisitCount % LOYALTY_REWARD_VISITS !== 0) return null;
+
+    const eligibleCuts = billItems.filter((item) => item?.category === 'Cortes');
+    if (!eligibleCuts.length) return null;
+
+    const loyaltyCutValue = Math.max(...eligibleCuts.map((item) => Number(item.price || 0)), 0);
+    if (loyaltyCutValue <= 0) return null;
+
+    return {
+      id: `loyalty-${billingClient.id}-${projectedVisitCount}`,
+      name: `Corte gratis por ${LOYALTY_REWARD_VISITS} visitas`,
+      appliesTo: 'Servicio',
+      eligibleCategories: ['Cortes'],
+      discountType: 'fixed',
+      discountValue: loyaltyCutValue,
+      isOptional: true,
+      isLoyaltyReward: true,
+    };
+  }, [billingClient, billItems, projectedVisitCount]);
+  
   const catalog = useMemo(() => {
     return (services || []).filter(s => 
+      !isPromotionService(s) &&
       (activeCategory === 'Todos' || s.category === activeCategory) &&
       (s.name.toLowerCase().includes(search.toLowerCase()))
     );
   }, [services, activeCategory, search]);
+
+  const availablePromotions = useMemo(() => {
+    const manualPromotions = getApplicablePromotions(services, billItems, 'Servicio');
+    return loyaltyPromotion ? [loyaltyPromotion, ...manualPromotions] : manualPromotions;
+  }, [services, billItems, loyaltyPromotion]);
+
+  const selectedPromotion = useMemo(
+    () => availablePromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
+    [availablePromotions, selectedPromotionId],
+  );
 
   const addToBill = (item) => {
     setBillItems((current) => [...current, { ...item, uniqueId: makeId() }]);
@@ -5453,15 +5553,23 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
     setBillItems((current) => current.filter(i => i.uniqueId !== uniqueId));
   };
 
-  const total = billItems.reduce((acc, i) => acc + Number(i.price || 0), 0);
+  const subtotal = billItems.reduce((acc, i) => acc + Number(i.price || 0), 0);
+  const promotionPreview = useMemo(
+    () => calculatePromotionDiscount(selectedPromotion, billItems),
+    [selectedPromotion, billItems],
+  );
+  const promotionDiscount = promotionPreview.amount;
+  const total = Math.max(subtotal - promotionDiscount, 0);
 
   const confirmFinalCharge = () => {
     if (billItems.length === 0) return;
     const serviceNames = billItems.map(i => i.name).join(' + ');
     onConfirm({ 
-      serviceName: serviceNames, 
+      serviceName: selectedPromotion ? `${serviceNames} · Promo: ${selectedPromotion.name}` : serviceNames, 
       price: total, 
-      rating: rating 
+      rating: rating,
+      promotionName: selectedPromotion?.name || '',
+      discountAmount: promotionDiscount,
     });
   };
 
@@ -5518,13 +5626,13 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
           <div className="flex-1 flex flex-col bg-slate-950">
             <div className="p-6 border-b border-slate-900 flex flex-wrap items-center justify-between gap-4">
                <div className="flex gap-2 p-1 bg-black border border-slate-800 rounded-2xl overflow-x-auto no-scrollbar">
-                 {['Todos', ...CATEGORIES].map(cat => (
+                 {['Todos', ...CATEGORIES.filter((category) => category !== 'Promocion')].map(cat => (
                    <button 
                     key={cat} 
                     onClick={() => setActiveCategory(cat)}
                     className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
                    >
-                     {cat}
+                     {cat === 'Todos' ? cat : (CATEGORY_LABELS[cat] || cat)}
                    </button>
                  ))}
                </div>
@@ -5558,6 +5666,62 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
                 </button>
               ))}
             </div>
+            <div className="border-t border-slate-900 p-6 space-y-4 bg-black/30">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
+                  <p className="mt-2 text-[11px] font-bold text-slate-400">Aplica descuentos guardados en Servicios o el beneficio de fidelización cuando toque la visita {LOYALTY_REWARD_VISITS}.</p>
+                </div>
+                {selectedPromotion && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPromotionId('')}
+                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {availablePromotions.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {availablePromotions.map((promotion) => (
+                    <button
+                      key={promotion.id}
+                      type="button"
+                      onClick={() => setSelectedPromotionId(String(promotion.id))}
+                      className={`rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
+                        selectedPromotion?.id === promotion.id
+                          ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
+                          : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-black uppercase italic text-white">{promotion.name}</p>
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            {promotion.isLoyaltyReward
+                              ? `beneficio por fidelización · visita ${projectedVisitCount}`
+                              : `${formatPromotionValue(promotion)} · descuento manual sobre el cobro`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-black italic text-emerald-300">
+                          - C$ {calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-800 bg-slate-950/60 px-5 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  No hay promociones aplicables para este cobro.
+                </div>
+              )}
+              {loyaltyPromotion && billingClient ? (
+                <div className="rounded-[1.5rem] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-[11px] font-bold text-amber-100">
+                  {billingClient.name} está completando su visita #{projectedVisitCount}. Puedes aplicar el beneficio opcional de corte gratis en este cobro.
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -5578,6 +5742,15 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
           </div>
 
           <div className="flex gap-4 w-full md:w-auto">
+            <div className="mr-auto flex flex-col text-left">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Subtotal</span>
+              <span className="mt-2 text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
+              {selectedPromotion ? (
+                <span className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                  {selectedPromotion.name} · - C$ {promotionDiscount.toLocaleString('es-NI')}
+                </span>
+              ) : null}
+            </div>
             <button onClick={onClose} className="px-10 py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none">Cerrar</button>
             <button 
               disabled={billItems.length === 0}
@@ -5595,11 +5768,25 @@ function FinalizeModal({ onClose, onConfirm, services, initial }) {
 
 function ServiceEditorModal({ services, onClose, onSave, initial }) {
   const [formData, setFormData] = useState({ 
-    name: initial?.name || '', price: initial?.price || '', 
-    category: initial?.category || 'Cortes', items: initial?.items || [] 
+    name: initial?.name || '',
+    price: initial?.price || '',
+    category: initial?.category || 'Cortes',
+    items: initial?.items || [],
+    appliesTo: initial?.appliesTo || 'Servicio',
+    discountType: initial?.discountType || 'percentage',
+    discountValue: initial?.discountValue || 0,
+    isOptional: initial?.isOptional ?? true,
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const availableItems = useMemo(() => (services || []).filter(s => (s.name.toLowerCase().includes(searchTerm.toLowerCase())) && s.category !== 'Combo'), [services, searchTerm]);
+  const isPromotion = formData.category === 'Promocion';
+  const availableItems = useMemo(
+    () => (services || []).filter((service) => (
+      service.name.toLowerCase().includes(searchTerm.toLowerCase())
+      && service.category !== 'Combo'
+      && !isPromotionService(service)
+    )),
+    [services, searchTerm],
+  );
   
   const calculateComboPrice = (items) => {
     return (items || []).reduce((acc, itemId) => {
@@ -5618,15 +5805,16 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white no-print">
       <div className="bg-slate-950 w-full max-w-xl rounded-[3.5rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 max-h-[95vh] flex flex-col text-white overflow-hidden">
         <div className="px-12 py-8 bg-gradient-to-br from-indigo-600/20 border-b border-slate-900 flex justify-between items-center text-white">
-          <div className="flex items-center gap-6 text-white"><div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">{formData.category === 'Combo' ? <Zap size={28} /> : <Scissors size={28} />}</div><div><h3 className="text-2xl font-black uppercase italic text-white leading-none">{initial?.id ? 'Editar' : 'Nuevo'} Registro</h3></div></div>
+          <div className="flex items-center gap-6 text-white"><div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">{formData.category === 'Combo' ? <Zap size={28} /> : formData.category === 'Promocion' ? <Gift size={28} /> : <Scissors size={28} />}</div><div><h3 className="text-2xl font-black uppercase italic text-white leading-none">{initial?.id ? 'Editar' : 'Nuevo'} Registro</h3></div></div>
           <button onClick={onClose} className="p-3 bg-black rounded-xl text-slate-500 text-white"><X size={20} /></button>
         </div>
         <form onSubmit={(e) => { 
             e.preventDefault(); 
             const normalized = {
               ...formData,
-              price: Number(formData.price) || 0,
-              items: formData.category === 'Combo' ? formData.items : []
+              price: formData.category === 'Promocion' ? 0 : Number(formData.price) || 0,
+              items: formData.category === 'Combo' ? formData.items : [],
+              targetServiceIds: [],
             };
             onSave(normalized);
           }} className="p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1 text-white">
@@ -5634,14 +5822,68 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
             <div className="space-y-3 text-white">
               <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Categoría</label>
               <select className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-indigo-600 appearance-none leading-none cursor-pointer" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value, items: e.target.value === 'Combo' ? formData.items : []})}>
-                {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>)}
+                {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-950 text-white">{CATEGORY_LABELS[c] || c}</option>)}
               </select>
             </div>
             <div className="space-y-3 text-white">
               <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Nombre</label>
-              <input required placeholder="Ej. Combo Pro" className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input required placeholder={isPromotion ? 'Ej. Corte gratis por fidelidad' : 'Ej. Combo Pro'} className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
           </div>
+          {isPromotion && (
+            <div className="space-y-6 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/5 p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Aplica a</label>
+                  <select
+                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-emerald-500 appearance-none leading-none cursor-pointer"
+                    value={formData.appliesTo}
+                    onChange={(event) => setFormData({ ...formData, appliesTo: event.target.value, targetServiceIds: [] })}
+                  >
+                    {['Servicio', 'Producto'].map((option) => (
+                      <option key={option} value={option} className="bg-slate-950 text-white">{option}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Tipo de descuento</label>
+                  <select
+                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-emerald-500 appearance-none leading-none cursor-pointer"
+                    value={formData.discountType}
+                    onChange={(event) => setFormData({ ...formData, discountType: event.target.value })}
+                  >
+                    <option value="percentage" className="bg-slate-950 text-white">Porcentaje</option>
+                    <option value="fixed" className="bg-slate-950 text-white">Monto fijo</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">
+                  {formData.discountType === 'fixed' ? 'Descuento en córdobas' : 'Porcentaje de descuento'}
+                </label>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  max={formData.discountType === 'percentage' ? '100' : undefined}
+                  className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-lg font-black italic text-white outline-none focus:border-emerald-500 leading-none"
+                  value={formData.discountValue}
+                  onChange={(event) => setFormData({ ...formData, discountValue: event.target.value ? Number(event.target.value) : 0 })}
+                />
+              </div>
+              <div className="space-y-5">
+                <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Aplicación</label>
+                <div className="rounded-[1.8rem] border border-slate-800 bg-black px-5 py-5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    Esta promoción no se amarra a un item específico.
+                  </p>
+                  <p className="mt-3 text-[11px] font-black uppercase italic text-white">
+                    Se selecciona manualmente cuando vayas a facturar {formData.appliesTo === 'Producto' ? 'productos' : 'servicios'}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {formData.category === 'Combo' && (
             <div className="space-y-5 bg-indigo-600/5 p-8 rounded-[2.5rem] border border-indigo-500/20 text-white">
               <label className="text-[10px] font-black text-indigo-400 uppercase italic px-1 leading-none">Componer Combo</label>
@@ -5658,6 +5900,7 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
               </div>
             </div>
           )}
+          {!isPromotion && (
           <div className="space-y-3 text-white">
             <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Precio Final (C$)</label>
             <div className="relative text-white">
@@ -5665,6 +5908,20 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
               <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-black text-emerald-500 italic text-white leading-none">C$</span>
             </div>
           </div>
+          )}
+          {isPromotion && (
+            <div className="rounded-[2.5rem] border border-emerald-500/20 bg-black/40 px-8 py-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Resumen de promoción</p>
+              <p className="mt-3 text-lg font-black uppercase italic text-white">
+                {formData.name || 'Promoción sin nombre'}
+              </p>
+              <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-emerald-300">
+                {formData.discountType === 'fixed'
+                  ? `Descuento fijo de C$ ${Number(formData.discountValue || 0).toLocaleString('es-NI')}`
+                  : `${Number(formData.discountValue || 0)}% de descuento`}
+              </p>
+            </div>
+          )}
           <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-7 rounded-[2.5rem] font-black uppercase italic text-xs transition-all text-white leading-none">GUARDAR CATÁLOGO</button>
         </form>
       </div>

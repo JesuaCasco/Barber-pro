@@ -15,7 +15,13 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { getTodayString, standardizeDate } from './shared';
+import {
+  calculatePromotionDiscount,
+  formatPromotionValue,
+  getApplicablePromotions,
+  getTodayString,
+  standardizeDate,
+} from './shared';
 import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
 
 export function DashboardView({ appointments, clients, onUpdate, barbers, onNewWalkin, posSales = [] }) {
@@ -244,6 +250,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
 export function POSView({ services, onSale }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
+  const [selectedPromotionId, setSelectedPromotionId] = useState('');
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const filtered = useMemo(() => (
     (services || []).filter((service) => (
@@ -251,6 +258,20 @@ export function POSView({ services, onSale }) {
       && service.name.toLowerCase().includes(search.toLowerCase())
     ))
   ), [services, search]);
+  const availablePromotions = useMemo(
+    () => getApplicablePromotions(services, cart, 'Producto'),
+    [services, cart],
+  );
+  const selectedPromotion = useMemo(
+    () => availablePromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
+    [availablePromotions, selectedPromotionId],
+  );
+  const promotionPreview = useMemo(
+    () => calculatePromotionDiscount(selectedPromotion, cart),
+    [selectedPromotion, cart],
+  );
+  const discountTotal = promotionPreview.amount;
+  const totalToCharge = Math.max(subtotal - discountTotal, 0);
 
   const addItem = (item) => setCart((prev) => {
     const current = prev.find((entry) => entry.id === item.id);
@@ -294,8 +315,53 @@ export function POSView({ services, onSale }) {
           ))}
         </div>
         <div className="p-5 md:p-10 border-t border-slate-900 bg-slate-950 text-white">
-          <div className="space-y-4 mb-8 text-white"><div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black text-indigo-400 italic tracking-tighter leading-none shadow-[0_0_15px_rgba(99,102,241,0.2)] text-white">C$ {subtotal.toLocaleString()}</span></div></div>
-          <button disabled={cart.length === 0} onClick={async () => { const result = await onSale({ items: cart, subtotal }); if (result) setCart([]); }} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3 text-white"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+          {availablePromotions.length > 0 ? (
+            <div className="mb-6 space-y-3 rounded-[1.8rem] border border-emerald-500/20 bg-black/40 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones disponibles</p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Puedes aplicarlas manualmente a esta venta.</p>
+                </div>
+                {selectedPromotion ? (
+                  <button type="button" onClick={() => setSelectedPromotionId('')} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300">
+                    Quitar
+                  </button>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                {availablePromotions.map((promotion) => (
+                  <button
+                    key={promotion.id}
+                    type="button"
+                    onClick={() => setSelectedPromotionId(String(promotion.id))}
+                    className={`w-full rounded-[1.3rem] border px-4 py-3 text-left transition-all ${
+                      selectedPromotion?.id === promotion.id
+                        ? 'border-emerald-400 bg-emerald-500/10'
+                        : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-black uppercase italic text-white">{promotion.name}</p>
+                        <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                          {formatPromotionValue(promotion)} · descuento manual en POS
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-black italic text-emerald-300">
+                        - C$ {calculatePromotionDiscount(promotion, cart).amount.toLocaleString('es-NI')}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className="space-y-3 mb-8 text-white">
+            <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString()}</span></div>
+            {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {discountTotal.toLocaleString('es-NI')}</span></div> : null}
+            <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black text-indigo-400 italic tracking-tighter leading-none shadow-[0_0_15px_rgba(99,102,241,0.2)] text-white">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
+          </div>
+          <button disabled={cart.length === 0} onClick={async () => { const result = await onSale({ items: cart, rawSubtotal: subtotal, discountTotal, subtotal: totalToCharge, promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null }); if (result) { setCart([]); setSelectedPromotionId(''); } }} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3 text-white"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
         </div>
       </div>
     </div>

@@ -385,7 +385,97 @@ export const ensureBarberTheme = (barber, index) => {
 
 export const makeId = () => globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
-export const CATEGORIES = ['Cortes', 'Barba', 'Producto', 'Combo'];
+export const PROMOTION_CATEGORY = 'Promocion';
+
+export const CATEGORIES = ['Cortes', 'Barba', 'Producto', 'Combo', PROMOTION_CATEGORY];
+
+export const CATEGORY_LABELS = {
+  Cortes: 'Cortes',
+  Barba: 'Barba',
+  Producto: 'Producto',
+  Combo: 'Combo',
+  [PROMOTION_CATEGORY]: 'Promociones',
+};
+
+export const PROMOTION_APPLIES_TO_OPTIONS = ['Servicio', 'Producto'];
+
+export const PROMOTION_DISCOUNT_TYPES = [
+  { id: 'percentage', label: 'Porcentaje' },
+  { id: 'fixed', label: 'Monto fijo' },
+];
+
+export const isPromotionService = (service) => service?.category === PROMOTION_CATEGORY;
+
+export const getChargeableServices = (services = [], appliesTo = null) => {
+  const normalizedServices = Array.isArray(services) ? services : [];
+
+  return normalizedServices.filter((service) => {
+    if (!service || isPromotionService(service)) return false;
+    if (appliesTo === 'Producto') return service.category === 'Producto';
+    if (appliesTo === 'Servicio') return service.category !== 'Producto';
+    return true;
+  });
+};
+
+export const getPromotionTargetIds = () => [];
+
+export const getPromotionEligibleItems = (promotion, items = []) => {
+  if (!promotion) return [];
+
+  const appliesTo = promotion.appliesTo || 'Servicio';
+  const eligibleCategories = Array.isArray(promotion.eligibleCategories)
+    ? promotion.eligibleCategories.filter(Boolean)
+    : [];
+
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    if (!item) return false;
+
+    const itemCategory = item.category || '';
+    const matchesType = appliesTo === 'Producto'
+      ? itemCategory === 'Producto'
+      : itemCategory !== 'Producto' && itemCategory !== PROMOTION_CATEGORY;
+
+    if (!matchesType) return false;
+    if (eligibleCategories.length > 0 && !eligibleCategories.includes(itemCategory)) return false;
+    return true;
+  });
+};
+
+export const calculatePromotionDiscount = (promotion, items = []) => {
+  const eligibleItems = getPromotionEligibleItems(promotion, items);
+  const eligibleSubtotal = eligibleItems.reduce(
+    (sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 1)),
+    0,
+  );
+
+  if (!promotion || eligibleSubtotal <= 0) {
+    return { amount: 0, eligibleSubtotal, eligibleItems };
+  }
+
+  const discountType = promotion.discountType || 'percentage';
+  const discountValue = Number(promotion.discountValue || 0);
+  const safeDiscountValue = Number.isFinite(discountValue) ? discountValue : 0;
+
+  const rawAmount = discountType === 'fixed'
+    ? Math.min(safeDiscountValue, eligibleSubtotal)
+    : eligibleSubtotal * (Math.min(Math.max(safeDiscountValue, 0), 100) / 100);
+
+  const amount = Math.round(rawAmount * 100) / 100;
+  return { amount, eligibleSubtotal, eligibleItems };
+};
+
+export const getApplicablePromotions = (services = [], items = [], appliesTo = 'Servicio') =>
+  (Array.isArray(services) ? services : [])
+    .filter((service) => isPromotionService(service) && (service.appliesTo || 'Servicio') === appliesTo)
+    .filter((promotion) => getPromotionEligibleItems(promotion, items).length > 0);
+
+export const formatPromotionValue = (promotion) => {
+  const discountValue = Number(promotion?.discountValue || 0);
+  if ((promotion?.discountType || 'percentage') === 'fixed') {
+    return `C$ ${discountValue.toLocaleString('es-NI')}`;
+  }
+  return `${discountValue}%`;
+};
 
 export const HOURS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -395,6 +485,7 @@ export const HOURS = [
 ];
 
 export const PASSWORD_MIN_LENGTH = 6;
+export const LOYALTY_REWARD_VISITS = 10;
 
 export const ROLE_META = {
   super_admin: { label: 'Super Admin', badge: 'bg-rose-500 text-white border-rose-300' },

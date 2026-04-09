@@ -1,3 +1,4 @@
+import { isPromotionService } from '../features/app/shared';
 import { hasSupabaseConfig, supabase, supabasePublishableKey, supabaseUrl } from './supabase';
 
 const STATUS_TO_DB = {
@@ -174,6 +175,11 @@ const toUiService = (row, comboMap) => ({
   price: Number(row.price || 0),
   category: row.category,
   items: comboMap.get(row.id) || [],
+  appliesTo: row.applies_to || 'Servicio',
+  discountType: row.discount_type || 'percentage',
+  discountValue: Number(row.discount_value || 0),
+  targetServiceIds: Array.isArray(row.target_service_ids) ? row.target_service_ids : [],
+  isOptional: row.is_optional ?? true,
 });
 
 const toUiPosSale = (row) => ({
@@ -347,6 +353,13 @@ const toDbService = (service, barbershopId) => ({
   name: service.name,
   category: service.category,
   price: Number(service.price || 0),
+  applies_to: isPromotionService(service) ? (service.appliesTo || 'Servicio') : null,
+  discount_type: isPromotionService(service) ? (service.discountType || 'percentage') : null,
+  discount_value: isPromotionService(service) ? Number(service.discountValue || 0) : 0,
+  target_service_ids: isPromotionService(service)
+    ? (Array.isArray(service.targetServiceIds) ? service.targetServiceIds : [])
+    : [],
+  is_optional: isPromotionService(service) ? (service.isOptional ?? true) : true,
   is_active: service.isActive ?? true,
   ...(barbershopId ? { barbershop_id: barbershopId } : {}),
   branch_id: null,
@@ -1260,6 +1273,7 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
 
   if (error) throw normalizeError(error, 'No se pudo registrar la venta de POS.');
   return {
+    ...sale,
     ...toUiPosSale(data),
     ticketNumber: Number(data?.ticket_number ?? sale.ticketNumber ?? 0),
   };

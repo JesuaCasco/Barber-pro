@@ -178,7 +178,10 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
     const favServiceVal = insights.favoriteServiceName || 'NINGUNO';
     const lastVisitDateVal = insights.lastVisitAt || 'N/A';
     const rewardVisitsGoal = 10;
-    const progressTowardReward = totalVisits % rewardVisitsGoal;
+    const progressTowardRewardRaw = totalVisits % rewardVisitsGoal;
+    const progressTowardReward = totalVisits > 0 && progressTowardRewardRaw === 0
+      ? rewardVisitsGoal
+      : progressTowardRewardRaw;
     let type = { label: 'Bronce', icon: Medal, color: 'text-orange-950', bg: 'bg-orange-500', border: 'border-orange-200' };
     if (totalVisits >= 10) type = { label: 'Oro', icon: Crown, color: 'text-yellow-950', bg: 'bg-yellow-400', border: 'border-yellow-100' };
     else if (totalVisits >= 5) type = { label: 'Plata', icon: Award, color: 'text-slate-950', bg: 'bg-slate-100', border: 'border-white' };

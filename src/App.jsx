@@ -78,6 +78,7 @@ import {
   MapPin,
   History,
   MessageSquare,
+  Menu,
   Timer,
   UserX,
   Wallet,
@@ -1234,6 +1235,7 @@ export default function App() {
   const [clientDirectoryLoaded, setClientDirectoryLoaded] = useState(false);
   const [clientDirectoryWarnings, setClientDirectoryWarnings] = useState([]);
   const [operationalWarnings, setOperationalWarnings] = useState([]);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [savingUserId, setSavingUserId] = useState(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [resettingPasswordUserId, setResettingPasswordUserId] = useState(null);
@@ -2468,11 +2470,20 @@ export default function App() {
     <UiFeedbackContext.Provider value={feedbackContextValue}>
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
       <style>{styleTag}</style>
-      
-      <aside className="w-64 bg-slate-950 border-r border-slate-900 flex flex-col z-30 no-print">
-        <div className="p-8 flex items-center gap-3">
+
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm md:hidden no-print"
+        />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[17.5rem] flex-col border-r border-slate-900 bg-slate-950 no-print transition-transform duration-300 md:static md:w-64 md:translate-x-0 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="p-5 md:p-8 flex items-start gap-3">
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]"><Scissors size={20}/></div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
             {session?.user?.email && (
               <p className="text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
@@ -2480,22 +2491,32 @@ export default function App() {
               </p>
             )}
             {(currentBarbershop?.name || currentBranch?.name) && (
-              <div className="mt-3 space-y-1.5">
+              <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 px-3 py-2.5 space-y-2">
                 {currentBarbershop?.name && (
-                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-600 truncate">
-                    Barberia: <span className="text-slate-300">{currentBarbershop.name}</span>
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barbería</p>
+                    <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
+                  </div>
                 )}
-                <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-600 truncate">
-                  Sucursal: <span className="text-emerald-300">{currentBranch?.name || 'General'}</span>
-                </p>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Sucursal</p>
+                  <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">{currentBranch?.name || 'General'}</p>
+                </div>
               </div>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white md:hidden"
+            aria-label="Cerrar menú lateral"
+          >
+            <X size={16} />
+          </button>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
               <item.icon size={18} /> {item.label}
             </button>
           ))}
@@ -2525,8 +2546,16 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-950">
-        <header className="h-20 bg-black border-b border-slate-900 px-8 flex items-center justify-between z-20 no-print">
+        <header className="h-20 bg-black border-b border-slate-900 px-4 md:px-8 flex items-center justify-between z-20 no-print">
           <div className="flex items-center gap-4 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white md:hidden"
+              aria-label="Abrir menú lateral"
+            >
+              <Menu size={18} />
+            </button>
             <h2 className="text-xl font-black italic uppercase text-white tracking-tighter leading-none">{activeTab}</h2>
             {isSuperAdmin && activeTab !== 'sistema' && availableBarbershops.length > 0 && (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-2 rounded-2xl border border-white/10 bg-slate-900/70">

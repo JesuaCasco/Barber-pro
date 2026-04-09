@@ -84,15 +84,15 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
   };
 
   return (
-    <div className="p-8 space-y-10 animate-in fade-in pb-20 no-print">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-10 animate-in fade-in pb-20 no-print">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Tablero de Control</h3>
+          <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Tablero de Control</h3>
           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2 italic flex items-center gap-2">
             <Sparkles size={12} className="text-indigo-400" /> Resumen Operativo - {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
+        <div className="flex w-full md:w-auto items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
           <div className="px-3 border-r border-slate-800">
             <p className="text-[9px] font-black text-slate-500 uppercase leading-none mb-1">Barberos</p>
             <p className="text-[11px] font-black uppercase text-emerald-400 italic leading-none">{busyBarbers} Ocupados / {totalBarbers || 0}</p>
@@ -100,7 +100,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 md:gap-6">
         <div className="bg-slate-900 neon-border-indigo p-6 rounded-[2rem] text-white flex flex-col justify-center">
           <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest italic leading-none mb-3">Reservaciones</p>
           <h4 className="text-4xl font-black italic tracking-tighter text-indigo-400">{plannedCount}</h4>
@@ -129,24 +129,24 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-        <div className="xl:col-span-3 bg-slate-900 border border-slate-800 rounded-[3rem] p-8 space-y-8 shadow-2xl relative overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-8">
+        <div className="xl:col-span-3 bg-slate-900 border border-slate-800 rounded-[3rem] p-4 md:p-8 space-y-6 md:space-y-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[120px] pointer-events-none"></div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-            <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white">Turnos del dia</h3>
-            <button onClick={() => onNewWalkin(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center gap-3">
+            <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter text-white">Turnos del dia</h3>
+            <button onClick={() => onNewWalkin(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
               <UserPlus size={18} /> Nuevo turno sin cita
             </button>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-4 p-4 bg-black/40 border border-white/5 rounded-[2.5rem] w-full max-w-5xl mx-auto shadow-inner">
-            <button onClick={() => setActiveBarber('Global')} className={`px-8 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.25em] italic transition-all duration-300 ${activeBarber === 'Global' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-105' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}>Vista Global</button>
+          <div className="flex flex-wrap justify-center gap-3 p-3 md:p-4 bg-black/40 border border-white/5 rounded-[2.5rem] w-full max-w-5xl mx-auto shadow-inner">
+            <button onClick={() => setActiveBarber('Global')} className={`px-6 py-3 md:px-8 md:py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.22em] italic transition-all duration-300 ${activeBarber === 'Global' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-105' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}>Vista Global</button>
             {(barbers || []).map((barber) => {
               const isActive = String(activeBarber) === String(barber.id);
               const barberActiveBg = barber.bg || 'bg-indigo-600';
               const barberBorder = barber.color || 'border-indigo-500';
               return (
-                <button key={barber.id} onClick={() => setActiveBarber(String(barber.id))} className={`group px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest italic transition-all duration-500 flex items-center gap-3 border ${isActive ? `${barberActiveBg} text-white shadow-[0_0_25px] scale-105 ${barberBorder}` : 'bg-slate-900/50 text-slate-500 border-white/5 hover:text-white hover:scale-105'}`}>
+                <button key={barber.id} onClick={() => setActiveBarber(String(barber.id))} className={`group px-5 py-3 md:px-6 md:py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest italic transition-all duration-500 flex items-center gap-3 border ${isActive ? `${barberActiveBg} text-white shadow-[0_0_25px] scale-105 ${barberBorder}` : 'bg-slate-900/50 text-slate-500 border-white/5 hover:text-white hover:scale-105'}`}>
                   <div className={`w-6 h-6 rounded-lg ${isActive ? 'bg-white/20' : barber.bg} flex items-center justify-center text-[8px] text-white shadow-inner`}>{barber.avatar}</div>
                   {barber.name}
                 </button>
@@ -216,7 +216,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-8 flex flex-col shadow-2xl relative overflow-hidden h-full no-print">
+        <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-4 md:p-8 flex flex-col shadow-2xl relative overflow-hidden h-full no-print">
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-xl font-black italic uppercase text-white flex items-center gap-3"><Activity size={20} className="text-indigo-500" /> Actividad Reciente</h4>
           </div>

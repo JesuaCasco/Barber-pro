@@ -198,14 +198,14 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white overflow-hidden no-print">
-      <div className="bg-slate-950 w-full max-w-6xl rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[90vh] flex flex-col text-white">
+      <div className="bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[92vh] flex flex-col text-white">
         <div className="flex flex-col md:flex-row h-full text-white overflow-hidden">
-          <div className="w-full md:w-[35%] bg-black p-10 md:p-14 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white overflow-y-auto custom-scrollbar">
-            <div className="w-32 h-32 bg-indigo-600 rounded-[3rem] flex items-center justify-center text-white shadow-2xl mb-8 relative text-white">
+          <div className="w-full md:w-[35%] bg-black p-6 md:p-14 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white overflow-y-auto custom-scrollbar">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-indigo-600 rounded-[2rem] md:rounded-[3rem] flex items-center justify-center text-white shadow-2xl mb-6 md:mb-8 relative text-white">
               <User size={60} /><div className={`absolute -bottom-2 -right-2 p-3 rounded-2xl border shadow-lg ${stats.type.bg} ${stats.type.border} text-white`}><TypeIcon size={24} className={stats.type.color} /></div>
             </div>
-            <div className={`border-2 px-8 py-3 rounded-2xl mb-6 ${stats.type.bg} ${stats.type.border} text-white`}><span className={`text-[13px] font-black uppercase italic tracking-[0.25em] ${stats.type.color}`}>CLIENTE {stats.type.label}</span></div>
-            <h3 className="text-3xl font-black uppercase italic tracking-tighter mb-4 text-white leading-none">{client.name}</h3>
+            <div className={`border-2 px-6 md:px-8 py-3 rounded-2xl mb-5 md:mb-6 ${stats.type.bg} ${stats.type.border} text-white`}><span className={`text-[11px] md:text-[13px] font-black uppercase italic tracking-[0.2em] md:tracking-[0.25em] ${stats.type.color}`}>CLIENTE {stats.type.label}</span></div>
+            <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter mb-4 text-white leading-none break-words">{client.name}</h3>
             <div className="bg-slate-900 border border-slate-800 px-7 py-3.5 rounded-2xl mb-4 flex items-center gap-3 text-white">
               <Phone size={18} className="text-indigo-400" />
               <span className="text-[14px] font-black text-slate-300 uppercase italic leading-none">Celular: {client.phone || 'Sin registrar'}</span>
@@ -223,11 +223,11 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
             </div>
           </div>
 
-          <div className="flex-1 p-10 md:p-14 flex flex-col bg-slate-950/50 text-white overflow-hidden text-white">
-            <div className="flex justify-between items-start mb-10 text-white">
+          <div className="flex-1 p-6 md:p-14 flex flex-col bg-slate-950/50 text-white overflow-hidden text-white">
+            <div className="flex justify-between items-start mb-6 md:mb-10 text-white">
               <div className="flex items-center gap-4 text-white">
                 <Star size={28} className="text-amber-400 fill-amber-400" />
-                <h4 className="text-2xl font-black uppercase italic text-white tracking-tighter leading-none">DATOS DE LEALTAD</h4>
+                <h4 className="text-xl md:text-2xl font-black uppercase italic text-white tracking-tighter leading-none">DATOS DE LEALTAD</h4>
               </div>
               <button onClick={onClose} className="p-3 bg-slate-900 rounded-2xl text-slate-400 hover:text-rose-500 transition-all text-white"><X size={24} /></button>
             </div>
@@ -270,7 +270,7 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5 mt-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 mt-8 md:mt-10">
               <button onClick={onNewApt} className="bg-indigo-600 hover:bg-indigo-500 text-white py-6 rounded-2xl font-black uppercase italic text-[11px] transition-all flex items-center justify-center gap-3 text-white">
                 <Plus size={18} /> NUEVA CITA
               </button>

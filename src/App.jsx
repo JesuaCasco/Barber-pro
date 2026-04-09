@@ -2598,8 +2598,8 @@ export default function App() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[17.5rem] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className={`p-5 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-3'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[15rem] max-w-[82vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className={`p-4 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-3'}`}>
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0"><Scissors size={20}/></div>
           <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
             <h1 className="text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
@@ -2618,15 +2618,15 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-        <nav className={`flex-1 px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <nav className={`flex-1 overflow-y-auto px-3 md:px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3.5 md:py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
               <item.icon size={18} />
               <span className={sidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className={`px-4 py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <div className={`px-3 md:px-4 py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {(currentBarbershop?.name || currentBranch?.name) && !sidebarCollapsed && (
             <div className="mb-4 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 space-y-2">
               {currentBarbershop?.name && (
@@ -2667,8 +2667,8 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 min-w-0">
-        <header className="min-h-20 bg-black border-b border-slate-900 px-4 md:px-8 py-3 md:py-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 z-20 no-print">
-          <div className="flex w-full lg:w-auto flex-col sm:flex-row sm:items-center gap-3 md:gap-4 min-w-0">
+        <header className="bg-black border-b border-slate-900 px-4 md:px-8 py-3 md:py-4 flex flex-col gap-3 z-20 no-print">
+          <div className="flex w-full items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
@@ -2685,9 +2685,11 @@ export default function App() {
             >
               <Menu size={18} />
             </button>
-            <div className="flex items-center gap-3 min-w-0">
-              <h2 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none shrink-0">{activeTab}</h2>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <h2 className="text-2xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none truncate">{activeTab}</h2>
             </div>
+          </div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             {isSuperAdmin && activeTab !== 'sistema' && availableBarbershops.length > 0 && (
               <div className="w-full lg:flex-1 min-w-0 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 bg-slate-900/70">
                 <div>
@@ -2697,7 +2699,7 @@ export default function App() {
                 <select
                   value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
                   onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                  className="w-full sm:min-w-[220px] bg-black border border-white/10 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-indigo-500"
+                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-indigo-500 sm:min-w-[220px] lg:max-w-sm"
                 >
                   {availableBarbershops.map((shop) => (
                     <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
@@ -2707,10 +2709,10 @@ export default function App() {
                 </select>
               </div>
             )}
-          </div>
-          <div className="flex w-full lg:w-auto items-center justify-stretch sm:justify-end gap-3 flex-wrap">
-            {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
-            {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
+            <div className="flex w-full lg:w-auto flex-col sm:flex-row items-stretch sm:items-center justify-stretch sm:justify-end gap-3">
+              {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
+              {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
+            </div>
           </div>
         </header>
 
@@ -3293,7 +3295,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         </div>
         <div className="text-center lg:text-right">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barbería</p>
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
+          <h3 className="text-2xl sm:text-3xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
             {new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </h3>
         </div>
@@ -3444,7 +3446,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
     <div className="p-4 md:p-10 space-y-6 md:space-y-12 h-full animate-in fade-in text-white no-print">
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 text-white">
         <div>
-          <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3>
           <p className="text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
         </div>
         <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> Nuevo Servicio</button>

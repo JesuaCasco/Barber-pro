@@ -439,14 +439,14 @@ function SystemView({
   };
 
   return (
-    <div className="p-10 space-y-8 animate-in fade-in text-white no-print">
+    <div className="p-4 md:p-10 space-y-6 md:space-y-8 animate-in fade-in text-white no-print">
       {isSuperAdmin && (
         <section className="flex flex-wrap gap-3">
           {[{ id: 'barbershops', label: 'Barberías' }, { id: 'branches', label: 'Sucursales' }, { id: 'users', label: 'Usuarios' }].map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveSystemPanel(item.id)}
-              className={`px-6 py-3 rounded-[1.4rem] text-[10px] font-black uppercase tracking-[0.22em] transition-all border ${
+              className={`w-full sm:w-auto px-6 py-3 rounded-[1.4rem] text-[10px] font-black uppercase tracking-[0.22em] transition-all border ${
                 activeSystemPanel === item.id
                   ? 'bg-indigo-600 text-white border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.25)]'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
@@ -677,7 +677,7 @@ function SystemView({
             <button
               key={item.id}
               onClick={() => setActiveSystemPanel(item.id)}
-              className={`px-6 py-3 rounded-[1.4rem] text-[10px] font-black uppercase tracking-[0.22em] transition-all border ${
+              className={`w-full sm:w-auto px-6 py-3 rounded-[1.4rem] text-[10px] font-black uppercase tracking-[0.22em] transition-all border ${
                 activeSystemPanel === item.id
                   ? 'bg-indigo-600 text-white border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.25)]'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
@@ -691,11 +691,11 @@ function SystemView({
 
       {activeSystemPanel === 'barbershops' && (
         <section className="rounded-[3rem] border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-          <div className="px-8 py-7 border-b border-slate-800 bg-black/40">
+          <div className="px-5 md:px-8 py-6 md:py-7 border-b border-slate-800 bg-black/40">
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Negocios activos</p>
-                <h4 className="mt-3 text-3xl font-black uppercase italic tracking-tighter text-white">Barberías registradas</h4>
+                <h4 className="mt-3 text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Barberías registradas</h4>
               </div>
 
               <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-3">
@@ -714,9 +714,33 @@ function SystemView({
             </div>
           </div>
 
-          <div className="p-6 md:p-8">
+          <div className="p-4 md:p-8">
             {barbershops.length > 0 ? (
-              <div className="rounded-[2.4rem] border border-white/5 bg-black/35 overflow-x-auto">
+              <>
+                <div className="grid gap-4 md:hidden">
+                  {barbershops.map((shop) => (
+                    <div key={shop.id} className="rounded-[2rem] border border-white/5 bg-black/25 p-5">
+                      <p className="text-lg font-black uppercase italic tracking-tighter text-white break-words">{shop.name || 'Sin nombre'}</p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Ciudad</p>
+                          <p className="mt-1 font-bold text-slate-300">{shop.city || 'Sin ciudad'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Propietario</p>
+                          <p className="mt-1 font-bold text-slate-300 break-all">{shop.ownerEmail || 'Sin correo del dueño'}</p>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="inline-flex px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
+                            {shop.plan || 'Sin plan'}
+                          </span>
+                          <span className="text-sm font-black text-white">{branchCountByBarbershopId[String(shop.id)] || 0} suc.</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-[2.4rem] border border-white/5 bg-black/35 overflow-x-auto">
                 <div className="min-w-[980px]">
                   <div className="grid grid-cols-[minmax(220px,1.2fr)_160px_minmax(260px,1.2fr)_140px_140px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
                     <span>Barbería</span>
@@ -766,7 +790,8 @@ function SystemView({
                     ))}
                   </div>
                 </div>
-              </div>
+                </div>
+              </>
             ) : (
               <div className="rounded-[2.4rem] border border-white/5 bg-black/20 px-6 py-16 text-center">
                 <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">Todavía no hay barberías registradas</p>
@@ -778,11 +803,11 @@ function SystemView({
 
       {activeSystemPanel === 'branches' && (
         <section className="rounded-[3rem] border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-          <div className="px-8 py-7 border-b border-slate-800 bg-black/40">
+          <div className="px-5 md:px-8 py-6 md:py-7 border-b border-slate-800 bg-black/40">
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Cobertura</p>
-                <h4 className="mt-3 text-3xl font-black uppercase italic tracking-tighter text-white">Sucursales registradas</h4>
+                <h4 className="mt-3 text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Sucursales registradas</h4>
               </div>
 
               <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-3">
@@ -815,9 +840,45 @@ function SystemView({
             </div>
           </div>
 
-          <div className="p-6 md:p-8">
+          <div className="p-4 md:p-8">
             {filteredBranches.length > 0 ? (
-              <div className="rounded-[2.4rem] border border-white/5 bg-black/35 overflow-x-auto">
+              <>
+                <div className="grid gap-4 md:hidden">
+                  {filteredBranches.map((branch) => (
+                    <div key={branch.id} className="rounded-[2rem] border border-white/5 bg-black/25 p-5">
+                      <p className="text-lg font-black uppercase italic tracking-tighter text-white break-words">{branch.name || 'Sin nombre'}</p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Barbería</p>
+                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.barbershopName || currentBarbershop?.name || 'Sin barbería'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Código</p>
+                            <p className="mt-1 font-bold text-slate-300">{branch.code || 'Sin código'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Ciudad</p>
+                            <p className="mt-1 font-bold text-slate-300">{branch.city || 'Sin ciudad'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Dirección</p>
+                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.address || 'Sin dirección'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => startBranchEdit(branch)}
+                          className="mt-2 w-full px-4 py-3 rounded-[1.3rem] bg-white/5 hover:bg-indigo-600 text-white font-black uppercase italic text-[10px] tracking-[0.18em] transition-all flex items-center justify-center gap-2"
+                        >
+                          <Edit2 size={14} />
+                          Editar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-[2.4rem] border border-white/5 bg-black/35 overflow-x-auto">
                 <div className="min-w-[1120px]">
                   <div className="grid grid-cols-[minmax(220px,1.1fr)_minmax(220px,1fr)_140px_150px_minmax(260px,1.3fr)_130px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
                     <span>Sucursal</span>
@@ -873,7 +934,8 @@ function SystemView({
                     ))}
                   </div>
                 </div>
-              </div>
+                </div>
+              </>
             ) : (
               <div className="rounded-[2.4rem] border border-white/5 bg-black/20 px-6 py-16 text-center">
                 <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">Todavía no hay sucursales registradas</p>
@@ -885,10 +947,10 @@ function SystemView({
 
       {activeSystemPanel === 'users' && (
       <section className="rounded-[3rem] border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-        <div className="px-8 py-7 border-b border-slate-800 bg-black/40">
+        <div className="px-5 md:px-8 py-6 md:py-7 border-b border-slate-800 bg-black/40">
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
             <div>
-              <h4 className="text-3xl font-black uppercase italic tracking-tighter text-white">Usuarios del sistema</h4>
+              <h4 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Usuarios del sistema</h4>
             </div>
 
               <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-3">
@@ -946,7 +1008,7 @@ function SystemView({
           </div>
         </div>
 
-        <div className="p-6 md:p-8 space-y-5">
+        <div className="p-4 md:p-8 space-y-5">
           {canCreateUsers && showCreateUser && (
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300">
               <div className="w-full max-w-4xl bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
@@ -1076,7 +1138,61 @@ function SystemView({
             </div>
           )}
 {users.length > 0 && (
-            <div className="rounded-[2.4rem] border border-white/5 bg-black/35 overflow-hidden">
+            <>
+            <div className="grid gap-4 md:hidden">
+              {users.map((user) => {
+                const primaryRole = getPrimaryRole(user);
+                const roleMeta = primaryRole
+                  ? (ROLE_META[primaryRole] || { label: primaryRole, badge: 'bg-slate-700 text-white border-slate-500' })
+                  : { label: 'Sin rol', badge: 'bg-slate-950 text-slate-400 border-slate-700' };
+                const displayName = user.fullName || user.email || 'Usuario sin nombre';
+                const scopeLabel = isSuperAdmin
+                  ? [user.barbershopName, user.branchName].filter(Boolean).join(' • ')
+                  : (user.branchName || '');
+                return (
+                  <div key={user.id} className="rounded-[2rem] border border-white/5 bg-black/25 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-lg font-black uppercase italic tracking-tighter text-white break-words">{displayName}</p>
+                        <p className="mt-2 text-sm font-bold text-slate-300 break-all">{user.email || 'Sin correo'}</p>
+                      </div>
+                      <span className={`inline-flex shrink-0 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] ${roleMeta.badge}`}>
+                        {roleMeta.label}
+                      </span>
+                    </div>
+                    {scopeLabel && (
+                      <p className="mt-4 text-[11px] font-bold text-slate-500 break-words">{scopeLabel}</p>
+                    )}
+                    {canResetPasswordForUser(user) && (
+                      <button
+                        type="button"
+                        onClick={() => setResetPasswordTarget(user)}
+                        className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400 hover:text-indigo-300 transition-all"
+                      >
+                        Restablecer contraseña
+                      </button>
+                    )}
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-slate-300">{formatUserCreatedAt(user.createdAt)}</span>
+                      {canEditUser(user) ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(user)}
+                          disabled={savingUserId === user.id}
+                          className="px-4 py-3 rounded-[1rem] bg-slate-950 border border-slate-800 hover:border-indigo-500 text-white font-black uppercase italic text-[10px] tracking-[0.18em] transition-all flex items-center gap-2 disabled:opacity-60"
+                        >
+                          <Edit2 size={14} />
+                          Editar
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Sin edición</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden md:block rounded-[2.4rem] border border-white/5 bg-black/35 overflow-hidden">
               <div className="grid grid-cols-[minmax(240px,1.2fr)_minmax(320px,1.4fr)_minmax(180px,0.8fr)_160px_180px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
                 <span>Nombre de usuario</span>
                 <span>Correo</span>
@@ -1161,6 +1277,7 @@ function SystemView({
                 })}
               </div>
             </div>
+            </>
           )}
 
           {!users.length && (
@@ -2549,13 +2666,13 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden bg-slate-950">
-        <header className="h-20 bg-black border-b border-slate-900 px-4 md:px-8 flex items-center justify-between z-20 no-print">
-          <div className="flex items-center gap-4 min-w-0">
+      <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 min-w-0">
+        <header className="min-h-20 bg-black border-b border-slate-900 px-4 md:px-8 py-3 md:py-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 z-20 no-print">
+          <div className="flex w-full lg:w-auto flex-col sm:flex-row sm:items-center gap-3 md:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white md:hidden shrink-0"
               aria-label="Abrir menú lateral"
             >
               <Menu size={18} />
@@ -2568,9 +2685,11 @@ export default function App() {
             >
               <Menu size={18} />
             </button>
-            <h2 className="text-xl font-black italic uppercase text-white tracking-tighter leading-none">{activeTab}</h2>
+            <div className="flex items-center gap-3 min-w-0">
+              <h2 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none shrink-0">{activeTab}</h2>
+            </div>
             {isSuperAdmin && activeTab !== 'sistema' && availableBarbershops.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-2 rounded-2xl border border-white/10 bg-slate-900/70">
+              <div className="w-full lg:flex-1 min-w-0 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 bg-slate-900/70">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vista actual</p>
                   <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Barbería</p>
@@ -2578,7 +2697,7 @@ export default function App() {
                 <select
                   value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
                   onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                  className="min-w-[220px] bg-black border border-white/10 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-indigo-500"
+                  className="w-full sm:min-w-[220px] bg-black border border-white/10 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-indigo-500"
                 >
                   {availableBarbershops.map((shop) => (
                     <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
@@ -2589,13 +2708,13 @@ export default function App() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
-            {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
+          <div className="flex w-full lg:w-auto items-center justify-stretch sm:justify-end gap-3 flex-wrap">
+            {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
+            {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
@@ -3136,6 +3255,12 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const isToday = viewDate === today;
   const [nowPos, setNowPos] = useState(0);
   const agendaBarbers = (barbers && barbers.length > 0) ? barbers : [];
+  const dayAppointments = useMemo(
+    () => (appointments || [])
+      .filter((appointment) => standardizeDate(appointment.date) === viewDate)
+      .sort((left, right) => String(left.time || '').localeCompare(String(right.time || ''))),
+    [appointments, viewDate],
+  );
 
   useEffect(() => {
     const updateNow = () => {
@@ -3159,20 +3284,70 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   };
 
   return (
-    <div className="p-8 h-full flex flex-col gap-6 bg-slate-950 no-print">
-      <div className="flex justify-between items-center bg-black border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl text-white">
-        <div className="flex items-center gap-3">
-          <button onClick={() => changeDay(-1)} className="p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronLeft size={20}/></button>
-          <button onClick={() => setViewDate(today)} className="px-6 py-4 bg-indigo-600/10 hover:bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all rounded-xl border border-indigo-600/30">Hoy</button>
-          <button onClick={() => changeDay(1)} className="p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronRight size={20}/></button>
+    <div className="p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white">
+        <div className="flex items-center justify-center sm:justify-start gap-3">
+          <button onClick={() => changeDay(-1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronLeft size={20}/></button>
+          <button onClick={() => setViewDate(today)} className="px-5 md:px-6 py-3 md:py-4 bg-indigo-600/10 hover:bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all rounded-xl border border-indigo-600/30">Hoy</button>
+          <button onClick={() => changeDay(1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronRight size={20}/></button>
         </div>
-        <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-1 leading-none">Agenda de Barbería</p>
-          <h3 className="text-2xl font-black italic uppercase text-white tracking-tighter">{new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+        <div className="text-center lg:text-right">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barbería</p>
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
+            {new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </h3>
         </div>
       </div>
 
-      <div className="flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex flex-col">
+      <div className="md:hidden space-y-4">
+        {agendaBarbers.map((barber) => {
+          const barberAppointments = dayAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id));
+          return (
+            <div key={barber.id} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl ${barber.bg} flex items-center justify-center font-black italic text-white`}>{barber.avatar}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-black uppercase italic tracking-tighter text-white truncate">{barber.name}</p>
+                  <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.18em] ${barberAppointments.length ? 'text-indigo-300' : 'text-emerald-300'}`}>
+                    {barberAppointments.length ? `${barberAppointments.length} cita${barberAppointments.length === 1 ? '' : 's'} en agenda` : 'Disponible'}
+                  </p>
+                </div>
+                <button onClick={() => onSlotClick(getCurrentTimeHHmm(), barber.id)} className="rounded-xl border border-indigo-500/30 bg-indigo-600/10 p-3 text-indigo-300">
+                  <Plus size={18} />
+                </button>
+              </div>
+
+              {barberAppointments.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {barberAppointments.map((appointment) => {
+                    const client = clients.find((item) => item.id === appointment.clientId);
+                    return (
+                      <button key={appointment.id} onClick={() => onAptClick(appointment)} className="w-full rounded-[1.4rem] border border-white/5 bg-black/25 px-4 py-4 text-left">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || 'Cliente desconocido'}</p>
+                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{appointment.service || 'Servicio'}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-black italic text-white">{appointment.time || '--:--'}</p>
+                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-300">{appointment.status || 'Confirmada'}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button onClick={() => onSlotClick('09:00', barber.id)} className="mt-4 w-full rounded-[1.4rem] border border-dashed border-indigo-500/30 bg-indigo-500/5 px-4 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">
+                  Agendar cita
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden md:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
         <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
           <div className="min-w-[1200px] h-full flex flex-col relative">
             <div 
@@ -3266,34 +3441,37 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
   const filteredServices = useMemo(() => (services || []).filter(s => s.category === activeCategory), [services, activeCategory]);
 
   return (
-    <div className="p-10 space-y-12 h-full animate-in fade-in text-white no-print">
-      <div className="flex justify-between items-center text-white">
-        <div><h3 className="text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3><p className="text-[10px] text-indigo-400 font-black uppercase mt-1 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p></div>
-        <button onClick={() => onAdd(activeCategory)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center gap-3 transition-all active:scale-95 group text-white"><Plus size={22} className="group-hover:rotate-90 transition-transform" /> Nuevo Servicio</button>
+    <div className="p-4 md:p-10 space-y-6 md:space-y-12 h-full animate-in fade-in text-white no-print">
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 text-white">
+        <div>
+          <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3>
+          <p className="text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
+        </div>
+        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> Nuevo Servicio</button>
       </div>
-      <div className="flex flex-wrap items-center gap-3 p-2 bg-black border border-slate-800 rounded-[2.5rem] w-fit text-white">
-        {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-300 hover:bg-slate-900'}`}>{cat}</button>)}
+      <div className="grid w-full grid-cols-2 gap-3 p-3 bg-black border border-slate-800 rounded-[2.5rem] text-white sm:flex sm:flex-wrap sm:items-center sm:w-fit">
+        {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 md:px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>{cat}</button>)}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-8">
         {filteredServices.map(s => (
-          <div key={s.id} onClick={() => onEdit(s)} className="group bg-slate-900 border border-slate-800 rounded-[3rem] p-10 hover:border-indigo-500 transition-all cursor-pointer relative shadow-2xl overflow-hidden flex flex-col justify-between min-h-[320px] text-white">
+          <div key={s.id} onClick={() => onEdit(s)} className="group bg-slate-900 border border-slate-800 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 hover:border-indigo-500 transition-all cursor-pointer relative shadow-2xl overflow-hidden flex flex-col justify-between min-h-[260px] md:min-h-[320px] text-white">
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/30 transition-all"></div>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="absolute top-8 right-8 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all z-10 text-white"><Trash2 size={20}/></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="absolute top-5 md:top-8 right-5 md:right-8 text-slate-600 hover:text-rose-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 text-white"><Trash2 size={18}/></button>
             <div className="relative text-white">
-              <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center text-indigo-500 mb-8 border border-slate-800 shadow-inner group-hover:scale-110 transition-transform group-hover:text-white group-hover:bg-indigo-600 text-white">{getIcon(s.category)}</div>
-              <h4 className="text-2xl font-black uppercase italic leading-tight tracking-tighter group-hover:text-indigo-400 transition-colors text-white">{s.name}</h4>
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-black rounded-2xl flex items-center justify-center text-indigo-500 mb-6 md:mb-8 border border-slate-800 shadow-inner group-hover:scale-110 transition-transform group-hover:text-white group-hover:bg-indigo-600 text-white">{getIcon(s.category)}</div>
+              <h4 className="text-xl md:text-2xl font-black uppercase italic leading-tight tracking-tighter group-hover:text-indigo-400 transition-colors text-white">{s.name}</h4>
               <span className="inline-block mt-4 text-[9px] font-black bg-indigo-600/20 text-indigo-400 px-5 py-2 rounded-full uppercase border border-indigo-600/40 tracking-widest italic leading-none">{s.category}</span>
             </div>
-            <div className="pt-8 border-t border-slate-800 group-hover:border-indigo-500/30 mt-8 flex justify-between items-center text-white">
+            <div className="pt-6 md:pt-8 border-t border-slate-800 group-hover:border-indigo-500/30 mt-6 md:mt-8 flex justify-between items-center text-white">
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1 leading-none">Precio Final</p>
-                <p className="text-4xl font-black italic text-emerald-400 tracking-tighter group-hover:text-white transition-all leading-none">C$ {s.price}</p>
+                <p className="text-3xl md:text-4xl font-black italic text-emerald-400 tracking-tighter group-hover:text-white transition-all leading-none">C$ {s.price}</p>
               </div>
               <div className="p-3 bg-black border border-slate-800 rounded-2xl text-slate-600 group-hover:text-indigo-500 transition-colors"><ChevronRight size={20} /></div>
             </div>
           </div>
         ))}
-        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[3rem] p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[320px] text-white"><div className="w-16 h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={32} /></div><p className="font-black uppercase italic text-xs tracking-widest leading-none text-white">Añadir a {activeCategory}</p></div>
+        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[260px] md:min-h-[320px] text-white"><div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={28} /></div><p className="font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-white text-center">Añadir a {activeCategory}</p></div>
       </div>
     </div>
   );

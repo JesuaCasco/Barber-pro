@@ -89,19 +89,19 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
   };
 
   return (
-    <div className="p-10 space-y-8 animate-in fade-in text-white no-print">
-      <div className="flex justify-between items-center text-white">
+    <div className="p-4 md:p-10 space-y-6 md:space-y-8 animate-in fade-in text-white no-print">
+      <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4 text-white">
         <div>
-          <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-white">Directorio de Clientes</h3>
+          <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter leading-none text-white">Directorio de Clientes</h3>
           <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Gestión VIP y Fidelización</p>
         </div>
-        <div className="flex items-center gap-4 text-white">
-          <button onClick={downloadClientsReport} disabled={!tableData.length} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-xl shadow-emerald-950/30 transition-all flex items-center gap-2 leading-none">
+        <div className="flex w-full xl:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 text-white">
+          <button onClick={downloadClientsReport} disabled={!tableData.length} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-xl shadow-emerald-950/30 transition-all flex items-center justify-center gap-2 leading-none">
             <Save size={16} /> Exportar Excel
           </button>
-          <div className="relative text-white">
+          <div className="relative text-white w-full xl:w-auto">
             <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-            <input type="text" placeholder="BUSCAR POR NOMBRE O CELULAR" className="bg-black border border-slate-800 rounded-2xl pl-8 pr-16 py-4 text-sm font-bold w-96 outline-none focus:border-indigo-600 transition-all text-white italic leading-none placeholder:text-slate-500" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <input type="text" placeholder="BUSCAR POR NOMBRE O CELULAR" className="bg-black border border-slate-800 rounded-2xl pl-5 pr-16 py-4 text-sm font-bold w-full xl:w-96 outline-none focus:border-indigo-600 transition-all text-white italic leading-none placeholder:text-slate-500" value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
         </div>
       </div>
@@ -110,7 +110,39 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
           Números repetidos detectados: {duplicatePhones.join(', ')}. El celular ahora es único, así que conviene editar o eliminar esos duplicados guardados.
         </div>
       )}
-      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className="md:hidden space-y-4">
+        {filtered.map((client) => (
+          <div key={client.id} onClick={() => onRowClick(client)} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 shrink-0 bg-indigo-600/20 border border-indigo-600/30 rounded-2xl flex items-center justify-center font-black italic text-xl text-indigo-300">
+                {client.name[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xl font-black uppercase italic tracking-tighter text-white leading-none break-words">{client.name}</p>
+                <p className="mt-2 text-xs font-bold text-slate-400">{client.phone}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className={`${client.type.bg} ${client.type.color} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${client.type.border}`}>{client.type.label}</span>
+                  <span className="px-4 py-2 rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-[10px] font-black uppercase tracking-widest text-indigo-300">{client.visits} visitas</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-1 gap-3 rounded-[1.5rem] border border-white/5 bg-black/20 p-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Barbero favorito</p>
+                <p className="mt-1 text-sm font-black italic text-white">{client.favBarber}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Última visita</p>
+                <p className="mt-1 text-sm font-bold text-slate-300">{client.lastVisit}</p>
+              </div>
+            </div>
+            <button onClick={(event) => { event.stopPropagation(); onNewApt(client); }} className="mt-4 w-full rounded-[1.4rem] bg-indigo-600 px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all">
+              Nueva cita
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
         <table className="w-full text-left">
           <thead className="bg-black/80 border-b border-slate-800 font-black uppercase text-[10px] text-slate-500 tracking-[0.2em] italic">
             <tr><th className="px-10 py-7">Cliente</th><th className="px-10 py-7 text-center">Tipo</th><th className="px-10 py-7 text-center">Visitas</th><th className="px-10 py-7 text-center">Barbero Fav</th><th className="px-10 py-7 text-center">Última Visita</th><th className="px-10 py-7 text-right">Acción</th></tr>

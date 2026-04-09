@@ -1236,6 +1236,7 @@ export default function App() {
   const [clientDirectoryWarnings, setClientDirectoryWarnings] = useState([]);
   const [operationalWarnings, setOperationalWarnings] = useState([]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [savingUserId, setSavingUserId] = useState(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [resettingPasswordUserId, setResettingPasswordUserId] = useState(null);
@@ -2480,29 +2481,15 @@ export default function App() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[17.5rem] flex-col border-r border-slate-900 bg-slate-950 no-print transition-transform duration-300 md:static md:w-64 md:translate-x-0 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-5 md:p-8 flex items-start gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]"><Scissors size={20}/></div>
-          <div className="min-w-0 flex-1">
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[17.5rem] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className={`p-5 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-3'}`}>
+          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0"><Scissors size={20}/></div>
+          <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
             <h1 className="text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
             {session?.user?.email && (
               <p className="text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
                 {session.user.email}
               </p>
-            )}
-            {(currentBarbershop?.name || currentBranch?.name) && (
-              <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 px-3 py-2.5 space-y-2">
-                {currentBarbershop?.name && (
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barbería</p>
-                    <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Sucursal</p>
-                  <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">{currentBranch?.name || 'General'}</p>
-                </div>
-              </div>
             )}
           </div>
           <button
@@ -2514,32 +2501,49 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className={`flex-1 px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
-              <item.icon size={18} /> {item.label}
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+              <item.icon size={18} />
+              <span className={sidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-slate-900">
+        <div className={`px-4 py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+          {(currentBarbershop?.name || currentBranch?.name) && !sidebarCollapsed && (
+            <div className="mb-4 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 space-y-2">
+              {currentBarbershop?.name && (
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barbería</p>
+                  <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Sucursal</p>
+                <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">{currentBranch?.name || 'General'}</p>
+              </div>
+            </div>
+          )}
           {hasSupabaseConfig && session?.user && (
             <button
               onClick={() => setShowSelfPasswordModal(true)}
               disabled={passwordBusy}
-              className="w-full mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 border border-slate-800 transition-all"
+              className={`w-full mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              title={sidebarCollapsed ? 'Cambiar contraseña' : undefined}
             >
               {passwordBusy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-              Cambiar contraseña
+              <span className={sidebarCollapsed ? 'md:hidden' : ''}>Cambiar contraseña</span>
             </button>
           )}
           {hasSupabaseConfig && (
             <button
               onClick={handleSignOut}
               disabled={authBusy}
-              className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 border border-slate-800 transition-all"
+              className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              title={sidebarCollapsed ? 'Cerrar sesión' : undefined}
             >
               {authBusy ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
-              Cerrar Sesión
+              <span className={sidebarCollapsed ? 'md:hidden' : ''}>Cerrar Sesión</span>
             </button>
           )}
         </div>
@@ -2553,6 +2557,14 @@ export default function App() {
               onClick={() => setMobileSidebarOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white md:hidden"
               aria-label="Abrir menú lateral"
+            >
+              <Menu size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              className="hidden md:flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white"
+              aria-label={sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
             >
               <Menu size={18} />
             </button>

@@ -2479,6 +2479,18 @@ export default function App() {
                 {session.user.email}
               </p>
             )}
+            {(currentBarbershop?.name || currentBranch?.name) && (
+              <div className="mt-3 space-y-1.5">
+                {currentBarbershop?.name && (
+                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-600 truncate">
+                    Barberia: <span className="text-slate-300">{currentBarbershop.name}</span>
+                  </p>
+                )}
+                <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-600 truncate">
+                  Sucursal: <span className="text-emerald-300">{currentBranch?.name || 'General'}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
         <nav className="flex-1 px-4 space-y-1">

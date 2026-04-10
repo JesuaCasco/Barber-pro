@@ -2663,14 +2663,45 @@ export default function App() {
           ))}
         </nav>
         <div className={`px-3 md:px-4 py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
-          {(currentBarbershop?.name || currentBranch?.name) && !sidebarCollapsed && (
+          {isSuperAdmin && availableBarbershops.length > 0 && sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              className="mb-4 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
+              title={currentBarbershop?.name ? `Cambiar barbería actual: ${currentBarbershop.name}` : 'Cambiar barbería'}
+            >
+              <Crown size={16} />
+            </button>
+          )}
+          {(currentBarbershop?.name || currentBranch?.name || (isSuperAdmin && availableBarbershops.length > 0)) && !sidebarCollapsed && (
             <div className="mb-4 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 space-y-2">
-              {currentBarbershop?.name && (
+              {isSuperAdmin && availableBarbershops.length > 0 ? (
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Vista actual</p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-indigo-300">Barbería</p>
+                    </div>
+                    <Crown size={14} className="text-indigo-300" />
+                  </div>
+                  <select
+                    value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
+                    onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
+                    className="mt-3 w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white outline-none transition-all focus:border-indigo-500"
+                  >
+                    {availableBarbershops.map((shop) => (
+                      <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
+                        {shop.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : currentBarbershop?.name ? (
                 <div className="min-w-0">
                   <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barbería</p>
                   <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
                 </div>
-              )}
+              ) : null}
               <div className="min-w-0">
                 <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Sucursal</p>
                 <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">{currentBranch?.name || 'General'}</p>
@@ -2725,31 +2756,12 @@ export default function App() {
               <h2 className="text-2xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none truncate">{activeTab}</h2>
             </div>
           </div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            {isSuperAdmin && activeTab !== 'sistema' && availableBarbershops.length > 0 && (
-              <div className="w-full lg:flex-1 min-w-0 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 bg-slate-900/70">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vista actual</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Barbería</p>
-                </div>
-                <select
-                  value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
-                  onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-indigo-500 sm:min-w-[220px] lg:max-w-sm"
-                >
-                  {availableBarbershops.map((shop) => (
-                    <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="flex w-full lg:w-auto flex-col sm:flex-row items-stretch sm:items-center justify-stretch sm:justify-end gap-3">
+          {(activeTab === 'clientes' || activeTab === 'agenda') && (
+            <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center justify-stretch sm:justify-end gap-3">
               {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
               {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
             </div>
-          </div>
+          )}
         </header>
 
         <div className="flex-1 overflow-auto overflow-x-hidden custom-scrollbar">

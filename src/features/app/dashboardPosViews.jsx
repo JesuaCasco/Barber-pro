@@ -20,6 +20,7 @@ import {
   formatPromotionValue,
   getApplicablePromotions,
   getTodayString,
+  isPromotionService,
   standardizeDate,
 } from './shared';
 import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
@@ -280,13 +281,19 @@ export function POSView({ services, onSale }) {
       && service.name.toLowerCase().includes(normalizedSearch)
     ))
   ), [services, normalizedSearch]);
+  const savedProductPromotions = useMemo(
+    () => (services || []).filter(
+      (service) => isPromotionService(service) && (service.appliesTo || 'Servicio') === 'Producto'
+    ),
+    [services],
+  );
   const availablePromotions = useMemo(
     () => getApplicablePromotions(services, cart, 'Producto'),
     [services, cart],
   );
   const selectedPromotion = useMemo(
-    () => availablePromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
-    [availablePromotions, selectedPromotionId],
+    () => savedProductPromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
+    [savedProductPromotions, selectedPromotionId],
   );
   const promotionPreview = useMemo(
     () => calculatePromotionDiscount(selectedPromotion, cart),
@@ -340,12 +347,12 @@ export function POSView({ services, onSale }) {
           ))}
         </div>
         <div className="p-5 md:p-10 border-t border-slate-900 bg-slate-950 text-white">
-          {availablePromotions.length > 0 ? (
+          {savedProductPromotions.length > 0 ? (
             <div className="mb-6 space-y-3 rounded-[1.8rem] border border-emerald-500/20 bg-black/40 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones disponibles</p>
-                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Puedes aplicarlas manualmente a esta venta.</p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Promociones guardadas en servicios para aplicar manualmente en POS.</p>
                 </div>
                 {selectedPromotion ? (
                   <button type="button" onClick={() => setSelectedPromotionId('')} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300">
@@ -354,7 +361,7 @@ export function POSView({ services, onSale }) {
                 ) : null}
               </div>
               <div className="space-y-2">
-                {availablePromotions.map((promotion) => (
+                {savedProductPromotions.map((promotion) => (
                   <button
                     key={promotion.id}
                     type="button"
@@ -376,6 +383,13 @@ export function POSView({ services, onSale }) {
                         - C$ {calculatePromotionDiscount(promotion, cart).amount.toLocaleString('es-NI')}
                       </span>
                     </div>
+                    <p className="mt-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                      {cart.length === 0
+                        ? 'Agrega productos al ticket para calcular el descuento.'
+                        : availablePromotions.some((availablePromotion) => String(availablePromotion.id) === String(promotion.id))
+                          ? 'Lista para aplicarse a esta venta.'
+                          : 'No aplica al carrito actual.'}
+                    </p>
                   </button>
                 ))}
               </div>

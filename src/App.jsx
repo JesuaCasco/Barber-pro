@@ -112,6 +112,7 @@ import {
   getTodayString,
   isValidPhoneNumber,
   formatPromotionValue,
+  normalizeFavoriteServiceName,
   clampPromotionDiscountValue,
   isPromotionService,
   makeId,
@@ -3598,6 +3599,7 @@ function StaffSettlementModal({ data, onClose, onConfirmSettlement }) {
 function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onSlotClick, onAptClick }) {
   const today = getTodayString();
   const isToday = viewDate === today;
+  const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
   const [nowPos, setNowPos] = useState(0);
   const agendaBarbers = (barbers && barbers.length > 0) ? barbers : [];
   const dayAppointments = useMemo(
@@ -3671,7 +3673,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || 'Cliente desconocido'}</p>
-                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{appointment.service || 'Servicio'}</p>
+                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{getAgendaServiceLabel(appointment.service)}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-sm font-black italic text-white">{appointment.time || '--:--'}</p>
@@ -3748,7 +3750,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                           <div className="flex items-center justify-between mt-2 text-white">
                             <span className="text-white text-[8px] font-black truncate flex items-center gap-1">
                               {apt.service?.toLowerCase().includes('barba') ? <BeardIcon size={10}/> : <Scissors size={10}/>}
-                          {apt.status === 'Cita Perdida' ? 'NO LLEGÓ' : (apt.service || 'Servicio')}
+                          {apt.status === 'Cita Perdida' ? 'NO LLEGÓ' : getAgendaServiceLabel(apt.service)}
                             </span>
                             <span className="text-[7px] opacity-70 font-black">{apt.time}</span>
                           </div>
@@ -5473,71 +5475,76 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
                 </div>
                 
-                <div className="flex-1 flex items-end justify-between gap-2 md:gap-4 px-4 relative z-10 h-[300px] text-white">
-                  
-                  {/* CUADR?CULA ESTRUCTURADA DE FONDO */}
-                  <div className="absolute inset-0 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-10 mb-20">
-                    {[100, 80, 60, 40, 20, 0].map((val) => (
-                      <div key={val} className="w-full flex items-center relative">
-                        <span className="absolute -left-10 text-[8px] font-black text-slate-500 w-8 text-right italic leading-none">{val}%</span>
-                        <div className="flex-1 h-px border-t border-dashed border-slate-600"></div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="relative z-10 mt-2 flex-1 overflow-x-auto custom-scrollbar pb-3">
+                  <div
+                    className="relative h-[280px] min-w-[340px] md:h-[300px]"
+                    style={{ width: monthlyStaffMetrics.length > 3 ? `${monthlyStaffMetrics.length * 94}px` : '100%' }}
+                  >
+                    {/* CUADRÍCULA ESTRUCTURADA DE FONDO */}
+                    <div className="absolute inset-0 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-8 md:ml-10 mb-16 md:mb-20">
+                      {[100, 80, 60, 40, 20, 0].map((val) => (
+                        <div key={val} className="w-full flex items-center relative">
+                          <span className="absolute -left-8 md:-left-10 text-[8px] font-black text-slate-500 w-7 md:w-8 text-right italic leading-none">{val}%</span>
+                          <div className="flex-1 h-px border-t border-dashed border-slate-600"></div>
+                        </div>
+                      ))}
+                    </div>
 
-                  {monthlyStaffMetrics.map(b => {
-                    const countHeight = (b.count / maxMonthlyApts) * 100;
-                    const salesHeight = (b.sales / maxMonthlySales) * 100;
-                    const barberColorClass = b.bg || 'bg-indigo-600';
-                    
-                    return (
-                      <div key={b.id} className="flex-1 flex flex-col items-center justify-end h-full group text-white pl-4">
-                        <div className="flex items-end gap-1.5 md:gap-2.5 w-full justify-center px-1 h-full min-h-[40px] relative text-white">
-                          
-                          {/* Barra de Citas */}
-                          <div className="flex flex-col items-center justify-end h-full w-full max-w-[24px] md:max-w-[32px] relative text-white">
-                            <span 
-                              className="text-[10.5px] md:text-[11.5px] font-black text-white absolute whitespace-nowrap bg-indigo-600 px-2.5 py-1 rounded-lg border border-indigo-400 shadow-[0_5px_15px_rgba(79,70,229,0.3)] z-20 transition-all duration-1000 ease-out italic group-hover:scale-110 leading-none"
-                              style={{ bottom: `calc(${Math.max(countHeight, 4)}% + 8px)` }}
-                            >
-                              {b.count}
-                            </span>
-                            <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} shadow-lg text-white border-t border-white/20`} style={{ height: `${Math.max(countHeight, 4)}%` }}>
-                               <div className="absolute inset-0 bg-white/5 opacity-0 transition-opacity rounded-t-2xl group-hover:opacity-100 text-white"></div>
+                    <div className="relative flex h-full items-end justify-between gap-2 md:gap-4 px-3 md:px-4">
+                      {monthlyStaffMetrics.map((b) => {
+                        const countHeight = (b.count / maxMonthlyApts) * 100;
+                        const salesHeight = (b.sales / maxMonthlySales) * 100;
+                        const barberColorClass = b.bg || 'bg-indigo-600';
+
+                        return (
+                          <div key={b.id} className="flex min-w-[78px] flex-1 flex-col items-center justify-end h-full group text-white">
+                            <div className="flex items-end gap-1.5 md:gap-2.5 w-full justify-center px-1 h-full min-h-[40px] relative text-white">
+                              {/* Barra de Citas */}
+                              <div className="flex flex-col items-center justify-end h-full w-full max-w-[20px] md:max-w-[32px] relative text-white">
+                                <span
+                                  className="text-[9px] md:text-[11.5px] font-black text-white absolute whitespace-nowrap bg-indigo-600 px-2 py-1 rounded-lg border border-indigo-400 shadow-[0_5px_15px_rgba(79,70,229,0.3)] z-20 transition-all duration-1000 ease-out italic group-hover:scale-110 leading-none"
+                                  style={{ bottom: `calc(${Math.max(countHeight, 4)}% + 8px)` }}
+                                >
+                                  {b.count}
+                                </span>
+                                <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} shadow-lg text-white border-t border-white/20`} style={{ height: `${Math.max(countHeight, 4)}%` }}>
+                                  <div className="absolute inset-0 bg-white/5 opacity-0 transition-opacity rounded-t-2xl group-hover:opacity-100 text-white"></div>
+                                </div>
+                              </div>
+
+                              {/* Barra de Ingresos */}
+                              <div className="flex flex-col items-center justify-end h-full w-full max-w-[20px] md:max-w-[32px] relative text-white">
+                                <div
+                                  className="absolute text-center z-20 transition-all duration-1000 ease-out"
+                                  style={{ bottom: `calc(${Math.max(salesHeight, 4)}% + 8px)` }}
+                                >
+                                  <span className="text-[9px] md:text-[11.5px] font-black text-emerald-100 italic whitespace-nowrap bg-emerald-600 px-2 py-1 rounded-lg border border-emerald-400 shadow-[0_5px_15px_rgba(16,185,129,0.5)] group-hover:scale-110 transition-transform leading-none">
+                                    C$ {b.sales >= 1000 ? (b.sales / 1000).toFixed(1) + 'k' : b.sales}
+                                  </span>
+                                </div>
+                                <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} brightness-125 shadow-lg text-white border-t border-white/30`} style={{ height: `${Math.max(salesHeight, 4)}%` }}>
+                                  <div className="absolute inset-0 bg-white/10 opacity-30 rounded-t-2xl text-white"></div>
+                                  <div className={`absolute -inset-1 opacity-0 transition-opacity rounded-t-2xl blur-lg ${barberColorClass} group-hover:opacity-20 text-white`} />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-6 md:mt-8 flex flex-col items-center gap-1.5 md:gap-2 text-white">
+                              <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl ${b.bg} flex items-center justify-center text-[10px] font-black italic shadow-lg border-2 border-slate-900 transition-transform group-hover:scale-110 text-white`}>
+                                {b.avatar}
+                              </div>
+                              <p className="text-[9px] md:text-[11px] font-black uppercase text-slate-200 italic tracking-[0.08em] leading-none truncate w-16 md:w-20 text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]">
+                                {b.name.split(' ')[0]}
+                              </p>
                             </div>
                           </div>
-                          
-                          {/* Barra de Ingresos */}
-                          <div className="flex flex-col items-center justify-end h-full w-full max-w-[24px] md:max-w-[32px] relative text-white">
-                            <div 
-                              className="absolute text-center z-20 transition-all duration-1000 ease-out"
-                              style={{ bottom: `calc(${Math.max(salesHeight, 4)}% + 8px)` }}
-                            >
-                              <span className="text-[10.5px] md:text-[11.5px] font-black text-emerald-100 italic whitespace-nowrap bg-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-400 shadow-[0_5px_15px_rgba(16,185,129,0.5)] group-hover:scale-110 transition-transform leading-none">
-                                C$ {b.sales >= 1000 ? (b.sales / 1000).toFixed(1) + 'k' : b.sales}
-                              </span>
-                            </div>
-                            <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} brightness-125 shadow-lg text-white border-t border-white/30`} style={{ height: `${Math.max(salesHeight, 4)}%` }}>
-                               <div className="absolute inset-0 bg-white/10 opacity-30 rounded-t-2xl text-white"></div>
-                               <div className={`absolute -inset-1 opacity-0 transition-opacity rounded-t-2xl blur-lg ${barberColorClass} group-hover:opacity-20 text-white`} />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-8 flex flex-col items-center gap-2 text-white">
-                          <div className={`w-10 h-10 rounded-xl ${b.bg} flex items-center justify-center text-[10px] font-black italic shadow-lg border-2 border-slate-900 transition-transform group-hover:scale-110 text-white`}>
-                            {b.avatar}
-                          </div>
-                          <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-200 italic tracking-[0.08em] leading-none truncate w-20 text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]">
-                            {b.name.split(' ')[0]}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="mt-12 pt-6 border-t border-white/5 flex items-center justify-center gap-8 text-white">
+
+                <div className="mt-6 md:mt-12 pt-5 md:pt-6 border-t border-white/5 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-white">
                    <div className="flex items-center gap-2 text-white">
                      <div className="w-3 h-3 bg-indigo-600 rounded-sm"></div>
                      <span className="text-[10px] font-black text-slate-500 uppercase italic leading-none">Citas del rango</span>

@@ -195,38 +195,40 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
                   const isWalkin = appointment.type === 'walkin';
 
                   return (
-                    <div key={appointment.id} className={`bg-slate-950 border ${inService ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)] scale-[1.01] z-10' : (appointment.status === 'En Espera' ? 'border-indigo-500/50' : 'border-slate-800')} rounded-[2.5rem] p-6 flex flex-col md:flex-row justify-between items-center gap-6 transition-all group relative`}>
-                      <div className="flex items-center gap-6">
+                    <div key={appointment.id} className={`bg-slate-950 border ${inService ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)] scale-[1.01] z-10' : (appointment.status === 'En Espera' ? 'border-indigo-500/50' : 'border-slate-800')} rounded-[2.5rem] p-4 md:p-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 md:gap-6 transition-all group relative overflow-hidden`}>
+                      <div className="flex items-center gap-4 md:gap-6 min-w-0">
                         <div className="relative">
                           <div className={`w-16 h-16 rounded-[1.5rem] ${barber?.bg || 'bg-slate-800'} flex items-center justify-center font-black italic text-xl text-white shadow-2xl relative z-10 border-2 border-white/10 group-hover:scale-110 transition-transform`}>{barber?.avatar || '?'}</div>
                           {inService && <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-4 border-slate-950 animate-ping z-20"></div>}
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-3">
-                            <h4 className="text-xl font-black uppercase italic text-white tracking-tighter leading-none group-hover:text-indigo-400 transition-colors">{index + 1}-{client?.name || 'Cliente desconocido'}</h4>
+                            <h4 className="text-lg md:text-xl font-black uppercase italic text-white tracking-tighter leading-none group-hover:text-indigo-400 transition-colors truncate">
+                              {index + 1}-{client?.name || 'Cliente desconocido'}
+                            </h4>
                             {inService && <span className="animate-pulse flex items-center gap-1 text-[8px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 italic">EN PROCESO</span>}
                           </div>
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-2 mt-2 min-w-0">
                             <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${getTypeColor(appointment)} text-white`}>{getTypeLabel(appointment)}</span>
-                            <span className="text-[10px] text-slate-600 font-black uppercase italic tracking-widest leading-none">- {barber?.name}</span>
+                            <span className="text-[10px] text-slate-600 font-black uppercase italic tracking-widest leading-none truncate">- {barber?.name}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                        <div className="flex flex-wrap gap-2 justify-end">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6 w-full md:w-auto md:justify-end">
+                        <div className="flex flex-wrap gap-2 md:justify-end">
                           {appointment.type === 'reserva' && !hasArrived && <DelayTimer reservationTime={appointment.time} />}
                           {hasArrived && <WaitTimer checkInAt={appointment.checkInAt} startedAt={appointment.startedAt} />}
                           {inService && appointment.startedAt && <ServiceTimer startedAt={appointment.startedAt} />}
                         </div>
-                        <div className="flex flex-col items-end min-w-[80px]">
-                          <span className="text-[9px] font-black text-slate-600 uppercase italic tracking-[0.2em] leading-none mb-1">Hora inicio</span>
+                        <div className="flex items-end justify-between md:justify-end md:flex-col md:items-end gap-1 md:min-w-[80px]">
+                          <span className="text-[9px] font-black text-slate-600 uppercase italic tracking-[0.2em] leading-none">Hora inicio</span>
                           <span className="text-lg font-black text-white italic leading-none">{appointment.time || '--:--'}</span>
                         </div>
-                        <div className="flex gap-2">
-                          {appointment.type === 'reserva' && !hasArrived && <button onClick={() => onUpdate(appointment.id, 'En Espera')} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2"><UserCheck size={16} /> Llego</button>}
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
+                          {appointment.type === 'reserva' && !hasArrived && <button onClick={() => onUpdate(appointment.id, 'En Espera')} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><UserCheck size={16} /> Llego</button>}
                           {(hasArrived || isWalkin) && (
-                            <button onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')} className={`px-8 py-5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>
+                            <button onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')} className={`w-full sm:w-auto px-4 md:px-8 py-3 md:py-5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>
                               {inService ? <CheckCircle2 size={16} strokeWidth={3} /> : <Zap size={16} fill="white" />}
                               {inService ? 'Finalizar' : 'Iniciar'}
                             </button>

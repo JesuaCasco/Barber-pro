@@ -84,6 +84,11 @@ export const styleTag = `
     .mobile-simplify-shell .mobile-simplify-subtitle {
       display: none !important;
     }
+    .mobile-simplify-shell input,
+    .mobile-simplify-shell select,
+    .mobile-simplify-shell textarea {
+      font-size: 16px !important;
+    }
   }
 
   @media print {

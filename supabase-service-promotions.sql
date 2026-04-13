@@ -7,7 +7,7 @@ alter table public.services
 
 update public.services
 set
-  applies_to = case when category = 'Promocion' then coalesce(applies_to, 'Servicio') else null end,
+  applies_to = case when category = 'Promocion' then 'General' else null end,
   discount_type = case when category = 'Promocion' then coalesce(discount_type, 'percentage') else null end,
   discount_value = case when category = 'Promocion' then coalesce(discount_value, 0) else 0 end,
   target_service_ids = case
@@ -24,7 +24,7 @@ alter table public.services
   add constraint services_applies_to_check
   check (
     applies_to is null
-    or applies_to in ('Servicio', 'Producto')
+    or applies_to in ('General')
   );
 
 alter table public.services

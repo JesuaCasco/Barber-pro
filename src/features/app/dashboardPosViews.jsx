@@ -3,6 +3,7 @@ import {
   Activity,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock,
   DollarSign,
   Plus,
@@ -18,7 +19,6 @@ import {
 import {
   calculatePromotionDiscount,
   formatPromotionValue,
-  getApplicablePromotions,
   getTodayString,
   isPromotionService,
   standardizeDate,
@@ -215,7 +215,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
 
                       <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                         <div className="flex flex-wrap gap-2 justify-end">
-                          {appointment.type === 'reserva' && !hasArrived && <DelayTimer reservationTime={appointment.time} onExpired={() => onUpdate(appointment.id, 'Cita Perdida')} />}
+                          {appointment.type === 'reserva' && !hasArrived && <DelayTimer reservationTime={appointment.time} />}
                           {hasArrived && <WaitTimer checkInAt={appointment.checkInAt} startedAt={appointment.startedAt} />}
                           {inService && appointment.startedAt && <ServiceTimer startedAt={appointment.startedAt} />}
                         </div>
@@ -270,66 +270,104 @@ export function POSView({ services, onSale }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
-  const [manualDiscountType, setManualDiscountType] = useState('fixed');
-  const [manualDiscountValue, setManualDiscountValue] = useState('');
+  const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
+  const [ticketOpen, setTicketOpen] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const normalizedSearch = deferredSearch.trim().toLowerCase();
+
   const filtered = useMemo(() => (
     (services || []).filter((service) => (
       service.category === 'Producto'
       && service.name.toLowerCase().includes(normalizedSearch)
     ))
   ), [services, normalizedSearch]);
-  const savedProductPromotions = useMemo(
-    () => (services || []).filter(
-      (service) => isPromotionService(service) && (service.appliesTo || 'Servicio') === 'Producto'
-    ),
+
+  const savedPromotions = useMemo(
+    () => (services || [])
+      .filter((service) => isPromotionService(service))
+      .sort((left, right) => {
+        const leftWeight = (left.appliesTo || 'Servicio') === 'Producto' ? 0 : 1;
+        const rightWeight = (right.appliesTo || 'Servicio') === 'Producto' ? 0 : 1;
+        if (leftWeight !== rightWeight) return leftWeight - rightWeight;
+        return `${left.name || ''}`.localeCompare(`${right.name || ''}`, 'es');
+      }),
     [services],
   );
-  const availablePromotions = useMemo(
-    () => getApplicablePromotions(services, cart, 'Producto'),
-    [services, cart],
-  );
+
   const selectedPromotion = useMemo(
-    () => savedProductPromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
-    [savedProductPromotions, selectedPromotionId],
+    () => savedPromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
+    [savedPromotions, selectedPromotionId],
   );
+
   const promotionPreview = useMemo(
     () => calculatePromotionDiscount(selectedPromotion, cart),
     [selectedPromotion, cart],
   );
-  const manualDiscountPreview = useMemo(() => {
-    const rawValue = Number(manualDiscountValue || 0);
-    if (!rawValue || rawValue <= 0 || subtotal <= 0) return 0;
-    if (manualDiscountType === 'percentage') {
-      return Math.round((subtotal * Math.min(Math.max(rawValue, 0), 100) / 100) * 100) / 100;
-    }
-    return Math.min(rawValue, subtotal);
-  }, [manualDiscountType, manualDiscountValue, subtotal]);
-  const promotionDiscount = promotionPreview.amount;
-  const discountTotal = promotionDiscount + manualDiscountPreview;
-  const totalToCharge = Math.max(subtotal - discountTotal, 0);
 
-  const addItem = (item) => setCart((prev) => {
-    const current = prev.find((entry) => entry.id === item.id);
-    if (current) return prev.map((entry) => entry.id === item.id ? { ...entry, qty: entry.qty + 1 } : entry);
-    return [...prev, { ...item, qty: 1 }];
-  });
+  const promotionDiscount = promotionPreview.amount;
+  const totalToCharge = Math.max(subtotal - promotionDiscount, 0);
+  const applicablePromotionIds = useMemo(
+    () => new Set(
+      savedPromotions
+        .filter((promotion) => calculatePromotionDiscount(promotion, cart).amount > 0)
+        .map((promotion) => String(promotion.id)),
+    ),
+    [savedPromotions, cart],
+  );
+
+
+  const addItem = (item) => {
+    setCart((prev) => {
+      const current = prev.find((entry) => entry.id === item.id);
+      if (current) {
+        return prev.map((entry) => entry.id === item.id ? { ...entry, qty: entry.qty + 1 } : entry);
+      }
+      return [...prev, { ...item, qty: 1 }];
+    });
+  };
 
   const removeItem = (id) => setCart((prev) => prev.filter((item) => item.id !== id));
 
+  const handleCompleteSale = async () => {
+    const result = await onSale({
+      items: cart,
+      rawSubtotal: subtotal,
+      discountTotal: promotionDiscount,
+      subtotal: totalToCharge,
+      promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null,
+    });
+
+    if (result) {
+      setCart([]);
+      setSelectedPromotionId('');
+      setPromotionPickerOpen(false);
+      setTicketOpen(false);
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col xl:flex-row text-white animate-in fade-in no-print">
+    <div className="relative h-full flex flex-col text-white animate-in fade-in no-print">
       <div className="flex-1 flex flex-col min-w-0 text-white">
         <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-slate-900 bg-black text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
             <div className="px-5 py-4 rounded-[2rem] bg-slate-900 border border-slate-800">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] italic text-emerald-400 leading-none">Catalogo de productos</p>
             </div>
-            <div className="relative text-white">
-              <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input type="text" placeholder="Buscar producto" className="bg-black border border-slate-800 rounded-2xl pl-8 pr-16 py-4 text-sm font-black w-full md:w-80 outline-none focus:border-indigo-600 transition-all text-white italic placeholder:text-slate-600 shadow-inner" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <div className="flex items-center gap-3">
+              <div className="relative text-white">
+                <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input type="text" placeholder="Buscar producto" className="bg-black border border-slate-800 rounded-2xl pl-8 pr-16 py-4 text-sm font-black w-full md:w-80 outline-none focus:border-indigo-600 transition-all text-white italic placeholder:text-slate-600 shadow-inner" value={search} onChange={(event) => setSearch(event.target.value)} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setTicketOpen(true)}
+                disabled={cart.length === 0}
+                className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-indigo-500/30 bg-indigo-600/15 text-indigo-200 hover:border-indigo-400 hover:bg-indigo-600/25' : 'border-slate-800 bg-slate-950 text-slate-500 cursor-not-allowed opacity-70'}`}
+              >
+                <ShoppingBag size={16} />
+                {cart.length > 0 ? `Carrito (${cart.length})` : 'Carrito vacio'}
+              </button>
             </div>
           </div>
         </div>
@@ -339,139 +377,190 @@ export function POSView({ services, onSale }) {
           ))}
         </div>
       </div>
-      <div className="w-full xl:w-96 bg-black border-t xl:border-t-0 xl:border-l border-slate-900 flex flex-col shadow-2xl shrink-0 text-white">
-        <div className="p-5 md:p-10 border-b border-slate-900 flex items-center gap-4 text-white"><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/40"><ShoppingBag size={20} /></div><h3 className="text-xl font-black uppercase italic tracking-tighter leading-none text-white">Ticket de Venta</h3></div>
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar text-white">
-          {cart.map((item) => (
-            <CartLine key={item.id} item={item} onRemove={removeItem} />
-          ))}
-        </div>
-        <div className="p-5 md:p-10 border-t border-slate-900 bg-slate-950 text-white">
-          {savedProductPromotions.length > 0 ? (
-            <div className="mb-6 space-y-3 rounded-[1.8rem] border border-emerald-500/20 bg-black/40 p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones disponibles</p>
-                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Promociones guardadas en servicios para aplicar manualmente en POS.</p>
+
+      {cart.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setTicketOpen(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-4 rounded-[1.8rem] border border-indigo-400/30 bg-black/90 px-5 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-md md:hidden"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/35">
+            <ShoppingBag size={18} />
+          </div>
+          <div className="text-left">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Carrito</p>
+            <p className="mt-1 text-sm font-black italic text-white">{cart.length} item{cart.length > 1 ? 's' : ''} | C$ {totalToCharge.toLocaleString('es-NI')}</p>
+          </div>
+        </button>
+      ) : null}
+
+      {ticketOpen && cart.length > 0 ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm xl:items-center">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[2.6rem] border border-slate-800 bg-black text-white shadow-[0_30px_120px_rgba(0,0,0,0.65)] xl:max-w-4xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-900 px-6 py-5 md:px-8 md:py-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/40">
+                  <ShoppingBag size={22} />
                 </div>
-                {selectedPromotion ? (
-                  <button type="button" onClick={() => setSelectedPromotionId('')} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300">
-                    Quitar
-                  </button>
-                ) : null}
+                <div>
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">Ticket de venta</h3>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Aplica promociones guardadas antes de completar la venta</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                {savedProductPromotions.map((promotion) => (
-                  <button
-                    key={promotion.id}
-                    type="button"
-                    onClick={() => setSelectedPromotionId(String(promotion.id))}
-                    className={`w-full rounded-[1.3rem] border px-4 py-3 text-left transition-all ${
-                      selectedPromotion?.id === promotion.id
-                        ? 'border-emerald-400 bg-emerald-500/10'
-                        : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[11px] font-black uppercase italic text-white">{promotion.name}</p>
-                        <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-                          {formatPromotionValue(promotion)} · descuento manual en POS
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-black italic text-emerald-300">
-                        - C$ {calculatePromotionDiscount(promotion, cart).amount.toLocaleString('es-NI')}
-                      </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setPromotionPickerOpen(false);
+                  setTicketOpen(false);
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950 text-slate-400 transition-colors hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="max-h-[70vh] overflow-y-auto border-b border-slate-900 p-5 md:p-6 xl:border-b-0 xl:border-r custom-scrollbar">
+                <div className="space-y-4">
+                  {cart.map((item) => (
+                    <CartLine key={item.id} item={item} onRemove={removeItem} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-5 md:p-6">
+                <div className="mb-6 rounded-[1.8rem] border border-emerald-500/20 bg-black/40 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones</p>
+                      <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                        {selectedPromotion
+                          ? `Aplicada: ${selectedPromotion.name}`
+                          : savedPromotions.length > 0
+                            ? 'Sin promocion aplicada'
+                            : 'No hay promociones guardadas'}
+                      </p>
                     </div>
-                    <p className="mt-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-                      {cart.length === 0
-                        ? 'Agrega productos al ticket para calcular el descuento.'
-                        : availablePromotions.some((availablePromotion) => String(availablePromotion.id) === String(promotion.id))
-                          ? 'Lista para aplicarse a esta venta.'
-                          : 'No aplica al carrito actual.'}
+                    {selectedPromotion ? (
+                      <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                        Activa
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPromotionPickerOpen(true)}
+                      disabled={savedPromotions.length === 0}
+                      className={`inline-flex items-center gap-2 rounded-[1.1rem] border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${savedPromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-900 text-slate-500 opacity-70'}`}
+                    >
+                      Elegir promocion
+                      <ChevronDown size={16} className="text-current" />
+                    </button>
+
+                    {selectedPromotion ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPromotionId('')}
+                        className="rounded-[1.1rem] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-rose-300 transition-all hover:border-rose-400/30"
+                      >
+                        Quitar
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {selectedPromotion && !applicablePromotionIds.has(String(selectedPromotion.id)) ? (
+                    <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                      La promocion elegida no descuenta este ticket.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-3 mb-8 text-white">
+                  <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span></div>
+                  {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
+                  <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black italic tracking-tighter leading-none text-white shadow-[0_0_15px_rgba(99,102,241,0.2)]">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
+                </div>
+
+                <button disabled={cart.length === 0} onClick={handleCompleteSale} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+              </div>
+            </div>
+          </div>
+
+          {promotionPickerOpen ? (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md overflow-hidden rounded-[2.2rem] border border-emerald-500/20 bg-slate-950 text-white shadow-[0_30px_90px_rgba(0,0,0,0.6)]">
+                <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Elige una promocion para este ticket
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPromotionPickerOpen(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-800 bg-black text-slate-400 transition-colors hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="max-h-[60vh] space-y-3 overflow-y-auto p-5 custom-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPromotionId('');
+                      setPromotionPickerOpen(false);
+                    }}
+                    className={`w-full rounded-[1.2rem] border px-4 py-4 text-left transition-all ${selectedPromotionId ? 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700' : 'border-emerald-400/40 bg-emerald-500/10 text-white shadow-[0_0_20px_rgba(16,185,129,0.12)]'}`}
+                  >
+                    <p className="text-[11px] font-black uppercase italic">Sin promocion</p>
+                    <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                      Cobrar precio completo
                     </p>
                   </button>
-                ))}
+
+                  {savedPromotions.map((promotion) => {
+                    const applies = applicablePromotionIds.has(String(promotion.id));
+                    const isSelected = String(selectedPromotionId) === String(promotion.id);
+                    return (
+                      <button
+                        key={promotion.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPromotionId(String(promotion.id));
+                          setPromotionPickerOpen(false);
+                        }}
+                        className={`w-full rounded-[1.2rem] border px-4 py-4 text-left transition-all ${isSelected ? 'border-emerald-400/40 bg-emerald-500/10 text-white shadow-[0_0_20px_rgba(16,185,129,0.12)]' : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700'} ${!applies ? 'opacity-75' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[11px] font-black uppercase italic text-white">{promotion.name}</p>
+                            <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                              {formatPromotionValue(promotion)} | General
+                            </p>
+                          </div>
+                          <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] ${applies ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/20 bg-amber-500/10 text-amber-300'}`}>
+                            {applies ? 'Aplicable' : 'Revisar'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {savedPromotions.length === 0 ? (
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                      No hay promociones guardadas todavia.
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}
-          <div className="mb-6 space-y-4 rounded-[1.8rem] border border-indigo-500/20 bg-black/30 p-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Descuento manual</p>
-              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Puedes aplicar un descuento directo sin crear promoción.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setManualDiscountType('fixed')}
-                className={`rounded-xl border px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
-                  manualDiscountType === 'fixed'
-                    ? 'border-indigo-400 bg-indigo-500/10 text-white'
-                    : 'border-slate-800 bg-slate-900 text-slate-400'
-                }`}
-              >
-                Córdobas
-              </button>
-              <button
-                type="button"
-                onClick={() => setManualDiscountType('percentage')}
-                className={`rounded-xl border px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
-                  manualDiscountType === 'percentage'
-                    ? 'border-indigo-400 bg-indigo-500/10 text-white'
-                    : 'border-slate-800 bg-slate-900 text-slate-400'
-                }`}
-              >
-                Porcentaje
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder={manualDiscountType === 'percentage' ? 'Ej. 10' : 'Ej. 50'}
-                className="w-full rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-black italic text-white outline-none focus:border-indigo-500"
-                value={manualDiscountValue}
-                onChange={(event) => {
-                  const rawValue = event.target.value.replace(',', '.');
-                  if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                  setManualDiscountValue(rawValue);
-                }}
-              />
-              {manualDiscountValue ? (
-                <button type="button" onClick={() => setManualDiscountValue('')} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300">
-                  Quitar
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="space-y-3 mb-8 text-white">
-            <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString()}</span></div>
-            {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
-            {manualDiscountPreview > 0 ? <div className="flex justify-between items-center text-white"><span className="text-indigo-300 text-[10px] font-black uppercase tracking-widest leading-none">Descuento manual {manualDiscountType === 'percentage' ? `${manualDiscountValue || 0}%` : ''}</span><span className="text-base font-black italic text-indigo-300">- C$ {manualDiscountPreview.toLocaleString('es-NI')}</span></div> : null}
-            <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black text-indigo-400 italic tracking-tighter leading-none shadow-[0_0_15px_rgba(99,102,241,0.2)] text-white">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
-          </div>
-          <button disabled={cart.length === 0} onClick={async () => {
-            const result = await onSale({
-              items: cart,
-              rawSubtotal: subtotal,
-              discountTotal,
-              subtotal: totalToCharge,
-              promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null,
-              manualDiscount: manualDiscountPreview > 0 ? {
-                type: manualDiscountType,
-                value: Number(manualDiscountValue || 0),
-                amount: manualDiscountPreview,
-              } : null,
-            });
-            if (result) {
-              setCart([]);
-              setSelectedPromotionId('');
-              setManualDiscountValue('');
-              setManualDiscountType('fixed');
-            }
-          }} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3 text-white"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

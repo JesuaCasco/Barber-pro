@@ -47,6 +47,7 @@ import {
   Package,
   Tags,
   Save,
+  ChevronDown,
   ChevronLeft, 
   ChevronRight,
   CheckCircle2,
@@ -113,6 +114,7 @@ import {
   formatPromotionValue,
   getApplicablePromotions,
   calculatePromotionDiscount,
+  clampPromotionDiscountValue,
   isPromotionService,
   makeId,
   mergeEntitiesById,
@@ -128,6 +130,8 @@ import {
 } from './features/app/sharedComponents';
 import { DashboardView, POSView } from './features/app/dashboardPosViews';
 import { ClientDetailModal, ClientsTableView } from './features/app/clientViews';
+
+const { useCallback } = React;
 
 const loadAccessUiModule = () => import('./features/system/accessUi');
 const LoginScreen = lazy(() => loadAccessUiModule().then((module) => ({ default: module.LoginScreen })));
@@ -1368,6 +1372,9 @@ export default function App() {
   const [feedbackToast, setFeedbackToast] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
   const feedbackTimerRef = useRef(null);
+  const reservationNearExpiryAlertsRef = useRef(new Set());
+  const reservationExpiredAlertsRef = useRef(new Set());
+  const reservationProcessingAlertsRef = useRef(new Set());
   
   const useBrowserCache = isLocalDevModeEnabled && !hasSupabaseConfig && !shouldBlockWithoutSupabase;
   const localDevStorage = useBrowserCache ? globalThis.sessionStorage : null;
@@ -1446,12 +1453,19 @@ export default function App() {
   const notify = (message, tone = 'info') => {
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
-    }
-    setFeedbackToast({ id: Date.now(), message, tone });
-    feedbackTimerRef.current = setTimeout(() => {
-      setFeedbackToast(null);
       feedbackTimerRef.current = null;
-    }, 3600);
+    }
+
+    const requiresAcknowledgement = tone === 'reservation-warning' || tone === 'reservation-expired';
+
+    setFeedbackToast({ id: Date.now(), message, tone });
+
+    if (!requiresAcknowledgement) {
+      feedbackTimerRef.current = setTimeout(() => {
+        setFeedbackToast(null);
+        feedbackTimerRef.current = null;
+      }, 3600);
+    }
   };
 
   const renderPersistentWarningBanner = (title, messages = []) => (
@@ -2031,12 +2045,12 @@ export default function App() {
     }
     return nextIds;
   }, [navItems, isAdmin]);
-  const handleSyncError = (error, fallbackMessage) => {
+  const handleSyncError = useCallback((error, fallbackMessage) => {
     console.error(error);
     const details = error?.message ? `\n\n${error.message}` : '';
     notify(`${fallbackMessage}${details}`, 'error');
-  };
-  const refreshClientsAfterAppointmentSync = async () => {
+  }, []);
+  const refreshClientsAfterAppointmentSync = useCallback(async () => {
     if (!hasSupabaseConfig || !session?.user?.id) return;
 
     const nextClients = await fetchScopedClients(session.user.id, superAdminScopeOverride);
@@ -2048,7 +2062,161 @@ export default function App() {
         clients: mergeEntitiesById(nextClients, prev.clients),
       }));
     }
+  }, [clientDirectoryLoaded, session, superAdminScopeOverride]);
+
+  const getReservationAlertKey = (appointment) => (
+    `${String(appointment?.id || '')}:${standardizeDate(appointment?.date || '')}:${String(appointment?.time || '')}`
+  );
+
+  const getAppointmentScheduledAt = (appointment) => {
+    const localDate = parseLocalDate(appointment?.date);
+    if (!localDate) return null;
+
+    const [hours, minutes] = String(appointment?.time || '00:00')
+      .split(':')
+      .map((value) => Number(value));
+
+    localDate.setHours(
+      Number.isFinite(hours) ? hours : 0,
+      Number.isFinite(minutes) ? minutes : 0,
+      0,
+      0,
+    );
+
+    return localDate;
   };
+
+  const markReservationAsLost = useCallback(async (appointment) => {
+    if (!appointment || appointment.status === 'Cita Perdida') return;
+
+    const updatedAppointment = {
+      ...appointment,
+      status: 'Cita Perdida',
+      cancelledAt: appointment.cancelledAt || new Date().toISOString(),
+    };
+
+    setAppointments((prev) => prev.map((item) => (
+      item.id === appointment.id ? updatedAppointment : item
+    )));
+
+    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
+      try {
+        await upsertAppointments(
+          [updatedAppointment],
+          services,
+          currentBarbershopId,
+          currentBranchId,
+          barbers,
+          clients,
+        );
+        await refreshClientsAfterAppointmentSync();
+      } catch (error) {
+        handleSyncError(error, 'No pude guardar la cita vencida en Supabase.');
+      }
+    }
+  }, [
+    barbers,
+    clients,
+    currentBarbershopId,
+    currentBranchId,
+    handleSyncError,
+    refreshClientsAfterAppointmentSync,
+    services,
+  ]);
+
+  useEffect(() => {
+    const activeReservationKeys = new Set(
+      (appointments || [])
+        .filter((appointment) => appointment?.type === 'reserva' && appointment?.status === 'Confirmada')
+        .map(getReservationAlertKey),
+    );
+
+    reservationNearExpiryAlertsRef.current.forEach((key) => {
+      if (!activeReservationKeys.has(key)) {
+        reservationNearExpiryAlertsRef.current.delete(key);
+      }
+    });
+
+    reservationExpiredAlertsRef.current.forEach((key) => {
+      if (!activeReservationKeys.has(key)) {
+        reservationExpiredAlertsRef.current.delete(key);
+      }
+    });
+
+    reservationProcessingAlertsRef.current.forEach((key) => {
+      if (!activeReservationKeys.has(key)) {
+        reservationProcessingAlertsRef.current.delete(key);
+      }
+    });
+  }, [appointments]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkReservationAlerts = async () => {
+      const now = new Date();
+      const pendingReservations = (appointments || []).filter(
+        (appointment) => appointment?.type === 'reserva' && appointment?.status === 'Confirmada',
+      );
+
+      for (const appointment of pendingReservations) {
+        if (cancelled) return;
+
+        const scheduledAt = getAppointmentScheduledAt(appointment);
+        if (!scheduledAt) continue;
+
+        const delayMs = now.getTime() - scheduledAt.getTime();
+        if (delayMs < 0) continue;
+
+        const alertKey = getReservationAlertKey(appointment);
+        const clientName = clients.find((client) => String(client.id) === String(appointment.clientId))?.name || 'Cliente';
+        const barberName = barbers.find((barber) => String(barber.id) === String(appointment.barberId))?.name || 'barbero asignado';
+
+        if (
+          delayMs >= 10 * 60 * 1000
+          && delayMs < 15 * 60 * 1000
+          && !reservationNearExpiryAlertsRef.current.has(alertKey)
+        ) {
+          const remainingMinutes = Math.max(1, Math.ceil((15 * 60 * 1000 - delayMs) / 60000));
+          reservationNearExpiryAlertsRef.current.add(alertKey);
+          notify(
+            `La cita de "${clientName}" está por vencerse\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\nTiempo restante: ${remainingMinutes} minuto${remainingMinutes === 1 ? '' : 's'}\n\nMarca la llegada del cliente antes de que se venza la reserva.`,
+            'reservation-warning',
+          );
+        }
+
+        if (
+          delayMs >= 15 * 60 * 1000
+          && !reservationExpiredAlertsRef.current.has(alertKey)
+          && !reservationProcessingAlertsRef.current.has(alertKey)
+        ) {
+          reservationProcessingAlertsRef.current.add(alertKey);
+          reservationExpiredAlertsRef.current.add(alertKey);
+
+          notify(
+            `La cita de "${clientName}" ya se venció\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\n\nLa reserva se marcó como cita perdida.`,
+            'reservation-expired',
+          );
+
+          try {
+            await markReservationAsLost(appointment);
+          } finally {
+            reservationProcessingAlertsRef.current.delete(alertKey);
+          }
+        }
+      }
+    };
+
+    void checkReservationAlerts();
+    const interval = setInterval(() => {
+      void checkReservationAlerts();
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [appointments, barbers, clients, markReservationAsLost]);
 
   useEffect(() => {
     if (!accessibleTabIds.has(activeTab)) {
@@ -2181,6 +2349,56 @@ export default function App() {
         handleSyncError(error, 'No pude guardar el cambio de estado en Supabase.');
       }
     }
+  };
+
+  const handleAgendaAppointmentClick = async (appointment) => {
+    if (!appointment) return;
+
+    const normalizedDate = standardizeDate(appointment.date);
+    const today = getTodayString();
+
+    if (appointment.status === 'Cita Perdida') {
+      notify('Esta cita ya está marcada como perdida.', 'info');
+      return;
+    }
+
+    if (appointment.status === 'Finalizada') {
+      notify('Esta cita ya fue finalizada.', 'info');
+      return;
+    }
+
+    if (appointment.status === 'Confirmada') {
+      if (normalizedDate && normalizedDate < today) {
+        const shouldMarkLost = await confirmAction({
+          title: 'Cita vencida',
+          message: 'Esta cita quedó en un día anterior y nunca se inició. ¿Deseas marcarla como cita perdida?',
+          confirmLabel: 'Marcar perdida',
+          cancelLabel: 'Cerrar',
+          tone: 'danger',
+        });
+
+        if (shouldMarkLost) {
+          await handleUpdateStatus(appointment.id, 'Cita Perdida');
+        }
+        return;
+      }
+
+      const shouldCheckIn = await confirmAction({
+        title: 'Cita pendiente',
+        message: 'Esta cita todavía no ha iniciado. ¿Deseas marcar la llegada del cliente para pasarla a espera?',
+        confirmLabel: 'Marcar llegada',
+        cancelLabel: 'Cerrar',
+        tone: 'info',
+      });
+
+      if (shouldCheckIn) {
+        await handleUpdateStatus(appointment.id, 'En Espera');
+      }
+      return;
+    }
+
+    setSelectedData((prev) => ({ ...prev, finalize: appointment }));
+    setModals((prev) => ({ ...prev, finalize: true }));
   };
 
   const handleConfirmPayment = async (barberId) => {
@@ -2329,13 +2547,16 @@ export default function App() {
 
   const handleSaveService = async (serviceData) => {
     const isPromotion = serviceData.category === 'Promocion';
+    const normalizedPromotionDiscount = isPromotion
+      ? clampPromotionDiscountValue(serviceData.discountType || 'percentage', serviceData.discountValue)
+      : 0;
     const normalizedService = {
       ...serviceData,
       price: isPromotion ? 0 : Number(serviceData.price) || 0,
       items: serviceData.category === 'Combo' ? serviceData.items : [],
-      appliesTo: isPromotion ? (serviceData.appliesTo || 'Servicio') : 'Servicio',
+      appliesTo: isPromotion ? 'General' : 'Servicio',
       discountType: isPromotion ? (serviceData.discountType || 'percentage') : 'percentage',
-      discountValue: isPromotion ? Number(serviceData.discountValue) || 0 : 0,
+      discountValue: normalizedPromotionDiscount,
       targetServiceIds: [],
       isOptional: isPromotion ? serviceData.isOptional !== false : true,
     };
@@ -2768,7 +2989,7 @@ export default function App() {
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
-          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={(apt) => { setSelectedData({ ...selectedData, finalize: apt }); setModals({ ...modals, finalize: true }); }} />}
+          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
             <BarbersView
@@ -2857,26 +3078,59 @@ export default function App() {
         </Suspense>
       )}
       {feedbackToast && (
-        <div className="fixed top-6 right-6 z-[130] max-w-md">
-          <div className={`rounded-[1.6rem] border px-5 py-4 shadow-2xl backdrop-blur-md ${
-            feedbackToast.tone === 'success'
-              ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-200'
-              : feedbackToast.tone === 'error'
-                ? 'bg-rose-500/15 border-rose-400/30 text-rose-200'
-                : 'bg-amber-500/15 border-amber-400/30 text-amber-100'
-          }`}>
-            <div className="flex items-start justify-between gap-4">
-              <p className="text-sm font-bold leading-relaxed">{feedbackToast.message}</p>
-              <button
-                type="button"
-                onClick={() => setFeedbackToast(null)}
-                className="text-white/50 hover:text-white transition-all"
-              >
-                <X size={16} />
-              </button>
+        (feedbackToast.tone === 'reservation-warning' || feedbackToast.tone === 'reservation-expired') ? (
+          <div className="fixed left-1/2 top-5 z-[130] w-[min(92vw,720px)] -translate-x-1/2">
+            <div className={`rounded-[2rem] border-2 px-6 py-5 shadow-[0_0_45px_rgba(255,115,0,0.55)] ${
+              feedbackToast.tone === 'reservation-warning'
+                ? 'border-orange-300 bg-[#ff6a00] text-white'
+                : 'border-orange-200 bg-[#ff4d00] text-white'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[1.2rem] border border-white/30 bg-black/20">
+                  <Info size={18} className="text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] leading-none text-white/90">
+                    {feedbackToast.tone === 'reservation-warning' ? 'Cita por vencerse' : 'Cita vencida'}
+                  </p>
+                  <p className="mt-2 whitespace-pre-line text-[15px] font-black leading-relaxed text-white">
+                    {feedbackToast.message}
+                  </p>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackToast(null)}
+                      className="rounded-xl border border-white/35 bg-black px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-slate-950"
+                    >
+                      Aceptar
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="fixed top-6 right-6 z-[130] max-w-md">
+            <div className={`rounded-[1.8rem] border px-5 py-4 shadow-2xl backdrop-blur-md ${
+              feedbackToast.tone === 'success'
+                ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-200'
+                : feedbackToast.tone === 'error'
+                  ? 'bg-rose-500/15 border-rose-400/30 text-rose-200'
+                  : 'bg-amber-500/15 border-amber-400/30 text-amber-100'
+            }`}>
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-sm font-bold leading-relaxed whitespace-pre-line">{feedbackToast.message}</p>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackToast(null)}
+                  className="text-white/50 hover:text-white transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )
       )}
       {confirmState && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
@@ -3530,7 +3784,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
                 <div className="mt-5 space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-300">
-                      {s.appliesTo === 'Producto' ? 'Aplica a ventas' : 'Aplica a servicios'}
+                      {'Promoción general'}
                     </span>
                     <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-300">
                       {formatPromotionValue(s)}
@@ -5519,6 +5773,7 @@ function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
   const [search, setSearch] = useState('');
   const [rating, setRating] = useState(5);
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
+  const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
 
   const billingClient = useMemo(
     () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
@@ -5595,13 +5850,13 @@ function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in text-white no-print">
-      <div className="bg-slate-950 w-full max-w-6xl rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[90vh] flex flex-col text-white overflow-hidden">
+      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[90vh] flex flex-col text-white overflow-hidden">
         <div className="p-8 border-b border-slate-900 flex justify-between items-center bg-black">
           <div>
             <h3 className="text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 leading-none">Finaliza el servicio y procesa el pago</p>
           </div>
-          <button onClick={onClose} className="p-3 bg-slate-900 rounded-2xl text-slate-500 hover:text-rose-500 transition-all">
+          <button onClick={() => { setPromotionPickerOpen(false); onClose(); }} className="p-3 bg-slate-900 rounded-2xl text-slate-500 hover:text-rose-500 transition-all">
             <X size={24} />
           </button>
         </div>
@@ -5690,52 +5945,39 @@ function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400">Aplica descuentos guardados en Servicios o el beneficio de fidelización cuando toque la visita {LOYALTY_REWARD_VISITS}.</p>
+                  <p className="mt-2 text-[11px] font-bold text-slate-400">
+                    {selectedPromotion
+                      ? `Aplicada: ${selectedPromotion.name}`
+                      : availablePromotions.length > 0
+                        ? 'Selecciona una promoción guardada'
+                        : 'No hay promociones aplicables ahora'}
+                  </p>
                 </div>
-                {selectedPromotion && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedPromotionId('')}
-                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300"
+                    onClick={() => setPromotionPickerOpen(true)}
+                    disabled={availablePromotions.length === 0}
+                    className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                      availablePromotions.length > 0
+                        ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15'
+                        : 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500 opacity-70'
+                    }`}
                   >
-                    Quitar
+                    Elegir
+                    <ChevronDown size={14} className="text-current" />
                   </button>
-                )}
-              </div>
-              {availablePromotions.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {availablePromotions.map((promotion) => (
+                  {selectedPromotion && (
                     <button
-                      key={promotion.id}
                       type="button"
-                      onClick={() => setSelectedPromotionId(String(promotion.id))}
-                      className={`rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
-                        selectedPromotion?.id === promotion.id
-                          ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
-                          : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
-                      }`}
+                      onClick={() => setSelectedPromotionId('')}
+                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-black uppercase italic text-white">{promotion.name}</p>
-                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                            {promotion.isLoyaltyReward
-                              ? `beneficio por fidelización · visita ${projectedVisitCount}`
-                              : `${formatPromotionValue(promotion)} · descuento manual sobre el cobro`}
-                          </p>
-                        </div>
-                        <span className="text-sm font-black italic text-emerald-300">
-                          - C$ {calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
-                        </span>
-                      </div>
+                      Quitar
                     </button>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-800 bg-slate-950/60 px-5 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                  No hay promociones aplicables para este cobro.
-                </div>
-              )}
+              </div>
               {loyaltyPromotion && billingClient ? (
                 <div className="rounded-[1.5rem] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-[11px] font-bold text-amber-100">
                   {billingClient.name} está completando su visita #{projectedVisitCount}. Puedes aplicar el beneficio opcional de corte gratis en este cobro.
@@ -5746,7 +5988,7 @@ function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
         </div>
 
         <div className="p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="bg-slate-950/50 border border-slate-800 px-10 py-5 rounded-[2.5rem] flex flex-col items-center">
+          <div className="bg-slate-950/50 border border-slate-800 px-10 py-5 rounded-[2.5rem] flex flex-col items-center shrink-0">
              <p className="text-[10px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-3 leading-none">Califica la experiencia</p>
              <div className="flex gap-4">
                {[1, 2, 3, 4, 5].map((star) => (
@@ -5761,26 +6003,121 @@ function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
              </div>
           </div>
 
-          <div className="flex gap-4 w-full md:w-auto">
-            <div className="mr-auto flex flex-col text-left">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Subtotal</span>
-              <span className="mt-2 text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
-              {selectedPromotion ? (
-                <span className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                  {selectedPromotion.name} · - C$ {promotionDiscount.toLocaleString('es-NI')}
-                </span>
-              ) : null}
+          <div className="flex w-full flex-col gap-5 md:flex-row md:items-end md:justify-end">
+            <div className="w-full md:w-[360px] rounded-[1.8rem] border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
+              <div className="mt-3 space-y-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Subtotal</span>
+                  <span className="text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
+                </div>
+                {selectedPromotion ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">Descuento</p>
+                      <p className="mt-1 truncate text-[10px] font-black uppercase italic tracking-[0.12em] text-slate-500">
+                        {selectedPromotion.name}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-base font-black italic text-emerald-300">
+                      - C$ {promotionDiscount.toLocaleString('es-NI')}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-3 border-t border-slate-800 pt-3">
+                <div className="flex items-end justify-between gap-4">
+                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Total final</span>
+                  <span className="whitespace-nowrap text-[32px] font-black italic tracking-tighter leading-none text-emerald-400">
+                    C$ {total.toLocaleString('es-NI')}
+                  </span>
+                </div>
+              </div>
             </div>
-            <button onClick={onClose} className="px-10 py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none">Cerrar</button>
+            <button onClick={onClose} className="px-10 py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none shrink-0">Cerrar</button>
             <button 
               disabled={billItems.length === 0}
               onClick={confirmFinalCharge}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-16 py-6 rounded-[2rem] font-black uppercase italic text-xs tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center gap-3"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-16 py-6 rounded-[2rem] font-black uppercase italic text-xs tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0"
             >
               <CheckCircle2 size={18} strokeWidth={3} /> CONFIRMAR Y FINALIZAR COBRO
             </button>
           </div>
         </div>
+
+        {promotionPickerOpen ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-emerald-500/20 bg-slate-950 shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-6 py-5">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promociones</p>
+                  <p className="mt-2 text-[11px] font-bold text-slate-400">Elige un descuento para este cobro</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromotionPickerOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-black text-slate-400 transition-colors hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6 custom-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPromotionId('');
+                    setPromotionPickerOpen(false);
+                  }}
+                  className={`w-full rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
+                    selectedPromotionId
+                      ? 'border-slate-800 bg-slate-900 hover:border-slate-700'
+                      : 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
+                  }`}
+                >
+                  <p className="text-sm font-black uppercase italic text-white">Sin promoción</p>
+                  <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Cobrar precio completo</p>
+                </button>
+
+                {availablePromotions.length > 0 ? (
+                  availablePromotions.map((promotion) => (
+                    <button
+                      key={promotion.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPromotionId(String(promotion.id));
+                        setPromotionPickerOpen(false);
+                      }}
+                      className={`w-full rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
+                        selectedPromotion?.id === promotion.id
+                          ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
+                          : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-black uppercase italic text-white">{promotion.name}</p>
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            {promotion.isLoyaltyReward
+                              ? `beneficio por fidelización · visita ${projectedVisitCount}`
+                              : `${formatPromotionValue(promotion)} · descuento sobre el cobro`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-black italic text-emerald-300">
+                          - C$ {calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-slate-800 bg-slate-950/60 px-5 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    No hay promociones aplicables para este cobro.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -5792,9 +6129,11 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
     price: initial?.price || '',
     category: initial?.category || 'Cortes',
     items: initial?.items || [],
-    appliesTo: initial?.appliesTo || 'Servicio',
+    appliesTo: initial?.appliesTo || 'General',
     discountType: initial?.discountType || 'percentage',
-    discountValue: initial?.discountValue !== undefined && initial?.discountValue !== null ? String(initial.discountValue) : '',
+    discountValue: initial?.discountValue !== undefined && initial?.discountValue !== null
+      ? String(clampPromotionDiscountValue(initial?.discountType || 'percentage', initial.discountValue))
+      : '',
     isOptional: initial?.isOptional ?? true,
   });
   const [searchTerm, setSearchTerm] = useState('');
@@ -5830,10 +6169,14 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
         </div>
         <form onSubmit={(e) => { 
             e.preventDefault(); 
+            const normalizedDiscountValue = clampPromotionDiscountValue(
+              formData.discountType || 'percentage',
+              formData.discountValue,
+            );
             const normalized = {
               ...formData,
               price: formData.category === 'Promocion' ? 0 : Number(formData.price) || 0,
-              discountValue: Number(formData.discountValue) || 0,
+              discountValue: normalizedDiscountValue,
               items: formData.category === 'Combo' ? formData.items : [],
               targetServiceIds: [],
             };
@@ -5855,23 +6198,23 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
             <div className="space-y-6 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/5 p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Aplica a</label>
-                  <select
-                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-emerald-500 appearance-none leading-none cursor-pointer"
-                    value={formData.appliesTo}
-                    onChange={(event) => setFormData({ ...formData, appliesTo: event.target.value, targetServiceIds: [] })}
-                  >
-                    {['Servicio', 'Producto'].map((option) => (
-                      <option key={option} value={option} className="bg-slate-950 text-white">{option}</option>
-                    ))}
-                  </select>
+                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Cobertura</label>
+                  <input
+                    readOnly
+                    value="GENERAL"
+                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none leading-none"
+                  />
                 </div>
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Tipo de descuento</label>
                   <select
                     className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-emerald-500 appearance-none leading-none cursor-pointer"
                     value={formData.discountType}
-                    onChange={(event) => setFormData({ ...formData, discountType: event.target.value })}
+                    onChange={(event) => setFormData({
+                      ...formData,
+                      discountType: event.target.value,
+                      discountValue: String(clampPromotionDiscountValue(event.target.value, formData.discountValue)),
+                    })}
                   >
                     <option value="percentage" className="bg-slate-950 text-white">Porcentaje</option>
                     <option value="fixed" className="bg-slate-950 text-white">Monto fijo</option>
@@ -5891,20 +6234,14 @@ function ServiceEditorModal({ services, onClose, onSave, initial }) {
                   onChange={(event) => {
                     const rawValue = event.target.value.replace(',', '.');
                     if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                    setFormData({ ...formData, discountValue: rawValue });
+                    if (rawValue === '') {
+                      setFormData({ ...formData, discountValue: '' });
+                      return;
+                    }
+                    const normalizedValue = clampPromotionDiscountValue(formData.discountType, rawValue);
+                    setFormData({ ...formData, discountValue: String(normalizedValue) });
                   }}
                 />
-              </div>
-              <div className="space-y-5">
-                <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Aplicación</label>
-                <div className="rounded-[1.8rem] border border-slate-800 bg-black px-5 py-5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                    Esta promoción no se amarra a un item específico.
-                  </p>
-                  <p className="mt-3 text-[11px] font-black uppercase italic text-white">
-                    Se selecciona manualmente cuando vayas a facturar {formData.appliesTo === 'Producto' ? 'productos' : 'servicios'}.
-                  </p>
-                </div>
               </div>
             </div>
           )}

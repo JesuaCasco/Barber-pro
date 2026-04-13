@@ -175,7 +175,7 @@ const toUiService = (row, comboMap) => ({
   price: Number(row.price || 0),
   category: row.category,
   items: comboMap.get(row.id) || [],
-  appliesTo: row.applies_to || 'Servicio',
+  appliesTo: row.applies_to || 'General',
   discountType: row.discount_type || 'percentage',
   discountValue: Number(row.discount_value || 0),
   targetServiceIds: Array.isArray(row.target_service_ids) ? row.target_service_ids : [],
@@ -358,7 +358,7 @@ const toDbService = (service, barbershopId) => ({
   name: service.name,
   category: service.category,
   price: Number(service.price || 0),
-  applies_to: isPromotionService(service) ? (service.appliesTo || 'Servicio') : null,
+  applies_to: isPromotionService(service) ? (service.appliesTo || 'General') : null,
   discount_type: isPromotionService(service) ? (service.discountType || 'percentage') : null,
   discount_value: isPromotionService(service) ? Number(service.discountValue || 0) : 0,
   target_service_ids: isPromotionService(service)

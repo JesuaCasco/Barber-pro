@@ -277,12 +277,30 @@ export const resolveFavoriteBarberName = (appointments = [], barbers = [], empty
   return topBarberName || emptyLabel;
 };
 
+export const normalizeFavoriteServiceName = (value = '') => {
+  const rawValue = String(value || '').trim();
+  if (!rawValue) return '';
+
+  const withoutPromotionSuffix = rawValue
+    .replace(/\s*[·|-]\s*promo\s*:\s*.+$/i, '')
+    .replace(/\s*[·|-]\s*promocion\s*:\s*.+$/i, '')
+    .trim();
+
+  if (!withoutPromotionSuffix) return '';
+
+  if (/^(promo|promocion|descuento)/i.test(withoutPromotionSuffix)) {
+    return '';
+  }
+
+  return withoutPromotionSuffix;
+};
+
 export const getFavoriteServiceName = (appointments = [], emptyLabel = 'N/A') => {
   if (!appointments.length) return emptyLabel;
 
   const serviceCounts = {};
   appointments.forEach((appointment) => {
-    const serviceName = `${appointment?.service || ''}`.trim();
+    const serviceName = normalizeFavoriteServiceName(appointment?.service || '');
     if (!serviceName) return;
     serviceCounts[serviceName] = (serviceCounts[serviceName] || 0) + 1;
   });
@@ -341,7 +359,7 @@ export const getClientInsights = (
       ? client?.favoriteBarberName || emptyFavoriteBarber
       : resolveFavoriteBarberName(finishedAppointments, barbers, emptyFavoriteBarber),
     favoriteServiceName: hasStoredInsights
-      ? client?.favoriteServiceName || emptyFavoriteService
+      ? normalizeFavoriteServiceName(client?.favoriteServiceName || '') || emptyFavoriteService
       : getFavoriteServiceName(finishedAppointments, emptyFavoriteService),
     statsUpdatedAt: client?.statsUpdatedAt || null,
     history: sortedHistory.slice(0, historyLimit),
@@ -397,12 +415,23 @@ export const CATEGORY_LABELS = {
   [PROMOTION_CATEGORY]: 'Promociones',
 };
 
-export const PROMOTION_APPLIES_TO_OPTIONS = ['Servicio', 'Producto'];
+export const PROMOTION_APPLIES_TO_OPTIONS = ['General'];
 
 export const PROMOTION_DISCOUNT_TYPES = [
   { id: 'percentage', label: 'Porcentaje' },
   { id: 'fixed', label: 'Monto fijo' },
 ];
+
+export const clampPromotionDiscountValue = (discountType, rawValue) => {
+  const numericValue = Number(rawValue);
+  const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
+
+  if (discountType === 'percentage') {
+    return Math.min(Math.max(safeValue, 0), 100);
+  }
+
+  return Math.max(safeValue, 0);
+};
 
 export const isPromotionService = (service) => service?.category === PROMOTION_CATEGORY;
 
@@ -422,7 +451,6 @@ export const getPromotionTargetIds = () => [];
 export const getPromotionEligibleItems = (promotion, items = []) => {
   if (!promotion) return [];
 
-  const appliesTo = promotion.appliesTo || 'Servicio';
   const eligibleCategories = Array.isArray(promotion.eligibleCategories)
     ? promotion.eligibleCategories.filter(Boolean)
     : [];
@@ -431,11 +459,7 @@ export const getPromotionEligibleItems = (promotion, items = []) => {
     if (!item) return false;
 
     const itemCategory = item.category || '';
-    const matchesType = appliesTo === 'Producto'
-      ? itemCategory === 'Producto'
-      : itemCategory !== 'Producto' && itemCategory !== PROMOTION_CATEGORY;
-
-    if (!matchesType) return false;
+    if (itemCategory === PROMOTION_CATEGORY) return false;
     if (eligibleCategories.length > 0 && !eligibleCategories.includes(itemCategory)) return false;
     return true;
   });
@@ -464,9 +488,9 @@ export const calculatePromotionDiscount = (promotion, items = []) => {
   return { amount, eligibleSubtotal, eligibleItems };
 };
 
-export const getApplicablePromotions = (services = [], items = [], appliesTo = 'Servicio') =>
+export const getApplicablePromotions = (services = [], items = []) =>
   (Array.isArray(services) ? services : [])
-    .filter((service) => isPromotionService(service) && (service.appliesTo || 'Servicio') === appliesTo)
+    .filter((service) => isPromotionService(service))
     .filter((promotion) => getPromotionEligibleItems(promotion, items).length > 0);
 
 export const formatPromotionValue = (promotion) => {

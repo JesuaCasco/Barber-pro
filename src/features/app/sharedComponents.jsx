@@ -97,9 +97,8 @@ export const WaitTimer = ({ checkInAt, startedAt }) => {
   );
 };
 
-export const DelayTimer = ({ reservationTime, onExpired }) => {
+export const DelayTimer = ({ reservationTime }) => {
   const [delaySec, setDelaySec] = useState(0);
-  const [expiredTriggered, setExpiredTriggered] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -112,17 +111,13 @@ export const DelayTimer = ({ reservationTime, onExpired }) => {
 
       if (diff > 0) {
         setDelaySec(diff);
-        if (diff >= 900 && !expiredTriggered) {
-          setExpiredTriggered(true);
-          if (onExpired) onExpired();
-        }
       } else {
         setDelaySec(0);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [reservationTime, onExpired, expiredTriggered]);
+  }, [reservationTime]);
 
   if (delaySec <= 0) return null;
 

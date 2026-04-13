@@ -1,4 +1,9 @@
 export const styleTag = `
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   @keyframes wiggle {
     0%, 100% { transform: translateX(0) rotate(0deg); }
     25% { transform: translateX(-1px) rotate(-0.5deg); }
@@ -87,6 +92,10 @@ export const styleTag = `
     .mobile-simplify-shell input,
     .mobile-simplify-shell select,
     .mobile-simplify-shell textarea {
+      font-size: 16px !important;
+    }
+    .mobile-simplify-shell input::placeholder,
+    .mobile-simplify-shell textarea::placeholder {
       font-size: 16px !important;
     }
   }

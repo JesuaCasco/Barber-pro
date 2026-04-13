@@ -27,9 +27,9 @@ import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
 
 const ProductCard = memo(function ProductCard({ service, onAdd }) {
   return (
-    <button onClick={() => onAdd(service)} className="bg-slate-900 p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-800 hover:border-indigo-600 hover:bg-slate-800 transition-all text-left shadow-xl active:scale-95 group flex flex-col justify-between min-h-[160px] md:min-h-[180px] text-white">
-      <div><p className="text-[8px] font-black text-indigo-400 uppercase mb-2 tracking-widest leading-none italic">{service.category}</p><h5 className="text-sm font-black uppercase italic mb-4 text-white group-hover:text-indigo-400 transition-colors leading-tight">{service.name}</h5></div>
-      <div className="flex items-center justify-between mt-auto text-white"><p className="text-xl font-black text-emerald-400 italic leading-none">C$ {service.price}</p><div className="p-2.5 bg-indigo-600/20 rounded-xl text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg text-white"><Plus size={18} /></div></div>
+    <button onClick={() => onAdd(service)} className="bg-slate-900 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-800 hover:border-indigo-600 hover:bg-slate-800 transition-all text-left shadow-xl active:scale-95 group flex flex-col justify-between min-h-[138px] md:min-h-[180px] text-white">
+      <div><p className="text-[8px] font-black text-indigo-400 uppercase mb-2 tracking-widest leading-none italic">{service.category}</p><h5 className="text-[13px] md:text-sm font-black uppercase italic mb-4 text-white group-hover:text-indigo-400 transition-colors leading-tight">{service.name}</h5></div>
+      <div className="flex items-center justify-between mt-auto text-white"><p className="text-lg md:text-xl font-black text-emerald-400 italic leading-none">C$ {service.price}</p><div className="p-2 bg-indigo-600/20 rounded-xl text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg text-white"><Plus size={16} /></div></div>
     </button>
   );
 });
@@ -113,7 +113,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Tablero de Control</h3>
-          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2 italic flex items-center gap-2">
+          <p className="mobile-simplify-subtitle text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2 italic flex items-center gap-2">
             <Sparkles size={12} className="text-indigo-400" /> Resumen Operativo - {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
@@ -371,7 +371,7 @@ export function POSView({ services, onSale }) {
             </div>
           </div>
         </div>
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 content-start custom-scrollbar text-white">
+        <div className="flex-1 p-3 md:p-8 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 content-start custom-scrollbar text-white">
           {filtered.map((service) => (
             <ProductCard key={service.id} service={service} onAdd={addItem} />
           ))}

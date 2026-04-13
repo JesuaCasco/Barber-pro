@@ -77,7 +77,7 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
       client.lastVisit,
     ].map(escapeCsv).join(',')));
 
-    const csv = `\uFEFFsep=,\r\n${['Cliente', 'Celular', 'Tipo', 'Visitas', 'Barbero Fav', 'Ultima Visita'].map(escapeCsv).join(',')}\r\n${rows.join('\r\n')}`;
+    const csv = `\uFEFFsep=,\r\n${['Cliente', 'Celular', 'Tipo', 'Visitas', 'Barbero favorito', 'Última visita'].map(escapeCsv).join(',')}\r\n${rows.join('\r\n')}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -89,11 +89,11 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
   };
 
   return (
-    <div className="p-4 md:p-10 space-y-6 md:space-y-8 animate-in fade-in text-white no-print">
+    <div className="p-3 md:p-10 space-y-5 md:space-y-8 animate-in fade-in text-white no-print">
       <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4 text-white">
         <div>
           <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter leading-none text-white">Directorio de Clientes</h3>
-          <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Gestión VIP y Fidelización</p>
+          <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Gestión VIP y Fidelización</p>
         </div>
         <div className="flex w-full xl:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 text-white">
           <button onClick={downloadClientsReport} disabled={!tableData.length} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-xl shadow-emerald-950/30 transition-all flex items-center justify-center gap-2 leading-none">
@@ -110,7 +110,7 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
           Números repetidos detectados: {duplicatePhones.join(', ')}. El celular ahora es único, así que conviene editar o eliminar esos duplicados guardados.
         </div>
       )}
-      <div className="md:hidden space-y-4">
+      <div className="lg:hidden space-y-4">
         {filtered.map((client) => (
           <div key={client.id} onClick={() => onRowClick(client)} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
             <div className="flex items-start gap-4">
@@ -142,7 +142,7 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
           </div>
         ))}
       </div>
-      <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className="hidden lg:block bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
         <table className="w-full text-left">
           <thead className="bg-black/80 border-b border-slate-800 font-black uppercase text-[10px] text-slate-500 tracking-[0.2em] italic">
             <tr><th className="px-10 py-7">Cliente</th><th className="px-10 py-7 text-center">Tipo</th><th className="px-10 py-7 text-center">Visitas</th><th className="px-10 py-7 text-center">Barbero Fav</th><th className="px-10 py-7 text-center">Última Visita</th><th className="px-10 py-7 text-right">Acción</th></tr>

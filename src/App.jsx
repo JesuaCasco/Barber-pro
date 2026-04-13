@@ -112,8 +112,6 @@ import {
   getTodayString,
   isValidPhoneNumber,
   formatPromotionValue,
-  getApplicablePromotions,
-  calculatePromotionDiscount,
   clampPromotionDiscountValue,
   isPromotionService,
   makeId,
@@ -130,6 +128,8 @@ import {
 } from './features/app/sharedComponents';
 import { DashboardView, POSView } from './features/app/dashboardPosViews';
 import { ClientDetailModal, ClientsTableView } from './features/app/clientViews';
+import { FinalizeModal } from './features/app/finalizeModal';
+import { ServiceEditorModal } from './features/app/serviceEditorModal';
 
 const { useCallback } = React;
 
@@ -1370,6 +1370,7 @@ export default function App() {
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [superAdminViewBarbershopId, setSuperAdminViewBarbershopId] = useState('');
   const [feedbackToast, setFeedbackToast] = useState(null);
+  const [feedbackToastQueue, setFeedbackToastQueue] = useState([]);
   const [confirmState, setConfirmState] = useState(null);
   const feedbackTimerRef = useRef(null);
   const reservationNearExpiryAlertsRef = useRef(new Set());
@@ -1450,15 +1451,34 @@ export default function App() {
       : {}
   ), [isSuperAdmin, effectiveOperationalBarbershopId]);
 
-  const notify = (message, tone = 'info') => {
+  const dismissFeedbackToast = React.useCallback(() => {
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
       feedbackTimerRef.current = null;
     }
 
-    const requiresAcknowledgement = tone === 'reservation-warning' || tone === 'reservation-expired';
+    setFeedbackToast(null);
+  }, []);
 
-    setFeedbackToast({ id: Date.now(), message, tone });
+  const notify = React.useCallback((message, tone = 'info') => {
+    const nextToast = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      message,
+      tone,
+    };
+
+    setFeedbackToastQueue((currentQueue) => [...currentQueue, nextToast]);
+  }, []);
+
+  useEffect(() => {
+    if (feedbackToast || feedbackToastQueue.length === 0) return;
+
+    const [nextToast, ...remainingQueue] = feedbackToastQueue;
+    const requiresAcknowledgement =
+      nextToast.tone === 'reservation-warning' || nextToast.tone === 'reservation-expired';
+
+    setFeedbackToast(nextToast);
+    setFeedbackToastQueue(remainingQueue);
 
     if (!requiresAcknowledgement) {
       feedbackTimerRef.current = setTimeout(() => {
@@ -1466,7 +1486,7 @@ export default function App() {
         feedbackTimerRef.current = null;
       }, 3600);
     }
-  };
+  }, [feedbackToast, feedbackToastQueue]);
 
   const renderPersistentWarningBanner = (title, messages = []) => (
     <div className="mx-8 mt-6 rounded-[1.8rem] border border-amber-500/25 bg-amber-500/10 px-6 py-5 text-amber-100 shadow-[0_12px_30px_rgba(245,158,11,0.08)]">
@@ -1502,7 +1522,7 @@ export default function App() {
   const feedbackContextValue = useMemo(() => ({
     notify,
     confirmAction,
-  }), []);
+  }), [notify]);
 
   const clearScopedOperationalState = () => {
     setAppointments([]);
@@ -1656,7 +1676,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session, effectiveOperationalBarbershopId, superAdminScopeOverride]);
+  }, [session, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !session?.user?.id) {
@@ -1691,7 +1711,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session]);
+  }, [session, notify]);
 
   useEffect(() => {
     setClientDirectoryLoaded(false);
@@ -1732,7 +1752,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session, activeTab, clientDirectoryLoaded, effectiveOperationalBarbershopId, superAdminScopeOverride]);
+  }, [session, activeTab, clientDirectoryLoaded, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   const handleSignIn = async (email, password) => {
     if (!supabase) return;
@@ -2049,7 +2069,7 @@ export default function App() {
     console.error(error);
     const details = error?.message ? `\n\n${error.message}` : '';
     notify(`${fallbackMessage}${details}`, 'error');
-  }, []);
+  }, [notify]);
   const refreshClientsAfterAppointmentSync = useCallback(async () => {
     if (!hasSupabaseConfig || !session?.user?.id) return;
 
@@ -2216,7 +2236,7 @@ export default function App() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [appointments, barbers, clients, markReservationAsLost]);
+  }, [appointments, barbers, clients, markReservationAsLost, notify]);
 
   useEffect(() => {
     if (!accessibleTabIds.has(activeTab)) {
@@ -2316,6 +2336,13 @@ export default function App() {
       service: extra ? extra.serviceName : apt.service,
       price: extra ? extra.price : apt.price,
       rating: extra ? extra.rating : apt.rating,
+      grossAmount: extra
+        ? Number(extra.grossAmount ?? extra.price ?? 0)
+        : Number(apt.grossAmount ?? apt.price ?? 0),
+      discountAmount: extra
+        ? Number(extra.discountAmount || 0)
+        : Number(apt.discountAmount || 0),
+      promotionName: extra ? (extra.promotionName || '') : (apt.promotionName || ''),
     };
 
     if (status === 'En Espera' && !apt.checkInAt) {
@@ -2843,7 +2870,7 @@ export default function App() {
 
   return (
     <UiFeedbackContext.Provider value={feedbackContextValue}>
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="mobile-simplify-shell flex h-screen bg-black text-white font-sans overflow-hidden">
       <style>{styleTag}</style>
 
       {mobileSidebarOpen && (
@@ -2855,13 +2882,13 @@ export default function App() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[15rem] max-w-[82vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[13.75rem] max-w-[80vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className={`p-4 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-3'}`}>
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0"><Scissors size={20}/></div>
           <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
             <h1 className="text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
             {session?.user?.email && (
-              <p className="text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
+              <p className="hidden md:block text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
                 {session.user.email}
               </p>
             )}
@@ -2877,7 +2904,7 @@ export default function App() {
         </div>
         <nav className={`flex-1 overflow-y-auto px-3 md:px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3.5 md:py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 md:py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
               <item.icon size={18} />
               <span className={sidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
             </button>
@@ -2955,7 +2982,7 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 min-w-0">
-        <header className="bg-black border-b border-slate-900 px-4 md:px-8 py-3 md:py-4 flex flex-col gap-3 z-20 no-print">
+        <header className="bg-black border-b border-slate-900 px-3 md:px-8 py-2.5 md:py-4 flex flex-col gap-2.5 md:gap-3 z-20 no-print">
           <div className="flex w-full items-center gap-3 min-w-0">
             <button
               type="button"
@@ -2974,7 +3001,7 @@ export default function App() {
               <Menu size={18} />
             </button>
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <h2 className="text-2xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none truncate">{activeTab}</h2>
+              <h2 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none truncate">{activeTab}</h2>
             </div>
           </div>
           {(activeTab === 'clientes' || activeTab === 'agenda') && (
@@ -3099,7 +3126,7 @@ export default function App() {
                   <div className="mt-3 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setFeedbackToast(null)}
+                      onClick={dismissFeedbackToast}
                       className="rounded-xl border border-white/35 bg-black px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-slate-950"
                     >
                       Aceptar
@@ -3122,7 +3149,7 @@ export default function App() {
                 <p className="text-sm font-bold leading-relaxed whitespace-pre-line">{feedbackToast.message}</p>
                 <button
                   type="button"
-                  onClick={() => setFeedbackToast(null)}
+                  onClick={dismissFeedbackToast}
                   className="text-white/50 hover:text-white transition-all"
                 >
                   <X size={16} />
@@ -3610,14 +3637,14 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           <button onClick={() => changeDay(1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronRight size={20}/></button>
         </div>
         <div className="text-center lg:text-right">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barbería</p>
+          <p className="mobile-simplify-subtitle text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barbería</p>
           <h3 className="text-2xl sm:text-3xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
             {new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </h3>
         </div>
       </div>
 
-      <div className="md:hidden space-y-4">
+      <div className="lg:hidden space-y-4">
         {agendaBarbers.map((barber) => {
           const barberAppointments = dayAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id));
           return (
@@ -3665,7 +3692,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         })}
       </div>
 
-      <div className="hidden md:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
+      <div className="hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
         <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
           <div className="min-w-[1200px] h-full flex flex-col relative">
             <div 
@@ -3764,7 +3791,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 text-white">
         <div>
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de Servicios</h3>
-          <p className="text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
+          <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
         </div>
         <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoción' : 'Nuevo Servicio'}</button>
       </div>
@@ -4518,7 +4545,7 @@ const formatRangeLabel = (start, end) => {
 
   const startLabel = parsedStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   const endLabel = parsedEnd.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-  return `${startLabel} • ${endLabel}`;
+  return `${startLabel} a ${endLabel}`;
 };
 
 function ReportsView({ appointments, clients, barbers, branches = [], currentBranchId = null, posSales = [] }) {
@@ -4653,19 +4680,26 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
     ), 0),
     [productReportPosSales],
   );
-  const productReportRevenue = useMemo(
-    () => productReportPosSales.reduce((acc, sale) => acc + (Number(sale.productTotal || 0)), 0),
-    [productReportPosSales],
-  );
   const productSalesSummary = useMemo(() => {
     const summaryMap = new Map();
 
     productReportPosSales.forEach((sale) => {
       const saleTicketNumber = Number(sale.ticketNumber || 0);
-      (sale.items || []).forEach((item) => {
+      const productItems = (sale.items || []).filter((item) => item.category === 'Producto');
+      const saleGrossRevenue = productItems.reduce(
+        (sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)),
+        0,
+      );
+      const saleNetRevenue = Number(sale.productTotal || sale.subtotal || 0);
+
+      productItems.forEach((item) => {
         if (item.category !== 'Producto') return;
 
         const key = String(item.id || item.name || '');
+        const lineGrossRevenue = (Number(item.price) || 0) * (Number(item.qty) || 0);
+        const lineNetRevenue = saleGrossRevenue > 0
+          ? (saleNetRevenue * lineGrossRevenue) / saleGrossRevenue
+          : lineGrossRevenue;
         const current = summaryMap.get(key) || {
           id: item.id || key,
           name: item.name || 'Producto',
@@ -4675,7 +4709,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
         };
 
         current.units += Number(item.qty) || 0;
-        current.revenue += (Number(item.price) || 0) * (Number(item.qty) || 0);
+        current.revenue += lineNetRevenue;
         if (saleTicketNumber > 0) current.tickets.add(saleTicketNumber);
         summaryMap.set(key, current);
       });
@@ -4684,6 +4718,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
     return Array.from(summaryMap.values())
       .map((entry) => ({
         ...entry,
+        revenue: Number(entry.revenue.toFixed(2)),
         ticketsCount: entry.tickets.size,
       }))
       .sort((left, right) => (
@@ -4692,6 +4727,12 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
         || left.name.localeCompare(right.name)
       ));
   }, [productReportPosSales]);
+  const productReportRevenue = useMemo(
+    () => Number(
+      productSalesSummary.reduce((acc, product) => acc + (Number(product.revenue) || 0), 0).toFixed(2),
+    ),
+    [productSalesSummary],
+  );
   const productChartSegments = useMemo(() => {
     const colors = ['#00f5a0', '#7c5cff', '#ffb800', '#ff4db8', '#22d3ee', '#b026ff', '#7dff3c'];
     const totalRevenue = productSalesSummary.reduce((sum, product) => sum + product.revenue, 0);
@@ -5760,533 +5801,4 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   );
 }
 
-function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
-  const [billItems, setBillItems] = useState(() => {
-    if (initial?.service && initial.service !== "POR DEFINIR") {
-      const match = (services || []).find(s => s.name === initial.service);
-      return match ? [{ ...match, uniqueId: makeId() }] : [];
-    }
-    return [];
-  });
-  
-  const [activeCategory, setActiveCategory] = useState('Todos');
-  const [search, setSearch] = useState('');
-  const [rating, setRating] = useState(5);
-  const [selectedPromotionId, setSelectedPromotionId] = useState('');
-  const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
-
-  const billingClient = useMemo(
-    () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
-    [clients, initial],
-  );
-  const completedVisits = Number(billingClient?.completedVisits || 0);
-  const projectedVisitCount = completedVisits + (initial?.status === 'Finalizada' ? 0 : 1);
-  const loyaltyPromotion = useMemo(() => {
-    if (!billingClient || projectedVisitCount <= 0 || projectedVisitCount % LOYALTY_REWARD_VISITS !== 0) return null;
-
-    const eligibleCuts = billItems.filter((item) => item?.category === 'Cortes');
-    if (!eligibleCuts.length) return null;
-
-    const loyaltyCutValue = Math.max(...eligibleCuts.map((item) => Number(item.price || 0)), 0);
-    if (loyaltyCutValue <= 0) return null;
-
-    return {
-      id: `loyalty-${billingClient.id}-${projectedVisitCount}`,
-      name: `Corte gratis por ${LOYALTY_REWARD_VISITS} visitas`,
-      appliesTo: 'Servicio',
-      eligibleCategories: ['Cortes'],
-      discountType: 'fixed',
-      discountValue: loyaltyCutValue,
-      isOptional: true,
-      isLoyaltyReward: true,
-    };
-  }, [billingClient, billItems, projectedVisitCount]);
-  
-  const catalog = useMemo(() => {
-    return (services || []).filter(s => 
-      !isPromotionService(s) &&
-      (activeCategory === 'Todos' || s.category === activeCategory) &&
-      (s.name.toLowerCase().includes(search.toLowerCase()))
-    );
-  }, [services, activeCategory, search]);
-
-  const availablePromotions = useMemo(() => {
-    const manualPromotions = getApplicablePromotions(services, billItems, 'Servicio');
-    return loyaltyPromotion ? [loyaltyPromotion, ...manualPromotions] : manualPromotions;
-  }, [services, billItems, loyaltyPromotion]);
-
-  const selectedPromotion = useMemo(
-    () => availablePromotions.find((promotion) => String(promotion.id) === String(selectedPromotionId)) || null,
-    [availablePromotions, selectedPromotionId],
-  );
-
-  const addToBill = (item) => {
-    setBillItems((current) => [...current, { ...item, uniqueId: makeId() }]);
-  };
-
-  const removeFromBill = (uniqueId) => {
-    setBillItems((current) => current.filter(i => i.uniqueId !== uniqueId));
-  };
-
-  const subtotal = billItems.reduce((acc, i) => acc + Number(i.price || 0), 0);
-  const promotionPreview = useMemo(
-    () => calculatePromotionDiscount(selectedPromotion, billItems),
-    [selectedPromotion, billItems],
-  );
-  const promotionDiscount = promotionPreview.amount;
-  const total = Math.max(subtotal - promotionDiscount, 0);
-
-  const confirmFinalCharge = () => {
-    if (billItems.length === 0) return;
-    const serviceNames = billItems.map(i => i.name).join(' + ');
-    onConfirm({ 
-      serviceName: selectedPromotion ? `${serviceNames} · Promo: ${selectedPromotion.name}` : serviceNames, 
-      price: total, 
-      rating: rating,
-      promotionName: selectedPromotion?.name || '',
-      discountAmount: promotionDiscount,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in text-white no-print">
-      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[90vh] flex flex-col text-white overflow-hidden">
-        <div className="p-8 border-b border-slate-900 flex justify-between items-center bg-black">
-          <div>
-            <h3 className="text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 leading-none">Finaliza el servicio y procesa el pago</p>
-          </div>
-          <button onClick={() => { setPromotionPickerOpen(false); onClose(); }} className="p-3 bg-slate-900 rounded-2xl text-slate-500 hover:text-rose-500 transition-all">
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          <div className="w-full md:w-[400px] border-r border-slate-900 flex flex-col bg-black/40">
-            <div className="p-6 border-b border-slate-900">
-                <h4 className="text-[10px] font-black text-indigo-400 uppercase italic tracking-widest flex items-center gap-2">
-                  <ShoppingBag size={14} /> Servicios Realizados
-                </h4>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-              {billItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-800 border-2 border-dashed border-slate-900 rounded-[2rem] p-8 text-center">
-                  <Package size={32} className="mb-4 opacity-20" />
-                  <p className="text-[10px] font-black uppercase italic leading-none">Ningún servicio seleccionado para cobrar</p>
-                </div>
-              ) : (
-                billItems.map(item => (
-                  <div key={item.uniqueId} className="bg-slate-900 p-5 rounded-[1.5rem] flex justify-between items-center border border-white/5 group animate-in slide-in-from-left-4">
-                    <div className="min-w-0">
-                      <p className="text-xl font-black uppercase italic text-white truncate leading-tight mb-2">{item.name}</p>
-                      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-none">C$ {item.price}</p>
-                    </div>
-                    <button onClick={() => removeFromBill(item.uniqueId)} className="p-2 text-slate-600 hover:text-rose-500 transition-colors">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="p-8 bg-slate-950 border-t border-slate-900">
-               <div className="flex justify-between items-end">
-                 <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none mb-2">Total a Cobrar</span>
-                 <span className="text-4xl font-black text-emerald-400 italic tracking-tighter leading-none">C$ {total.toLocaleString()}</span>
-               </div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col bg-slate-950">
-            <div className="p-6 border-b border-slate-900 flex flex-wrap items-center justify-between gap-4">
-               <div className="flex gap-2 p-1 bg-black border border-slate-800 rounded-2xl overflow-x-auto no-scrollbar">
-                 {['Todos', ...CATEGORIES.filter((category) => category !== 'Promocion')].map(cat => (
-                   <button 
-                    key={cat} 
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-                   >
-                     {cat === 'Todos' ? cat : (CATEGORY_LABELS[cat] || cat)}
-                   </button>
-                 ))}
-               </div>
-               <div className="relative flex-1 max-w-xs">
-                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                 <input 
-                  type="text" 
-                  placeholder="BUSCAR ITEM..." 
-                  className="w-full bg-black border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-[10px] font-black uppercase text-white outline-none focus:border-indigo-600 italic"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                 />
-               </div>
-            </div>
-
-            <div className="flex-1 p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar content-start">
-              {catalog.map(item => (
-                <button 
-                  key={item.id} 
-                  onClick={() => addToBill(item)}
-                  className="bg-slate-900/50 border border-slate-800 p-5 rounded-[2rem] hover:border-emerald-500 hover:bg-slate-900 transition-all text-left flex flex-col justify-between h-32 group"
-                >
-                  <div>
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{item.category}</p>
-                    <h5 className="text-xl font-black uppercase italic text-white leading-tight group-hover:text-emerald-400 transition-colors">{item.name}</h5>
-                  </div>
-                  <div className="flex justify-between items-center mt-auto">
-                    <span className="text-sm font-black text-emerald-500 italic leading-none">C$ {item.price}</span>
-                    <div className="p-2 bg-emerald-600/10 rounded-lg text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100"><Plus size={14}/></div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="border-t border-slate-900 p-6 space-y-4 bg-black/30">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400">
-                    {selectedPromotion
-                      ? `Aplicada: ${selectedPromotion.name}`
-                      : availablePromotions.length > 0
-                        ? 'Selecciona una promoción guardada'
-                        : 'No hay promociones aplicables ahora'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPromotionPickerOpen(true)}
-                    disabled={availablePromotions.length === 0}
-                    className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                      availablePromotions.length > 0
-                        ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15'
-                        : 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500 opacity-70'
-                    }`}
-                  >
-                    Elegir
-                    <ChevronDown size={14} className="text-current" />
-                  </button>
-                  {selectedPromotion && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPromotionId('')}
-                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300"
-                    >
-                      Quitar
-                    </button>
-                  )}
-                </div>
-              </div>
-              {loyaltyPromotion && billingClient ? (
-                <div className="rounded-[1.5rem] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-[11px] font-bold text-amber-100">
-                  {billingClient.name} está completando su visita #{projectedVisitCount}. Puedes aplicar el beneficio opcional de corte gratis en este cobro.
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="bg-slate-950/50 border border-slate-800 px-10 py-5 rounded-[2.5rem] flex flex-col items-center shrink-0">
-             <p className="text-[10px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-3 leading-none">Califica la experiencia</p>
-             <div className="flex gap-4">
-               {[1, 2, 3, 4, 5].map((star) => (
-                 <button 
-                    key={star} 
-                    onClick={() => setRating(star)} 
-                    className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
-                 >
-                   <Star size={32} fill={star <= rating ? "currentColor" : "none"} />
-                 </button>
-               ))}
-             </div>
-          </div>
-
-          <div className="flex w-full flex-col gap-5 md:flex-row md:items-end md:justify-end">
-            <div className="w-full md:w-[360px] rounded-[1.8rem] border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
-              <div className="mt-3 space-y-2.5">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Subtotal</span>
-                  <span className="text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
-                </div>
-                {selectedPromotion ? (
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">Descuento</p>
-                      <p className="mt-1 truncate text-[10px] font-black uppercase italic tracking-[0.12em] text-slate-500">
-                        {selectedPromotion.name}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-base font-black italic text-emerald-300">
-                      - C$ {promotionDiscount.toLocaleString('es-NI')}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-3 border-t border-slate-800 pt-3">
-                <div className="flex items-end justify-between gap-4">
-                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Total final</span>
-                  <span className="whitespace-nowrap text-[32px] font-black italic tracking-tighter leading-none text-emerald-400">
-                    C$ {total.toLocaleString('es-NI')}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button onClick={onClose} className="px-10 py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none shrink-0">Cerrar</button>
-            <button 
-              disabled={billItems.length === 0}
-              onClick={confirmFinalCharge}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-16 py-6 rounded-[2rem] font-black uppercase italic text-xs tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0"
-            >
-              <CheckCircle2 size={18} strokeWidth={3} /> CONFIRMAR Y FINALIZAR COBRO
-            </button>
-          </div>
-        </div>
-
-        {promotionPickerOpen ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-emerald-500/20 bg-slate-950 shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
-              <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-6 py-5">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promociones</p>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400">Elige un descuento para este cobro</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPromotionPickerOpen(false)}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-black text-slate-400 transition-colors hover:text-white"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6 custom-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedPromotionId('');
-                    setPromotionPickerOpen(false);
-                  }}
-                  className={`w-full rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
-                    selectedPromotionId
-                      ? 'border-slate-800 bg-slate-900 hover:border-slate-700'
-                      : 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
-                  }`}
-                >
-                  <p className="text-sm font-black uppercase italic text-white">Sin promoción</p>
-                  <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Cobrar precio completo</p>
-                </button>
-
-                {availablePromotions.length > 0 ? (
-                  availablePromotions.map((promotion) => (
-                    <button
-                      key={promotion.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPromotionId(String(promotion.id));
-                        setPromotionPickerOpen(false);
-                      }}
-                      className={`w-full rounded-[1.5rem] border px-5 py-4 text-left transition-all ${
-                        selectedPromotion?.id === promotion.id
-                          ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]'
-                          : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-black uppercase italic text-white">{promotion.name}</p>
-                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                            {promotion.isLoyaltyReward
-                              ? `beneficio por fidelización · visita ${projectedVisitCount}`
-                              : `${formatPromotionValue(promotion)} · descuento sobre el cobro`}
-                          </p>
-                        </div>
-                        <span className="text-sm font-black italic text-emerald-300">
-                          - C$ {calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="rounded-[1.5rem] border border-dashed border-slate-800 bg-slate-950/60 px-5 py-6 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                    No hay promociones aplicables para este cobro.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ServiceEditorModal({ services, onClose, onSave, initial }) {
-  const [formData, setFormData] = useState({ 
-    name: initial?.name || '',
-    price: initial?.price || '',
-    category: initial?.category || 'Cortes',
-    items: initial?.items || [],
-    appliesTo: initial?.appliesTo || 'General',
-    discountType: initial?.discountType || 'percentage',
-    discountValue: initial?.discountValue !== undefined && initial?.discountValue !== null
-      ? String(clampPromotionDiscountValue(initial?.discountType || 'percentage', initial.discountValue))
-      : '',
-    isOptional: initial?.isOptional ?? true,
-  });
-  const [searchTerm, setSearchTerm] = useState('');
-  const isPromotion = formData.category === 'Promocion';
-  const availableItems = useMemo(
-    () => (services || []).filter((service) => (
-      service.name.toLowerCase().includes(searchTerm.toLowerCase())
-      && service.category !== 'Combo'
-      && !isPromotionService(service)
-    )),
-    [services, searchTerm],
-  );
-  
-  const calculateComboPrice = (items) => {
-    return (items || []).reduce((acc, itemId) => {
-      const itemPrice = Number(services.find(s => s.id === itemId)?.price || 0);
-      return acc + itemPrice;
-    }, 0);
-  };
-
-  const toggleItem = (id) => { 
-    const newItems = formData.items.includes(id) ? formData.items.filter(i => i !== id) : [...formData.items, id]; 
-    const newPrice = formData.category === 'Combo' ? calculateComboPrice(newItems) : Number(formData.price || 0);
-    setFormData({ ...formData, items: newItems, price: newPrice }); 
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white no-print">
-      <div className="bg-slate-950 w-full max-w-xl rounded-[3.5rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 max-h-[95vh] flex flex-col text-white overflow-hidden">
-        <div className="px-12 py-8 bg-gradient-to-br from-indigo-600/20 border-b border-slate-900 flex justify-between items-center text-white">
-          <div className="flex items-center gap-6 text-white"><div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">{formData.category === 'Combo' ? <Zap size={28} /> : formData.category === 'Promocion' ? <Gift size={28} /> : <Scissors size={28} />}</div><div><h3 className="text-2xl font-black uppercase italic text-white leading-none">{initial?.id ? 'Editar' : 'Nuevo'} Registro</h3></div></div>
-          <button onClick={onClose} className="p-3 bg-black rounded-xl text-slate-500 text-white"><X size={20} /></button>
-        </div>
-        <form onSubmit={(e) => { 
-            e.preventDefault(); 
-            const normalizedDiscountValue = clampPromotionDiscountValue(
-              formData.discountType || 'percentage',
-              formData.discountValue,
-            );
-            const normalized = {
-              ...formData,
-              price: formData.category === 'Promocion' ? 0 : Number(formData.price) || 0,
-              discountValue: normalizedDiscountValue,
-              items: formData.category === 'Combo' ? formData.items : [],
-              targetServiceIds: [],
-            };
-            onSave(normalized);
-          }} className="p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1 text-white">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-white">
-            <div className="space-y-3 text-white">
-              <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Categoría</label>
-              <select className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-indigo-600 appearance-none leading-none cursor-pointer" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value, items: e.target.value === 'Combo' ? formData.items : []})}>
-                {CATEGORIES.map(c => <option key={c} value={c} className="bg-slate-950 text-white">{CATEGORY_LABELS[c] || c}</option>)}
-              </select>
-            </div>
-            <div className="space-y-3 text-white">
-              <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Nombre</label>
-              <input required placeholder={isPromotion ? 'Ej. Corte gratis por fidelidad' : 'Ej. Combo Pro'} className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-            </div>
-          </div>
-          {isPromotion && (
-            <div className="space-y-6 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/5 p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Cobertura</label>
-                  <input
-                    readOnly
-                    value="GENERAL"
-                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none leading-none"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">Tipo de descuento</label>
-                  <select
-                    className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold uppercase italic text-white outline-none focus:border-emerald-500 appearance-none leading-none cursor-pointer"
-                    value={formData.discountType}
-                    onChange={(event) => setFormData({
-                      ...formData,
-                      discountType: event.target.value,
-                      discountValue: String(clampPromotionDiscountValue(event.target.value, formData.discountValue)),
-                    })}
-                  >
-                    <option value="percentage" className="bg-slate-950 text-white">Porcentaje</option>
-                    <option value="fixed" className="bg-slate-950 text-white">Monto fijo</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-emerald-300 uppercase italic px-1 leading-none">
-                  {formData.discountType === 'fixed' ? 'Descuento en córdobas' : 'Porcentaje de descuento'}
-                </label>
-                <input
-                  required
-                  type="text"
-                  inputMode="decimal"
-                  className="w-full bg-black border border-slate-800 rounded-2xl px-6 py-4 text-lg font-black italic text-white outline-none focus:border-emerald-500 leading-none"
-                  value={formData.discountValue}
-                  onChange={(event) => {
-                    const rawValue = event.target.value.replace(',', '.');
-                    if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                    if (rawValue === '') {
-                      setFormData({ ...formData, discountValue: '' });
-                      return;
-                    }
-                    const normalizedValue = clampPromotionDiscountValue(formData.discountType, rawValue);
-                    setFormData({ ...formData, discountValue: String(normalizedValue) });
-                  }}
-                />
-              </div>
-            </div>
-          )}
-          {formData.category === 'Combo' && (
-            <div className="space-y-5 bg-indigo-600/5 p-8 rounded-[2.5rem] border border-indigo-500/20 text-white">
-              <label className="text-[10px] font-black text-indigo-400 uppercase italic px-1 leading-none">Componer Combo</label>
-              <div className="flex flex-col gap-4 text-white">
-                <input type="text" placeholder="BUSCAR ÍTEMS" className="w-full bg-black border border-slate-800 rounded-2xl px-8 py-4 text-sm font-black uppercase italic text-white leading-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-3 custom-scrollbar text-white">
-                  {availableItems.map(item => (
-                    <div key={item.id} onClick={() => toggleItem(item.id)} className={`flex items-center justify-between p-4 rounded-[1.8rem] cursor-pointer border ${formData.items.includes(item.id) ? 'bg-indigo-600/20 border-indigo-500' : 'bg-black border-slate-800'} text-white`}>
-                      <span className="text-[11px] font-black uppercase italic text-white leading-none">{item.name}</span>
-                      <span className="text-[11px] font-black text-emerald-400 italic leading-none">C$ {item.price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          {!isPromotion && (
-          <div className="space-y-3 text-white">
-            <label className="text-[10px] font-black text-slate-500 uppercase italic px-1 leading-none">Precio Final (C$)</label>
-            <div className="relative text-white">
-              <input required type="number" className="w-full bg-black border border-slate-800 rounded-[2.5rem] pl-20 pr-8 py-8 text-5xl font-black italic text-white outline-none focus:border-emerald-500 leading-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value ? Number(e.target.value) : 0})} />
-              <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-black text-emerald-500 italic text-white leading-none">C$</span>
-            </div>
-          </div>
-          )}
-          {isPromotion && (
-            <div className="rounded-[2.5rem] border border-emerald-500/20 bg-black/40 px-8 py-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Resumen de promoción</p>
-              <p className="mt-3 text-lg font-black uppercase italic text-white">
-                {formData.name || 'Promoción sin nombre'}
-              </p>
-              <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-emerald-300">
-                {formData.discountType === 'fixed'
-                  ? `Descuento fijo de C$ ${Number(formData.discountValue || 0).toLocaleString('es-NI')}`
-                  : `${Number(formData.discountValue || 0)}% de descuento`}
-              </p>
-            </div>
-          )}
-          <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-7 rounded-[2.5rem] font-black uppercase italic text-xs transition-all text-white leading-none">GUARDAR CATÁLOGO</button>
-        </form>
-      </div>
-    </div>
-  );
-}
 

@@ -81,9 +81,34 @@ const assertSupabase = () => {
   }
 };
 
+const fixMojibakeText = (value = '') =>
+  `${value ?? ''}`
+    .replaceAll('barberÃ­a', 'barbería')
+    .replaceAll('barberÃ­as', 'barberías')
+    .replaceAll('sesiÃ³n', 'sesión')
+    .replaceAll('sesiÃ³n', 'sesión')
+    .replaceAll('vÃ¡lida', 'válida')
+    .replaceAll('configuraciÃ³n', 'configuración')
+    .replaceAll('funciÃ³n', 'función')
+    .replaceAll('contraseÃ±a', 'contraseña')
+    .replaceAll('contraseÃ±as', 'contraseñas')
+    .replaceAll('encontrÃ³', 'encontró')
+    .replaceAll('nÃ³mina', 'nómina')
+    .replaceAll('Ã¡', 'á')
+    .replaceAll('Ã©', 'é')
+    .replaceAll('Ã­', 'í')
+    .replaceAll('Ã³', 'ó')
+    .replaceAll('Ãº', 'ú')
+    .replaceAll('Ã±', 'ñ');
+
 const normalizeError = (error, fallback) => {
-  if (!error) return new Error(fallback);
-  return error instanceof Error ? error : new Error(error.message || fallback);
+  if (!error) return new Error(fixMojibakeText(fallback));
+
+  if (error instanceof Error) {
+    return new Error(fixMojibakeText(error.message || fallback));
+  }
+
+  return new Error(fixMojibakeText(error.message || fallback));
 };
 
 const encodeBranchScope = (branchId) => `branch_id.is.null,branch_id.eq.${branchId}`;
@@ -210,6 +235,9 @@ const toUiAppointment = (row) => ({
   serviceId: row.service_id,
   service: row.service_name || '',
   price: Number(row.price || 0),
+  grossAmount: Number(row.gross_amount ?? row.grossAmount ?? row.price ?? 0),
+  discountAmount: Number(row.discount_amount ?? row.discountAmount ?? 0),
+  promotionName: row.promotion_name || row.promotionName || '',
   date: row.appointment_date,
   time: safeTime(row.appointment_time),
   durationMinutes: Number(row.duration_minutes || 30),
@@ -397,6 +425,12 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
   const matchedBarber = (barbers || []).find((barber) => String(barber.id) === String(normalizedBarberId));
   const normalizedClientId = normalizeLegacyEntityId(appointment.clientId, clients);
   const normalizedServiceId = matchedService?.id || normalizeLegacyEntityId(appointment.serviceId, services) || null;
+  const netPrice = Number(appointment.price || 0);
+  const discountAmount = Number(appointment.discountAmount || 0);
+  const grossAmount = Number(
+    appointment.grossAmount
+      ?? (discountAmount > 0 ? netPrice + discountAmount : netPrice),
+  );
 
   return withScopeIds({
     id: appointment.id,
@@ -405,7 +439,10 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
     barber_name: appointment.barberName || matchedBarber?.name || null,
     service_id: normalizedServiceId,
     service_name: appointment.service || matchedService?.name || null,
-    price: Number(appointment.price || 0),
+    price: netPrice,
+    gross_amount: grossAmount,
+    discount_amount: discountAmount,
+    promotion_name: appointment.promotionName || null,
     appointment_date: appointment.date,
     appointment_time: safeTime(appointment.time),
     duration_minutes: Number(appointment.durationMinutes || 30),

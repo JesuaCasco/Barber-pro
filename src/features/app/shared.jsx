@@ -77,6 +77,15 @@ export const styleTag = `
     border-radius: 10px;
   }
 
+  @media (max-width: 1024px) {
+    .mobile-simplify-shell {
+      font-size: 14px;
+    }
+    .mobile-simplify-shell .mobile-simplify-subtitle {
+      display: none !important;
+    }
+  }
+
   @media print {
     body {
       background: white !important;
@@ -280,6 +289,22 @@ export const resolveFavoriteBarberName = (appointments = [], barbers = [], empty
 export const normalizeFavoriteServiceName = (value = '') => {
   const rawValue = String(value || '').trim();
   if (!rawValue) return '';
+  const normalizedPromotionSuffix = rawValue
+    .replace(/\s*(?:·|-|–|—|\|)\s*(?:promo|promoci[oó]n)\s*:\s*.+$/iu, '')
+    .trim();
+
+  if (!normalizedPromotionSuffix) return '';
+
+  const comparableValue = normalizedPromotionSuffix
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (/^(promo|promocion|descuento)/i.test(comparableValue)) {
+    return '';
+  }
+
+  return normalizedPromotionSuffix;
+  /*
 
   const withoutPromotionSuffix = rawValue
     .replace(/\s*[·|-]\s*promo\s*:\s*.+$/i, '')
@@ -293,6 +318,7 @@ export const normalizeFavoriteServiceName = (value = '') => {
   }
 
   return withoutPromotionSuffix;
+  */
 };
 
 export const getFavoriteServiceName = (appointments = [], emptyLabel = 'N/A') => {

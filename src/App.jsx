@@ -5159,32 +5159,36 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
               </div>
 
-              <div className="relative h-[320px] w-full flex items-end justify-between gap-6 px-4 text-white">
-                <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none flex flex-col justify-between opacity-5 z-0">
-                  {[...Array(6)].map((_, i) => <div key={i} className="w-full h-px bg-white"></div>)}
+              <div className="relative h-[300px] md:h-[320px] w-full overflow-x-auto custom-scrollbar pb-2">
+                <div
+                  className="relative h-full min-w-[560px] md:min-w-full flex items-end justify-between gap-2 md:gap-6 px-2 md:px-4 text-white"
+                >
+                  <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none flex flex-col justify-between opacity-5 z-0">
+                    {[...Array(6)].map((_, i) => <div key={i} className="w-full h-px bg-white"></div>)}
+                  </div>
+                  {stats.historicalSales.map((data, idx) => {
+                    const hVal = (data.value / historicalMax) * 100;
+                    const gradient = barGradients[idx % barGradients.length];
+                    return (
+                      <div key={idx} className="min-w-[68px] flex-1 flex flex-col items-center relative z-10 h-full group text-white">
+                        <div className="flex-1 w-full flex flex-col justify-end items-center text-white">
+                          <div className="flex flex-col items-center mb-2 md:mb-3 transition-transform duration-300 group-hover:scale-125 text-white">
+                            <span className="text-[11px] md:text-[13px] font-black text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none whitespace-nowrap">
+                              C$ {data.value >= 1000 ? (data.value / 1000).toFixed(1) + 'k' : data.value}
+                            </span>
+                          </div>
+                          <div className={`w-full max-w-[44px] md:max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-white/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
+                            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-3xl text-white"></div>
+                            <div className={`absolute inset-0 opacity-0 transition-opacity rounded-t-3xl blur-xl bg-gradient-to-t ${gradient} group-hover:opacity-40 text-white`} />
+                          </div>
+                        </div>
+                        <div className="h-8 md:h-10 flex items-center text-white">
+                          <p className="text-[10px] md:text-[11px] font-black uppercase text-white italic tracking-[0.12em] md:tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-all leading-none">{data.label}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {stats.historicalSales.map((data, idx) => {
-                  const hVal = (data.value / historicalMax) * 100;
-                  const gradient = barGradients[idx % barGradients.length];
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center relative z-10 h-full group text-white">
-                      <div className="flex-1 w-full flex flex-col justify-end items-center text-white">
-                        <div className="flex flex-col items-center mb-3 transition-transform duration-300 group-hover:scale-125 text-white">
-                          <span className="text-[13px] font-black text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
-                            C$ {data.value >= 1000 ? (data.value / 1000).toFixed(1) + 'k' : data.value}
-                          </span>
-                        </div>
-                        <div className={`w-full max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-white/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
-                           <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-3xl text-white"></div>
-                           <div className={`absolute inset-0 opacity-0 transition-opacity rounded-t-3xl blur-xl bg-gradient-to-t ${gradient} group-hover:opacity-40 text-white`} />
-                        </div>
-                      </div>
-                      <div className="h-10 flex items-center text-white">
-                        <p className="text-[11px] font-black uppercase text-white italic tracking-[0.2em] opacity-60 group-hover:opacity-100 transition-all leading-none">{data.label}</p>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
 

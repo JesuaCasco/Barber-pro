@@ -2883,11 +2883,11 @@ export default function App() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[13.75rem] max-w-[80vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className={`p-4 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-3'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[10.75rem] max-w-[68vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:w-64 md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className={`p-3 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-2.5 md:gap-3'}`}>
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0"><Scissors size={20}/></div>
           <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
-            <h1 className="text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
+            <h1 className="text-lg md:text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
             {session?.user?.email && (
               <p className="hidden md:block text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
                 {session.user.email}
@@ -2903,15 +2903,15 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-        <nav className={`flex-1 overflow-y-auto px-3 md:px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <nav className={`flex-1 overflow-y-auto px-2 md:px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 md:py-4 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
-              <item.icon size={18} />
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-3 py-2.5 md:py-4 rounded-2xl transition-all font-black uppercase text-[8px] md:text-[10px] tracking-[0.16em] md:tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-2 md:gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+              <item.icon size={16} />
               <span className={sidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className={`px-3 md:px-4 py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <div className={`px-2 md:px-4 py-3 md:py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
           {isSuperAdmin && availableBarbershops.length > 0 && sidebarCollapsed && (
             <button
               type="button"
@@ -2961,7 +2961,7 @@ export default function App() {
             <button
               onClick={() => setShowSelfPasswordModal(true)}
               disabled={passwordBusy}
-              className={`w-full mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              className={`w-full mb-2.5 md:mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
               title={sidebarCollapsed ? 'Cambiar contraseña' : undefined}
             >
               {passwordBusy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
@@ -2972,7 +2972,7 @@ export default function App() {
             <button
               onClick={handleSignOut}
               disabled={authBusy}
-              className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
               title={sidebarCollapsed ? 'Cerrar sesión' : undefined}
             >
               {authBusy ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
@@ -5052,16 +5052,16 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
   }, [stats.historicalSales]);
 
   return (
-    <div className="p-12 space-y-12 h-full animate-in fade-in pb-32 text-white no-print">
-      <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-5 text-white">
-        <div><h3 className="text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Análisis del Negocio</h3><p className="text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Métricas avanzadas y rendimiento comercial real</p></div>
+    <div className="px-3 py-4 md:p-12 space-y-6 md:space-y-12 h-full animate-in fade-in pb-24 md:pb-32 text-white no-print">
+      <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-4 md:gap-5 text-white">
+        <div><h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Análisis del Negocio</h3><p className="text-[9px] md:text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.16em] md:tracking-[0.2em] leading-none">Métricas avanzadas y rendimiento comercial real</p></div>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           {(branches || []).length > 0 && (
-            <div className="min-w-[250px]">
+            <div className="w-full sm:min-w-[220px] sm:w-auto">
               <select
                 value={effectiveReportBranchId}
                 onChange={(e) => setSelectedReportBranchId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs md:text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
               >
                 <option value="all">Toda la barbería</option>
                 {branches.map((branch) => (
@@ -5070,7 +5070,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
               </select>
             </div>
           )}
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4 text-white"><CalendarIcon size={20} className="text-slate-500" /><span className="text-xs font-black uppercase italic text-white">{reportTodayDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span></div>
+          <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-white"><CalendarIcon size={18} className="text-slate-500" /><span className="text-[10px] md:text-xs font-black uppercase italic text-white">{reportTodayDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span></div>
         </div>
       </div>
       {unresolvedLegacyPosSalesCount > 0 && (
@@ -5083,16 +5083,16 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
         </div>
       )}
       
-      <div className="flex items-center gap-3 p-1.5 bg-black border border-slate-900 rounded-[2rem] w-fit mx-auto shadow-2xl text-white">
-        <button onClick={() => setReportTab('ventas')} className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black uppercase italic tracking-widest transition-all ${reportTab === 'ventas' ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}><TrendingUp size={16}/> Análisis de Venta</button>
-        <button onClick={() => setReportTab('personal')} className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black uppercase italic tracking-widest transition-all ${reportTab === 'personal' ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}><Users size={16}/> Análisis de Personal</button>
+      <div className="flex w-full md:w-fit items-center gap-2 p-1.5 bg-black border border-slate-900 rounded-[1.4rem] md:rounded-[2rem] md:w-fit mx-auto shadow-2xl text-white">
+        <button onClick={() => setReportTab('ventas')} className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 md:px-8 py-3 md:py-4 rounded-[1.2rem] md:rounded-[1.8rem] text-[9px] md:text-[11px] font-black uppercase italic tracking-[0.12em] md:tracking-widest transition-all ${reportTab === 'ventas' ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}><TrendingUp size={14} className="md:size-4" /> Ventas</button>
+        <button onClick={() => setReportTab('personal')} className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 md:px-8 py-3 md:py-4 rounded-[1.2rem] md:rounded-[1.8rem] text-[9px] md:text-[11px] font-black uppercase italic tracking-[0.12em] md:tracking-widest transition-all ${reportTab === 'personal' ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}><Users size={14} className="md:size-4" /> Personal</button>
       </div>
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-white">
         {reportTab === 'ventas' ? (
           <section className="space-y-10 text-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 text-white">
-              <div className="bg-slate-900 neon-border-indigo p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-8 text-white">
+              <div className="bg-slate-900 neon-border-indigo p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="relative z-10 text-white">
                   <div className="flex justify-between items-center mb-6 text-white">
@@ -5107,7 +5107,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
               </div>
 
-              <div className="bg-slate-900 neon-border-emerald p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
+              <div className="bg-slate-900 neon-border-emerald p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="relative z-10 text-white">
                   <div className="flex justify-between items-center mb-6 text-white">
@@ -5122,7 +5122,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
+              <div className="bg-slate-900 border border-slate-800 p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
                 <Target className="absolute -right-6 -bottom-6 w-40 h-40 text-slate-800/10 -rotate-12" />
                 <div className="relative z-10 text-white">
                   <div className="flex justify-between items-center mb-6 text-white">
@@ -5134,7 +5134,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
               </div>
 
-              <div className="bg-slate-900 neon-border-emerald p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
+              <div className="bg-slate-900 neon-border-emerald p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group flex flex-col justify-between text-white">
                 <div className="relative z-10 text-white">
                   <div className="flex justify-between items-center mb-6 text-white">
                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Ingreso Total del Negocio</p>
@@ -5146,22 +5146,22 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 p-10 rounded-[3.5rem] shadow-2xl relative text-white flex flex-col min-h-[550px]">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 text-white">
+            <div className="bg-slate-900 border border-slate-800 p-4 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative text-white flex flex-col min-h-[420px] md:min-h-[550px]">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6 mb-6 md:mb-12 text-white">
                 <div>
-                  <h5 className="text-2xl font-black italic uppercase text-white flex items-center gap-3"><BarChart3 className="text-indigo-500" /> Rendimiento de Ingresos</h5>
-                  <p className="text-[10px] text-slate-500 font-black uppercase italic mt-1 tracking-widest leading-none">Histórico real de la semana en curso (Lunes - Domingo)</p>
+                  <h5 className="text-lg md:text-2xl font-black italic uppercase text-white flex items-center gap-3"><BarChart3 className="text-indigo-500" /> Rendimiento de Ingresos</h5>
+                  <p className="text-[9px] md:text-[10px] text-slate-500 font-black uppercase italic mt-1 tracking-[0.14em] md:tracking-widest leading-none">Histórico real de la semana en curso (Lunes - Domingo)</p>
                 </div>
-                <div className="flex items-center gap-2 p-1.5 bg-black border border-slate-800 rounded-2xl text-white">
+                <div className="flex w-full md:w-auto items-center gap-2 p-1.5 bg-black border border-slate-800 rounded-2xl text-white">
                   {periodOptions.map(period => (
-                    <button key={period.id} onClick={() => setSalesPeriod(period.id)} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase italic tracking-widest transition-all ${salesPeriod === period.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{period.label}</button>
+                    <button key={period.id} onClick={() => setSalesPeriod(period.id)} className={`flex-1 md:flex-none px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase italic tracking-[0.12em] md:tracking-widest transition-all ${salesPeriod === period.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{period.label}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="relative h-[300px] md:h-[320px] w-full overflow-x-auto custom-scrollbar pb-2">
+              <div className="relative h-[270px] sm:h-[300px] md:h-[320px] w-full overflow-hidden pb-1 md:pb-2">
                 <div
-                  className="relative h-full min-w-[560px] md:min-w-full flex items-end justify-between gap-2 md:gap-6 px-2 md:px-4 text-white"
+                  className="relative h-full min-w-0 w-full flex items-end justify-between gap-1 sm:gap-2 md:gap-6 px-1.5 sm:px-2 md:px-4 text-white"
                 >
                   <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none flex flex-col justify-between opacity-5 z-0">
                     {[...Array(6)].map((_, i) => <div key={i} className="w-full h-px bg-white"></div>)}
@@ -5170,20 +5170,20 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                     const hVal = (data.value / historicalMax) * 100;
                     const gradient = barGradients[idx % barGradients.length];
                     return (
-                      <div key={idx} className="min-w-[68px] flex-1 flex flex-col items-center relative z-10 h-full group text-white">
+                      <div key={idx} className="min-w-0 basis-0 flex-1 flex flex-col items-center relative z-10 h-full group text-white">
                         <div className="flex-1 w-full flex flex-col justify-end items-center text-white">
                           <div className="flex flex-col items-center mb-2 md:mb-3 transition-transform duration-300 group-hover:scale-125 text-white">
-                            <span className="text-[11px] md:text-[13px] font-black text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none whitespace-nowrap">
+                            <span className="text-[9px] sm:text-[10px] md:text-[13px] font-black text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none whitespace-nowrap">
                               C$ {data.value >= 1000 ? (data.value / 1000).toFixed(1) + 'k' : data.value}
                             </span>
                           </div>
-                          <div className={`w-full max-w-[44px] md:max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-white/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
+                          <div className={`w-full max-w-[26px] sm:max-w-[34px] md:max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-white/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
                             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-3xl text-white"></div>
                             <div className={`absolute inset-0 opacity-0 transition-opacity rounded-t-3xl blur-xl bg-gradient-to-t ${gradient} group-hover:opacity-40 text-white`} />
                           </div>
                         </div>
                         <div className="h-8 md:h-10 flex items-center text-white">
-                          <p className="text-[10px] md:text-[11px] font-black uppercase text-white italic tracking-[0.12em] md:tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-all leading-none">{data.label}</p>
+                          <p className="text-[9px] md:text-[11px] font-black uppercase text-white italic tracking-[0.08em] sm:tracking-[0.12em] md:tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-all leading-none">{data.label}</p>
                         </div>
                       </div>
                     );

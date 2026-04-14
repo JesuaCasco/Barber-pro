@@ -2907,7 +2907,7 @@ export default function App() {
   };
 
   if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-black gap-4 text-white">
+    <div className="h-dvh min-h-dvh flex flex-col items-center justify-center bg-black gap-4 text-white">
       <Loader2 className="animate-spin text-indigo-500" size={48} />
       <span className="text-[10px] font-black uppercase tracking-widest italic">Iniciando BarberPro...</span>
     </div>
@@ -2915,7 +2915,7 @@ export default function App() {
 
   return (
     <UiFeedbackContext.Provider value={feedbackContextValue}>
-    <div className="mobile-simplify-shell flex h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="mobile-simplify-shell flex h-dvh min-h-dvh bg-black text-white font-sans overflow-hidden">
       <style>{styleTag}</style>
 
       {mobileSidebarOpen && (
@@ -2923,14 +2923,14 @@ export default function App() {
           type="button"
           aria-label="Cerrar menú"
           onClick={() => setMobileSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm md:hidden no-print"
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden no-print"
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[10.75rem] max-w-[68vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 md:static md:w-64 md:max-w-none md:translate-x-0 ${sidebarCollapsed ? 'md:w-24' : 'md:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className={`p-3 md:p-8 flex items-start ${sidebarCollapsed ? 'md:justify-center md:px-4' : 'gap-2.5 md:gap-3'}`}>
+      <aside className={`mobile-sidebar fixed inset-y-0 left-0 z-40 flex w-[10.75rem] max-w-[68vw] flex-col border-r border-slate-900 bg-slate-950 no-print transition-all duration-300 lg:static lg:w-64 lg:max-w-none lg:translate-x-0 ${sidebarCollapsed ? 'lg:w-24' : 'lg:w-64'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className={`p-3 md:p-8 flex items-start ${sidebarCollapsed ? 'lg:justify-center lg:px-4' : 'gap-2.5 md:gap-3'}`}>
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0"><Scissors size={20}/></div>
-          <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
+          <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             <h1 className="text-lg md:text-xl font-bold tracking-tighter italic text-white">BarberPro<span className="text-indigo-500">.</span></h1>
             {session?.user?.email && (
               <p className="hidden md:block text-[10px] font-black tracking-[0.14em] uppercase text-slate-500 mt-2 truncate">
@@ -2941,21 +2941,21 @@ export default function App() {
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
-            className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white md:hidden"
+            className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white lg:hidden"
             aria-label="Cerrar menú lateral"
           >
             <X size={16} />
           </button>
         </div>
-        <nav className={`flex-1 overflow-y-auto px-2 md:px-4 space-y-1 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <nav className={`flex-1 overflow-y-auto px-2 md:px-4 pb-3 space-y-1 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-3 py-2.5 md:py-4 rounded-2xl transition-all font-black uppercase text-[8px] md:text-[10px] tracking-[0.16em] md:tracking-widest ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'gap-2 md:gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-3 py-2.5 md:py-4 rounded-2xl transition-all font-black uppercase text-[8px] md:text-[10px] tracking-[0.16em] md:tracking-widest ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : 'gap-2 md:gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
               <item.icon size={16} />
-              <span className={sidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
+              <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className={`px-2 md:px-4 py-3 md:py-4 border-t border-slate-900 ${sidebarCollapsed ? 'md:px-3' : ''}`}>
+        <div className={`mobile-safe-bottom px-2 md:px-4 py-3 md:py-4 border-t border-slate-900 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
           {isSuperAdmin && availableBarbershops.length > 0 && sidebarCollapsed && (
             <button
               type="button"
@@ -3005,22 +3005,22 @@ export default function App() {
             <button
               onClick={() => setShowSelfPasswordModal(true)}
               disabled={passwordBusy}
-              className={`w-full mb-2.5 md:mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              className={`w-full mb-2.5 md:mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'lg:px-0' : 'gap-2'}`}
               title={sidebarCollapsed ? 'Cambiar contraseña' : undefined}
             >
               {passwordBusy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-              <span className={sidebarCollapsed ? 'md:hidden' : ''}>Cambiar contraseña</span>
+              <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cambiar contraseña</span>
             </button>
           )}
           {hasSupabaseConfig && (
             <button
               onClick={handleSignOut}
               disabled={authBusy}
-              className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'md:px-0' : 'gap-2'}`}
+              className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'lg:px-0' : 'gap-2'}`}
               title={sidebarCollapsed ? 'Cerrar sesión' : undefined}
             >
               {authBusy ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
-              <span className={sidebarCollapsed ? 'md:hidden' : ''}>Cerrar Sesión</span>
+              <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cerrar Sesión</span>
             </button>
           )}
         </div>
@@ -3032,7 +3032,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white md:hidden shrink-0"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white lg:hidden shrink-0"
               aria-label="Abrir menú lateral"
             >
               <Menu size={18} />
@@ -3040,7 +3040,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              className="hidden md:flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white"
+              className="hidden lg:flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white"
               aria-label={sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
             >
               <Menu size={18} />
@@ -3057,7 +3057,7 @@ export default function App() {
           )}
         </header>
 
-        <div className="flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
+        <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}

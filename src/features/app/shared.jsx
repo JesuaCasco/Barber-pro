@@ -82,6 +82,31 @@ export const styleTag = `
     border-radius: 10px;
   }
 
+  .mobile-simplify-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+
+  .mobile-main-scroll {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  @media (orientation: landscape) and (max-height: 520px) {
+    .mobile-simplify-shell .mobile-sidebar {
+      max-width: min(62vw, 17rem);
+    }
+
+    .mobile-simplify-shell .mobile-main-scroll {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+    }
+  }
+
   @media (max-width: 1024px) {
     .mobile-simplify-shell {
       font-size: 14px;

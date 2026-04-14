@@ -2931,7 +2931,7 @@ export default function App() {
         <div className={`mobile-sidebar-brand shrink-0 p-3 lg:p-8 flex items-start ${sidebarCollapsed ? 'lg:justify-center lg:px-4' : 'gap-2.5 lg:gap-3'}`}>
           <div className="w-10 h-10 shrink-0 flex items-center justify-center overflow-hidden">
             <img
-              src="/barberpro-logo.png"
+              src="/barberpro-logo-ui.png"
               alt="Logo BarberPro"
               className="h-10 w-10 object-contain scale-[1.2] origin-center"
             />

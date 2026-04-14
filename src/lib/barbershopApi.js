@@ -86,7 +86,6 @@ const fixMojibakeText = (value = '') =>
     .replaceAll('barberÃ­a', 'barbería')
     .replaceAll('barberÃ­as', 'barberías')
     .replaceAll('sesiÃ³n', 'sesión')
-    .replaceAll('sesiÃ³n', 'sesión')
     .replaceAll('vÃ¡lida', 'válida')
     .replaceAll('configuraciÃ³n', 'configuración')
     .replaceAll('funciÃ³n', 'función')

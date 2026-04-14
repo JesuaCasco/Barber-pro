@@ -381,41 +381,41 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         </div>
 
-        <div className="p-3 md:p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
-          <div className="w-full md:w-auto bg-slate-950/50 border border-slate-800 px-4 md:px-10 py-3 md:py-5 rounded-[1.5rem] md:rounded-[2.5rem] flex flex-col items-center shrink-0">
-            <p className="text-[9px] md:text-[10px] font-black text-amber-500 uppercase italic tracking-[0.16em] md:tracking-[0.2em] mb-2 md:mb-3 leading-none">Califica la experiencia</p>
-            <div className="flex gap-2 md:gap-4">
+        <div className="p-2.5 md:p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-2 md:gap-8">
+          <div className="w-full md:w-auto bg-slate-950/50 border border-slate-800 px-3 md:px-10 py-2.5 md:py-5 rounded-[1.2rem] md:rounded-[2.5rem] flex flex-col items-center shrink-0">
+            <p className="text-[8px] md:text-[10px] font-black text-amber-500 uppercase italic tracking-[0.14em] md:tracking-[0.2em] mb-1.5 md:mb-3 leading-none">Califica la experiencia</p>
+            <div className="flex gap-1.5 md:gap-4">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onClick={() => setRating(star)}
                   className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
                 >
-                  <Star size={20} className="md:w-8 md:h-8" fill={star <= rating ? 'currentColor' : 'none'} />
+                  <Star size={16} className="md:w-8 md:h-8" fill={star <= rating ? 'currentColor' : 'none'} />
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex w-full flex-col gap-5 md:flex-row md:items-end md:justify-end">
-            <div className="md:hidden w-full rounded-[1.4rem] border border-slate-800 bg-slate-950/70 px-3.5 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.2)]">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Resumen</p>
-              <div className="mt-2 space-y-1.5">
+            <div className="md:hidden w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-3 py-2.5 shadow-[0_10px_22px_rgba(0,0,0,0.18)]">
+              <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">Resumen</p>
+              <div className="mt-1.5 space-y-1">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Subtotal</span>
-                  <span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Subtotal</span>
+                  <span className="text-[15px] font-black italic text-white leading-none">C$ {subtotal.toLocaleString('es-NI')}</span>
                 </div>
                 {selectedPromotion ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300">Descuento</span>
-                    <span className="text-sm font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span>
+                    <span className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Descuento</span>
+                    <span className="text-[13px] font-black italic text-emerald-300 leading-none">- C$ {promotionDiscount.toLocaleString('es-NI')}</span>
                   </div>
                 ) : null}
               </div>
-              <div className="mt-2.5 border-t border-slate-800 pt-2.5">
+              <div className="mt-2 border-t border-slate-800 pt-2">
                 <div className="flex items-end justify-between gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Total</span>
-                  <span className="whitespace-nowrap text-[26px] font-black italic tracking-tighter leading-none text-emerald-400">
+                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white">Total</span>
+                  <span className="whitespace-nowrap text-[22px] font-black italic tracking-tighter leading-none text-emerald-400">
                     C$ {total.toLocaleString('es-NI')}
                   </span>
                 </div>
@@ -455,7 +455,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
             <button
               disabled={billItems.length === 0}
               onClick={confirmFinalCharge}
-              className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 md:px-16 py-4 md:py-6 rounded-[1.4rem] md:rounded-[2rem] font-black uppercase italic text-[11px] md:text-xs tracking-[0.12em] md:tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0"
+              className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 md:px-16 py-3.5 md:py-6 rounded-[1.2rem] md:rounded-[2rem] font-black uppercase italic text-[10px] md:text-xs tracking-[0.1em] md:tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 md:gap-3 shrink-0"
             >
               <CheckCircle2 size={18} strokeWidth={3} /> CONFIRMAR Y FINALIZAR COBRO
             </button>

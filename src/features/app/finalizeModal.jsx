@@ -34,6 +34,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
   const [rating, setRating] = useState(5);
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
   const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState('catalog');
 
   const billingClient = useMemo(
     () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
@@ -114,11 +115,11 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in text-white no-print">
-      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[90vh] flex flex-col text-white overflow-hidden">
-        <div className="p-8 border-b border-slate-900 flex justify-between items-center bg-black">
+      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[2.4rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[92vh] md:h-[90vh] flex flex-col text-white overflow-hidden">
+        <div className="p-5 md:p-8 border-b border-slate-900 flex justify-between items-center bg-black">
           <div>
-            <h3 className="text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 leading-none">Finaliza el servicio y procesa el pago</p>
+            <h3 className="text-xl md:text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
+            <p className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-[0.16em] md:tracking-widest mt-2 leading-none">Finaliza el servicio y procesa el pago</p>
           </div>
           <button
             onClick={() => {
@@ -127,11 +128,132 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
             }}
             className="p-3 bg-slate-900 rounded-2xl text-slate-500 hover:text-rose-500 transition-all"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="md:hidden flex-1 overflow-y-auto custom-scrollbar bg-slate-950">
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-3 gap-2 rounded-[1.4rem] border border-slate-800 bg-black p-1.5">
+              <button
+                type="button"
+                onClick={() => setMobilePanel('services')}
+                className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase italic tracking-[0.14em] transition-all ${mobilePanel === 'services' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+              >
+                Servicios
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePanel('catalog')}
+                className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase italic tracking-[0.14em] transition-all ${mobilePanel === 'catalog' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+              >
+                Catálogo
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePanel('promos')}
+                className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase italic tracking-[0.14em] transition-all ${mobilePanel === 'promos' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+              >
+                Promos
+              </button>
+            </div>
+
+            {mobilePanel === 'services' && (
+              <div className="rounded-[1.6rem] border border-slate-800 bg-black/35 p-4 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400">Servicios realizados</p>
+                {billItems.length === 0 ? (
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Aún no has agregado servicios</p>
+                ) : (
+                  billItems.map((item) => (
+                    <div key={item.uniqueId} className="rounded-2xl border border-white/5 bg-slate-900 p-3.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-black uppercase italic text-white">{item.name}</p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">C$ {item.price}</p>
+                      </div>
+                      <button onClick={() => removeFromBill(item.uniqueId)} className="shrink-0 p-2 text-slate-600 hover:text-rose-500 transition-colors">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {mobilePanel === 'catalog' && (
+              <div className="rounded-[1.6rem] border border-slate-800 bg-black/35 p-4 space-y-3">
+                <div className="flex gap-2 p-1 bg-black border border-slate-800 rounded-xl overflow-x-auto no-scrollbar">
+                  {['Todos', ...CATEGORIES.filter((category) => category !== 'Promocion')].map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setActiveCategory(category)}
+                      className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase italic tracking-[0.14em] whitespace-nowrap transition-all ${activeCategory === category ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                    >
+                      {category === 'Todos' ? category : (CATEGORY_LABELS[category] || category)}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Buscar item..."
+                    className="w-full bg-black border border-slate-800 rounded-xl pl-4 pr-10 py-2.5 text-[10px] font-black uppercase text-white outline-none focus:border-indigo-600 italic"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {catalog.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => addToBill(item)}
+                      className="rounded-[1.2rem] border border-slate-800 bg-slate-900/60 p-3 text-left hover:border-emerald-500 transition-all"
+                    >
+                      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{item.category}</p>
+                      <p className="mt-1.5 text-[12px] font-black uppercase italic leading-tight text-white">{item.name}</p>
+                      <p className="mt-2 text-[11px] font-black italic text-emerald-400">C$ {item.price}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mobilePanel === 'promos' && (
+              <div className="rounded-[1.6rem] border border-emerald-500/20 bg-black/35 p-4 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Promoción opcional</p>
+                <p className="text-[10px] font-bold text-slate-400">
+                  {selectedPromotion
+                    ? `Aplicada: ${selectedPromotion.name}`
+                    : availablePromotions.length > 0
+                      ? 'Selecciona una promoción guardada'
+                      : 'No hay promociones aplicables ahora'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPromotionPickerOpen(true)}
+                    disabled={availablePromotions.length === 0}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${availablePromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500 opacity-70'}`}
+                  >
+                    Elegir
+                    <ChevronDown size={14} className="text-current" />
+                  </button>
+                  {selectedPromotion ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPromotionId('')}
+                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-rose-300"
+                    >
+                      Quitar
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="hidden md:flex flex-1 flex-col md:flex-row overflow-hidden">
           <div className="w-full md:w-[400px] border-r border-slate-900 flex flex-col bg-black/40">
             <div className="p-6 border-b border-slate-900">
               <h4 className="text-[10px] font-black text-indigo-400 uppercase italic tracking-widest flex items-center gap-2">
@@ -259,24 +381,24 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         </div>
 
-        <div className="p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="bg-slate-950/50 border border-slate-800 px-10 py-5 rounded-[2.5rem] flex flex-col items-center shrink-0">
+        <div className="p-4 md:p-8 bg-black border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8">
+          <div className="w-full md:w-auto bg-slate-950/50 border border-slate-800 px-5 md:px-10 py-4 md:py-5 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center shrink-0">
             <p className="text-[10px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-3 leading-none">Califica la experiencia</p>
-            <div className="flex gap-4">
+            <div className="flex gap-2.5 md:gap-4">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onClick={() => setRating(star)}
                   className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
                 >
-                  <Star size={32} fill={star <= rating ? 'currentColor' : 'none'} />
+                  <Star size={26} className="md:w-8 md:h-8" fill={star <= rating ? 'currentColor' : 'none'} />
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex w-full flex-col gap-5 md:flex-row md:items-end md:justify-end">
-            <div className="w-full md:w-[360px] rounded-[1.8rem] border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+            <div className="w-full md:w-[360px] rounded-[1.6rem] md:rounded-[1.8rem] border border-slate-800 bg-slate-950/70 px-4 md:px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
               <div className="mt-3 space-y-2.5">
                 <div className="flex items-center justify-between gap-4">
@@ -305,11 +427,11 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <button onClick={onClose} className="px-10 py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none shrink-0">Cerrar</button>
+            <button onClick={onClose} className="px-6 md:px-10 py-4 md:py-6 text-[11px] font-black uppercase text-slate-600 hover:text-white italic transition-colors leading-none shrink-0">Cerrar</button>
             <button
               disabled={billItems.length === 0}
               onClick={confirmFinalCharge}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-16 py-6 rounded-[2rem] font-black uppercase italic text-xs tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0"
+              className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 md:px-16 py-5 md:py-6 rounded-[1.6rem] md:rounded-[2rem] font-black uppercase italic text-[11px] md:text-xs tracking-[0.14em] md:tracking-widest disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0"
             >
               <CheckCircle2 size={18} strokeWidth={3} /> CONFIRMAR Y FINALIZAR COBRO
             </button>

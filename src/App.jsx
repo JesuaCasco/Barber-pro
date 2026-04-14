@@ -2869,8 +2869,13 @@ export default function App() {
       const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
       return Math.max(latest, start + duration);
     }, 0);
+    const isToday = standardizeDate(date) === getTodayString();
+    if (isToday) {
+      const nowMinutes = toMinutes(getCurrentTimeHHmm());
+      return toHHmm(Math.max(latestEnd, nowMinutes));
+    }
     if (latestEnd > 0) return toHHmm(latestEnd);
-    return standardizeDate(date) === getTodayString() ? getCurrentTimeHHmm() : '09:00';
+    return '09:00';
   };
 
   const triggerWalkIn = (barberId = defaultBarberId) => {
@@ -5669,6 +5674,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     barberId: initial?.barberId || availableBarbers[0]?.id || '', 
     service: initial?.service || '', 
     price: initial?.price || 0,
+    durationMinutes: Number(initial?.durationMinutes) > 0 ? Number(initial.durationMinutes) : 30,
     type: initial?.type || 'reserva'
   });
   const wrapperRef = useRef(null);
@@ -5698,10 +5704,15 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   const handleSelectClient = (c) => { setSelectedClient(c); setSearchTerm(c.name); setPhoneVal(formatPhoneNumber(c.phone)); setShowResults(false); setModalError(null); };
   const handleSelectService = (s) => { 
     if (s === "POR DEFINIR") { 
-      setForm({...form, service: "POR DEFINIR", price: 0}); 
+      setForm({ ...form, service: "POR DEFINIR", price: 0, durationMinutes: 30 }); 
       setServiceSearch("POR DEFINIR"); 
     } else { 
-      setForm({...form, service: s.name, price: s.price}); 
+      setForm({
+        ...form,
+        service: s.name,
+        price: s.price,
+        durationMinutes: Number(s.durationMinutes) > 0 ? Number(s.durationMinutes) : 30,
+      }); 
       setServiceSearch(s.name); 
     } 
     setShowServiceList(false); setModalError(null); 
@@ -5737,8 +5748,11 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
       return Math.max(latest, start + duration);
     }, 0);
 
+    if (standardizeDate(date) === getTodayString()) {
+      const nowMinutes = toMinutes(getCurrentTimeHHmm());
+      return minutesToHHmm(Math.max(latestEndMinutes, nowMinutes));
+    }
     if (latestEndMinutes > 0) return minutesToHHmm(latestEndMinutes);
-    if (standardizeDate(date) === getTodayString()) return getCurrentTimeHHmm();
     return '09:00';
   };
 
@@ -5759,15 +5773,19 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
       return;
     }
 
-    const newMinutes = toMinutes(form.time);
+    const newStartMinutes = toMinutes(form.time);
+    const newDurationMinutes = Number(form.durationMinutes) > 0 ? Number(form.durationMinutes) : 30;
+    const newEndMinutes = newStartMinutes + newDurationMinutes;
     const hasReservationConflict = form.type !== 'walkin' && (appointments || []).some(a => {
       if (standardizeDate(a.date) !== standardizeDate(form.date) || String(a.barberId) !== String(form.barberId) || a.status === 'Cancelada' || a.status === 'Finalizada' || a.status === 'Cita Perdida') return false;
-      const aptMinutes = toMinutes(a.time);
-      return Math.abs(newMinutes - aptMinutes) < 15;
+      const existingStartMinutes = toMinutes(a.time);
+      const existingDurationMinutes = Number(a.durationMinutes) > 0 ? Number(a.durationMinutes) : 30;
+      const existingEndMinutes = existingStartMinutes + existingDurationMinutes;
+      return newStartMinutes < existingEndMinutes && existingStartMinutes < newEndMinutes;
     });
 
     if (hasReservationConflict) { 
-      setModalError(`Este barbero ya tiene una reserva confirmada cerca de las ${form.time}.`); 
+      setModalError(`Este barbero ya tiene una cita que se solapa con el horario ${form.time}.`); 
       return; 
     } 
     

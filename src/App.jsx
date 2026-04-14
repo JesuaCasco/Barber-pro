@@ -2845,16 +2845,45 @@ export default function App() {
     }
   };
 
+  const getNextWalkinQueueTime = (barberId, date = getTodayString()) => {
+    if (!barberId || !date) return getCurrentTimeHHmm();
+    const toMinutes = (time = '00:00') => {
+      if (!time || typeof time !== 'string') return 0;
+      const [hours, minutes] = time.split(':').map((value) => Number(value));
+      return hours * 60 + minutes;
+    };
+    const toHHmm = (minutes) => {
+      const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
+      const h = Math.floor(safeMinutes / 60);
+      const m = safeMinutes % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+    const activeStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
+    const sameBarberDay = (appointments || []).filter((appointment) => (
+      standardizeDate(appointment.date) === standardizeDate(date)
+      && String(appointment.barberId) === String(barberId)
+      && activeStatuses.has(appointment.status || 'Confirmada')
+    ));
+    const latestEnd = sameBarberDay.reduce((latest, appointment) => {
+      const start = toMinutes(appointment.time);
+      const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
+      return Math.max(latest, start + duration);
+    }, 0);
+    if (latestEnd > 0) return toHHmm(latestEnd);
+    return standardizeDate(date) === getTodayString() ? getCurrentTimeHHmm() : '09:00';
+  };
+
   const triggerWalkIn = (barberId = defaultBarberId) => {
     if (!barberId) {
       notify('Primero debes tener barberos registrados en esta sucursal para crear un turno sin cita.', 'warning');
       return;
     }
+    const walkinDate = getTodayString();
     setSelectedData({
         ...selectedData,
         appointment: {
-            date: getTodayString(),
-            time: getCurrentTimeHHmm(),
+            date: walkinDate,
+            time: getNextWalkinQueueTime(barberId, walkinDate),
             barberId,
             type: 'walkin'
         }
@@ -5684,6 +5713,35 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     return h * 60 + m;
   };
 
+  const minutesToHHmm = (minutes) => {
+    const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
+    const h = Math.floor(safeMinutes / 60);
+    const m = safeMinutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const getWalkinQueueTime = (barberId, date) => {
+    if (!barberId || !date) return getCurrentTimeHHmm();
+
+    const activeQueueStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
+    const sameBarberDay = (appointments || []).filter((appointment) => {
+      if (standardizeDate(appointment.date) !== standardizeDate(date)) return false;
+      if (String(appointment.barberId) !== String(barberId)) return false;
+      if (!activeQueueStatuses.has(appointment.status || 'Confirmada')) return false;
+      return true;
+    });
+
+    const latestEndMinutes = sameBarberDay.reduce((latest, appointment) => {
+      const start = toMinutes(appointment.time);
+      const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
+      return Math.max(latest, start + duration);
+    }, 0);
+
+    if (latestEndMinutes > 0) return minutesToHHmm(latestEndMinutes);
+    if (standardizeDate(date) === getTodayString()) return getCurrentTimeHHmm();
+    return '09:00';
+  };
+
   const handleSubmit = (e) => { 
     e.preventDefault(); 
     setModalError(null); 
@@ -5702,7 +5760,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     }
 
     const newMinutes = toMinutes(form.time);
-    const hasReservationConflict = (appointments || []).some(a => {
+    const hasReservationConflict = form.type !== 'walkin' && (appointments || []).some(a => {
       if (standardizeDate(a.date) !== standardizeDate(form.date) || String(a.barberId) !== String(form.barberId) || a.status === 'Cancelada' || a.status === 'Finalizada' || a.status === 'Cita Perdida') return false;
       const aptMinutes = toMinutes(a.time);
       return Math.abs(newMinutes - aptMinutes) < 15;
@@ -5746,7 +5804,11 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-white">
                 {availableBarbers.map(b => (
-                  <div key={b.id} onClick={() => setForm({...form, barberId: b.id})} className={`p-4 rounded-[1.8rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-3 justify-center relative ${form.barberId === b.id ? `${b.color} bg-indigo-600/10 shadow-lg scale-[1.02]` : 'border-slate-800 bg-black'}`}>
+                  <div key={b.id} onClick={() => setForm((prev) => {
+                    const nextBarberId = b.id;
+                    const nextTime = prev.type === 'walkin' ? getWalkinQueueTime(nextBarberId, prev.date) : prev.time;
+                    return { ...prev, barberId: nextBarberId, time: nextTime };
+                  })} className={`p-4 rounded-[1.8rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-3 justify-center relative ${form.barberId === b.id ? `${b.color} bg-indigo-600/10 shadow-lg scale-[1.02]` : 'border-slate-800 bg-black'}`}>
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black italic shadow-xl text-white ${b.bg}`}>{b.avatar}</div>
                     <p className="text-[10px] font-black uppercase italic text-white leading-tight">{b.name}</p>
                   </div>
@@ -5793,11 +5855,20 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4 text-white">
-                <input type="date" className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                <input
+                  type="date"
+                  className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic"
+                  value={form.date}
+                  onChange={e => setForm((prev) => {
+                    const nextDate = e.target.value;
+                    const nextTime = prev.type === 'walkin' ? getWalkinQueueTime(prev.barberId, nextDate) : prev.time;
+                    return { ...prev, date: nextDate, time: nextTime };
+                  })}
+                />
                 {form.type === 'walkin' ? (
                   <div className="w-full bg-indigo-600/10 border border-indigo-500/30 py-4 px-6 rounded-[1.2rem] flex items-center gap-2 text-white">
                     <Clock size={14} className="text-indigo-400" />
-                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (Auto)</span>
+                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (Auto) · {form.time || '--:--'}</span>
                   </div>
                 ) : (
                   <input type="time" className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />

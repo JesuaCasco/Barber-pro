@@ -141,7 +141,7 @@ const applyTenantScope = (query, { isSuperAdmin, currentBarbershopId, currentBra
 const validateBranchBelongsToBarbershop = async (barbershopId, branchId) => {
   if (!branchId) return;
   if (!barbershopId) {
-    throw normalizeError(null, 'Debes asignar una barbería antes de seleccionar una sucursal.');
+    throw normalizeError(null, 'Debes asignar una barber\u00eda antes de seleccionar una sucursal.');
   }
 
   const { data, error } = await supabase
@@ -153,7 +153,7 @@ const validateBranchBelongsToBarbershop = async (barbershopId, branchId) => {
   if (error) throw normalizeError(error, 'No se pudo validar la sucursal seleccionada.');
   if (!data) throw normalizeError(null, 'La sucursal seleccionada no existe.');
   if (String(data.barbershop_id || '') !== String(barbershopId || '')) {
-    throw normalizeError(null, 'La sucursal seleccionada no pertenece a la barbería indicada.');
+    throw normalizeError(null, 'La sucursal seleccionada no pertenece a la barber\u00eda indicada.');
   }
 };
 
@@ -802,7 +802,7 @@ export async function fetchAccessControlSnapshot(currentUserId) {
       if (error) throw error;
       barbershopsData = data || [];
   } catch (error) {
-    throw normalizeError(error, 'No se pudieron cargar las barberías visibles para este usuario.');
+    throw normalizeError(error, 'No se pudieron cargar las barber\u00edas visibles para este usuario.');
   }
   }
   if (!isSuperAdmin && currentBarbershopId) {
@@ -815,7 +815,7 @@ export async function fetchAccessControlSnapshot(currentUserId) {
       if (error) throw error;
       barbershopsData = data || [];
     } catch (error) {
-      throw normalizeError(error, 'No se pudieron cargar las barberías visibles para este usuario.');
+      throw normalizeError(error, 'No se pudieron cargar las barber\u00edas visibles para este usuario.');
     }
   }
 
@@ -1078,7 +1078,7 @@ export async function createManagedUser(payload, currentUserId = null) {
 
     if (!scope.isSuperAdmin) {
       if (!scope.currentBarbershopId) {
-        throw normalizeError(null, 'Tu usuario administrador no tiene una barbería asignada.');
+        throw normalizeError(null, 'Tu usuario administrador no tiene una barber\u00eda asignada.');
       }
 
       normalizedPayload = {
@@ -1201,8 +1201,8 @@ export async function upsertBarbers(barbers, barbershopId = null, branchId = nul
       throw normalizeError(
         null,
         scope?.currentBarbershopId
-          ? 'No se pudo resolver la barbería del barbero antes de asignar la sucursal.'
-          : 'Tu usuario no tiene una barbería asignada. Asigna primero la barbería del administrador.',
+          ? 'No se pudo resolver la barber\u00eda del barbero antes de asignar la sucursal.'
+          : 'Tu usuario no tiene una barber\u00eda asignada. Asigna primero la barber\u00eda del administrador.',
       );
     }
     await validateBranchBelongsToBarbershop(barberBarbershopId, barberBranchId);
@@ -1302,7 +1302,7 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
   const resolvedBranchId = sale.branchId ?? scope.currentBranchId ?? null;
 
   if (!resolvedBarbershopId) {
-    throw normalizeError(null, 'No se pudo resolver la barbería para registrar la venta.');
+    throw normalizeError(null, 'No se pudo resolver la barber\u00eda para registrar la venta.');
   }
 
   if (!resolvedBranchId) {

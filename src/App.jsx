@@ -154,6 +154,45 @@ const UiFeedbackContext = createContext({
 
 const useUiFeedback = () => useContext(UiFeedbackContext);
 
+const resolveWalkinQueueTime = ({ appointments = [], barberId, date = getTodayString() }) => {
+  if (!barberId || !date) return getCurrentTimeHHmm();
+
+  const toMinutes = (time = '00:00') => {
+    if (!time || typeof time !== 'string') return 0;
+    const [hours, minutes] = time.split(':').map((value) => Number(value));
+    return hours * 60 + minutes;
+  };
+
+  const toHHmm = (minutes) => {
+    const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
+    const h = Math.floor(safeMinutes / 60);
+    const m = safeMinutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const activeStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
+  const sameBarberDay = (appointments || []).filter((appointment) => (
+    standardizeDate(appointment.date) === standardizeDate(date)
+    && String(appointment.barberId) === String(barberId)
+    && activeStatuses.has(appointment.status || 'Confirmada')
+  ));
+
+  const latestEnd = sameBarberDay.reduce((latest, appointment) => {
+    const start = toMinutes(appointment.time);
+    const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
+    return Math.max(latest, start + duration);
+  }, 0);
+
+  const isToday = standardizeDate(date) === getTodayString();
+  if (isToday) {
+    const nowMinutes = toMinutes(getCurrentTimeHHmm());
+    return toHHmm(Math.max(latestEnd, nowMinutes));
+  }
+
+  if (latestEnd > 0) return toHHmm(latestEnd);
+  return '09:00';
+};
+
 function SystemView({
   currentUser,
   accessControl,
@@ -2846,36 +2885,7 @@ export default function App() {
   };
 
   const getNextWalkinQueueTime = (barberId, date = getTodayString()) => {
-    if (!barberId || !date) return getCurrentTimeHHmm();
-    const toMinutes = (time = '00:00') => {
-      if (!time || typeof time !== 'string') return 0;
-      const [hours, minutes] = time.split(':').map((value) => Number(value));
-      return hours * 60 + minutes;
-    };
-    const toHHmm = (minutes) => {
-      const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
-      const h = Math.floor(safeMinutes / 60);
-      const m = safeMinutes % 60;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    };
-    const activeStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
-    const sameBarberDay = (appointments || []).filter((appointment) => (
-      standardizeDate(appointment.date) === standardizeDate(date)
-      && String(appointment.barberId) === String(barberId)
-      && activeStatuses.has(appointment.status || 'Confirmada')
-    ));
-    const latestEnd = sameBarberDay.reduce((latest, appointment) => {
-      const start = toMinutes(appointment.time);
-      const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
-      return Math.max(latest, start + duration);
-    }, 0);
-    const isToday = standardizeDate(date) === getTodayString();
-    if (isToday) {
-      const nowMinutes = toMinutes(getCurrentTimeHHmm());
-      return toHHmm(Math.max(latestEnd, nowMinutes));
-    }
-    if (latestEnd > 0) return toHHmm(latestEnd);
-    return '09:00';
+    return resolveWalkinQueueTime({ appointments, barberId, date });
   };
 
   const triggerWalkIn = (barberId = defaultBarberId) => {
@@ -5724,36 +5734,8 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     return h * 60 + m;
   };
 
-  const minutesToHHmm = (minutes) => {
-    const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
-    const h = Math.floor(safeMinutes / 60);
-    const m = safeMinutes % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  };
-
   const getWalkinQueueTime = (barberId, date) => {
-    if (!barberId || !date) return getCurrentTimeHHmm();
-
-    const activeQueueStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
-    const sameBarberDay = (appointments || []).filter((appointment) => {
-      if (standardizeDate(appointment.date) !== standardizeDate(date)) return false;
-      if (String(appointment.barberId) !== String(barberId)) return false;
-      if (!activeQueueStatuses.has(appointment.status || 'Confirmada')) return false;
-      return true;
-    });
-
-    const latestEndMinutes = sameBarberDay.reduce((latest, appointment) => {
-      const start = toMinutes(appointment.time);
-      const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
-      return Math.max(latest, start + duration);
-    }, 0);
-
-    if (standardizeDate(date) === getTodayString()) {
-      const nowMinutes = toMinutes(getCurrentTimeHHmm());
-      return minutesToHHmm(Math.max(latestEndMinutes, nowMinutes));
-    }
-    if (latestEndMinutes > 0) return minutesToHHmm(latestEndMinutes);
-    return '09:00';
+    return resolveWalkinQueueTime({ appointments, barberId, date });
   };
 
   const handleSubmit = (e) => { 

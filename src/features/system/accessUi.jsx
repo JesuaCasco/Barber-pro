@@ -7,7 +7,6 @@ import {
   Lock,
   Mail,
   Save,
-  Scissors,
   ShieldCheck,
   UserCheck,
   X,
@@ -56,8 +55,12 @@ export function LoginScreen({ onSignIn, authBusy, authError }) {
             }}
           />
 
-          <div className="absolute z-10 top-16 left-14 md:top-20 md:left-16 w-20 h-20 rounded-[1.8rem] border border-fuchsia-400 bg-violet-600 flex items-center justify-center shadow-[0_0_34px_rgba(168,85,247,0.6)]">
-            <Scissors size={34} className="text-white" />
+          <div className="absolute z-10 top-16 left-14 md:top-20 md:left-16 w-20 h-20 flex items-center justify-center">
+            <img
+              src="/barberpro-logo.png"
+              alt="Logo BarberPro"
+              className="h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(168,85,247,0.35)]"
+            />
           </div>
 
           <div className="relative z-10 h-full p-10 md:p-14 flex flex-col justify-end">

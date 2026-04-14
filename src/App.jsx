@@ -5479,10 +5479,15 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
                 </div>
                 
-                <div className="relative z-10 mt-2 flex-1 overflow-x-auto custom-scrollbar pb-3">
+                <div className="relative z-10 mt-2 flex-1 overflow-x-auto custom-scrollbar pb-3 px-1 md:px-0">
                   <div
-                    className="relative h-[280px] min-w-[340px] md:h-[300px]"
-                    style={{ width: monthlyStaffMetrics.length > 3 ? `${monthlyStaffMetrics.length * 94}px` : '100%' }}
+                    className="relative h-[280px] min-w-[300px] md:h-[300px] md:min-w-[340px]"
+                    style={{
+                      width:
+                        monthlyStaffMetrics.length > 3
+                          ? `${Math.max(340, monthlyStaffMetrics.length * 88 + 72)}px`
+                          : '100%',
+                    }}
                   >
                     {/* CUADRÍCULA ESTRUCTURADA DE FONDO */}
                     <div className="absolute inset-0 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-8 md:ml-10 mb-16 md:mb-20">
@@ -5494,14 +5499,17 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                       ))}
                     </div>
 
-                    <div className="relative flex h-full items-end justify-between gap-2 md:gap-4 px-3 md:px-4">
+                    <div className="relative flex h-full items-end justify-start md:justify-between gap-2.5 md:gap-4 pl-10 pr-8 md:pl-12 md:pr-6">
                       {monthlyStaffMetrics.map((b) => {
                         const countHeight = (b.count / maxMonthlyApts) * 100;
                         const salesHeight = (b.sales / maxMonthlySales) * 100;
                         const barberColorClass = b.bg || 'bg-indigo-600';
 
                         return (
-                          <div key={b.id} className="flex min-w-[78px] flex-1 flex-col items-center justify-end h-full group text-white">
+                          <div
+                            key={b.id}
+                            className="flex w-[68px] md:w-auto md:min-w-[78px] shrink-0 md:flex-1 flex-col items-center justify-end h-full group text-white"
+                          >
                             <div className="flex items-end gap-1.5 md:gap-2.5 w-full justify-center px-1 h-full min-h-[40px] relative text-white">
                               {/* Barra de Citas */}
                               <div className="flex flex-col items-center justify-end h-full w-full max-w-[20px] md:max-w-[32px] relative text-white">

@@ -503,8 +503,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                       }}
                       className={`w-full rounded-[1.5rem] border px-5 py-4 text-left transition-all ${selectedPromotion?.id === promotion.id ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)]' : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'}`}
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
                           <p className="text-sm font-black uppercase italic text-white">{promotion.name}</p>
                           <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                             {promotion.isLoyaltyReward
@@ -512,8 +512,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                               : `${formatPromotionValue(promotion)} · descuento sobre el cobro`}
                           </p>
                         </div>
-                        <span className="text-sm font-black italic text-emerald-300">
-                          - C$ {calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
+                        <span className="shrink-0 whitespace-nowrap text-[12px] font-black italic leading-none text-emerald-300 md:text-sm">
+                          - C${calculatePromotionDiscount(promotion, billItems).amount.toLocaleString('es-NI')}
                         </span>
                       </div>
                     </button>

@@ -3526,8 +3526,8 @@ function StaffSettlementModal({ data, onClose, onConfirmSettlement }) {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in text-white no-print">
-      <div className="bg-white text-black w-full max-w-7xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[95vh]">
-        <div className="p-10 overflow-y-auto custom-scrollbar" id="printable-staff-settlement">
+      <div className="bg-white text-black w-full max-w-7xl rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[95vh]">
+        <div className="p-4 md:p-10 overflow-y-auto custom-scrollbar" id="printable-staff-settlement">
           <div className="flex items-start justify-between gap-6 mb-8">
             <div>
               <h2 className="text-3xl font-black uppercase italic tracking-widest text-slate-900">BarberSoft</h2>
@@ -3560,8 +3560,8 @@ function StaffSettlementModal({ data, onClose, onConfirmSettlement }) {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200">
-            <table className="w-full">
+          <div className="rounded-[1.5rem] md:rounded-[2rem] border border-slate-200 overflow-x-auto custom-scrollbar">
+            <table className="min-w-[1100px] w-full">
               <thead className="bg-slate-100">
                 <tr className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
                   <th className="px-5 py-4 text-left">Barbero</th>
@@ -3626,7 +3626,7 @@ function StaffSettlementModal({ data, onClose, onConfirmSettlement }) {
           </div>
         </div>
 
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row gap-4 no-print">
+        <div className="p-4 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row gap-4 no-print">
           <button onClick={onClose} className="md:w-auto px-6 py-4 bg-white border border-slate-200 text-slate-400 font-black uppercase italic text-[10px] rounded-2xl hover:bg-slate-100 transition-all">
             Cerrar
           </button>
@@ -4454,12 +4454,12 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
   ];
 
   return (
-    <div className="p-10 space-y-8 animate-in fade-in text-white no-print">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-10 space-y-6 md:space-y-8 animate-in fade-in text-white no-print">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button 
             onClick={onClose}
-            className="p-4 bg-slate-900 rounded-2xl text-white hover:bg-indigo-600 transition-all border border-slate-800"
+            className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white hover:bg-indigo-600 transition-all border border-slate-800"
           >
             <ChevronLeft size={20} />
           </button>
@@ -4468,7 +4468,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
             <p className="text-[#4ade80] text-[10px] font-black uppercase tracking-widest mt-1 italic leading-none">Procesar pagos pendientes del staff</p>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
+        <div className="bg-slate-900 border border-slate-800 p-3 md:p-4 rounded-2xl flex items-center gap-4 self-start md:self-auto">
           <CalendarIcon size={20} className="text-[#6366f1]" />
           <div className="text-right">
             <p className="text-[9px] text-slate-500 font-black uppercase leading-none mb-1">Periodo Actual</p>
@@ -4498,8 +4498,9 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
         })}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl">
-        <table className="w-full text-left">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl">
+        <div className="overflow-x-auto custom-scrollbar">
+        <table className="min-w-[980px] w-full text-left">
           <thead className="bg-black/80 border-b border-slate-800 font-black uppercase text-[10px] text-slate-500 tracking-[0.2em] italic">
             <tr>
               <th className="px-10 py-7">Staff / Barbero</th>
@@ -4507,7 +4508,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
               <th className="px-10 py-7 text-center">Base</th>
               <th className="px-10 py-7 text-center">Comisiones</th>
               <th className="px-10 py-7 text-right">Total a Pagar</th>
-              <th className="px-10 py-7 text-right">Acci?n</th>
+              <th className="px-10 py-7 text-right">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
@@ -4548,12 +4549,13 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
-      <div className="flex justify-end pt-8">
+      <div className="flex justify-end pt-4 md:pt-8">
         <button
           onClick={() => onLiquidarTodo(payrollRows, summary)}
-          className="bg-[#4ade80] hover:bg-[#34d399] text-[#064e3b] px-12 py-6 rounded-[2.5rem] flex items-center gap-3 text-xs font-black uppercase italic tracking-widest transition-all shadow-[0_0_30px_rgba(74,222,128,0.3)] active:scale-95"
+          className="w-full md:w-auto bg-[#4ade80] hover:bg-[#34d399] text-[#064e3b] px-7 md:px-12 py-4 md:py-6 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center gap-3 text-[10px] md:text-xs font-black uppercase italic tracking-[0.16em] md:tracking-widest transition-all shadow-[0_0_30px_rgba(74,222,128,0.3)] active:scale-95"
         >
           Liquidar Todo el Staff <ArrowRight size={18} />
         </button>

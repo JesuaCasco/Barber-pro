@@ -102,6 +102,42 @@ export const styleTag = `
       max-width: min(62vw, 17rem);
     }
 
+    .mobile-simplify-shell .mobile-sidebar-brand {
+      padding-top: 0.6rem !important;
+      padding-bottom: 0.55rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-email {
+      display: none !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-tenant-panel {
+      display: none !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-footer {
+      padding-top: 0.45rem !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.45rem) !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-actions {
+      display: none !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-nav {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      padding-top: 0.2rem !important;
+      padding-bottom: 0.55rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar nav button {
+      padding-top: 0.52rem !important;
+      padding-bottom: 0.52rem !important;
+      font-size: 8px !important;
+      letter-spacing: 0.12em !important;
+    }
+
     .mobile-simplify-shell .mobile-main-scroll {
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
     }

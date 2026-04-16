@@ -3038,8 +3038,8 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 min-w-0">
-        <header className="bg-black border-b border-slate-900 px-3 md:px-8 py-2.5 md:py-4 flex flex-col gap-2.5 md:gap-3 z-20 no-print">
-          <div className="flex w-full items-center gap-3 min-w-0">
+        <header className="bg-black border-b border-slate-900 px-3 md:px-8 py-2.5 md:py-4 flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between z-20 no-print">
+          <div className="flex w-full md:w-auto items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
@@ -3061,7 +3061,7 @@ export default function App() {
             </div>
           </div>
           {(activeTab === 'clientes' || activeTab === 'agenda') && (
-            <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center justify-stretch sm:justify-end gap-3">
+            <div className="flex w-full md:w-auto flex-col sm:flex-row items-stretch sm:items-center justify-stretch md:justify-end gap-3">
               {activeTab === 'clientes' && <button onClick={() => { setSelectedData({ ...selectedData, client: null }); setModals({ ...modals, client: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><UserPlus size={16}/> Nuevo Cliente</button>}
               {activeTab === 'agenda' && <button onClick={() => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: '09:00', barberId: defaultBarberId } }); setModals({ ...modals, appointment: true }); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-5 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all"><Plus size={16}/> Nueva Cita</button>}
             </div>

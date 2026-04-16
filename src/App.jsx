@@ -2928,11 +2928,11 @@ export default function App() {
 
       <aside className={`mobile-sidebar fixed inset-y-0 left-0 z-40 flex w-[10.75rem] max-w-[68vw] flex-col border-r border-slate-900 bg-slate-950 no-print overflow-hidden transition-all duration-300 lg:static lg:max-w-none lg:translate-x-0 ${sidebarCollapsed ? 'lg:w-0 lg:min-w-0 lg:opacity-0 lg:pointer-events-none lg:border-r-transparent' : 'lg:w-64 lg:opacity-100'} ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className={`mobile-sidebar-brand shrink-0 p-3 lg:p-8 flex items-start ${sidebarCollapsed ? 'lg:justify-center lg:px-4' : 'gap-2.5 lg:gap-3'}`}>
-          <div className="w-10 h-10 shrink-0 flex items-center justify-center overflow-hidden">
+          <div className="w-12 h-12 shrink-0 flex items-center justify-center rounded-[1rem] p-1">
             <img
               src="/barberpro-logo-ui.png"
               alt="Logo BarberPro"
-              className="h-10 w-10 object-contain scale-[1.2] origin-center"
+              className="h-9 w-9 object-contain"
             />
           </div>
           <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>

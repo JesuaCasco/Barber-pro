@@ -55,11 +55,11 @@ export function LoginScreen({ onSignIn, authBusy, authError }) {
             }}
           />
 
-          <div className="absolute z-10 top-16 left-14 md:top-20 md:left-16 w-24 h-24 md:w-28 md:h-28 flex items-center justify-center overflow-hidden">
+          <div className="absolute z-10 top-16 left-14 md:top-20 md:left-16 w-28 h-28 md:w-32 md:h-32 flex items-center justify-center rounded-[1.75rem] p-3">
             <img
               src="/barberpro-logo-ui.png"
               alt="Logo BarberPro"
-              className="h-full w-full object-contain scale-[1.55] origin-center drop-shadow-[0_0_18px_rgba(168,85,247,0.35)]"
+              className="h-full w-full object-contain drop-shadow-[0_0_18px_rgba(168,85,247,0.35)]"
             />
           </div>
 

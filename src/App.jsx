@@ -3865,37 +3865,37 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300 text-white">
-          <div className="w-full max-w-5xl bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 flex flex-col md:flex-row relative text-white transform scale-110 origin-center">
+          <div className="w-full max-w-[70rem] max-h-[92vh] bg-slate-950 border border-white/10 rounded-[2.4rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 flex flex-col md:flex-row relative text-white">
             
             <button onClick={closeModal} className="absolute top-6 right-6 p-3 rounded-2xl bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-400 transition-all z-20 text-white">
               <X size={20} />
             </button>
 
-            <div className={`w-full md:w-1/3 p-10 flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-b from-white/5 to-transparent relative overflow-y-auto custom-scrollbar text-white`}>
+            <div className={`w-full md:w-[30%] p-7 flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-b from-white/5 to-transparent relative overflow-y-auto custom-scrollbar text-white`}>
               <div className={`absolute top-0 left-0 w-full h-1 ${form.bg || 'bg-indigo-500'}`}></div>
-              <div className="relative group mb-8 text-white mt-4">
+              <div className="relative group mb-6 text-white mt-3">
                 <div className={`absolute inset-0 ${form.bg || 'bg-indigo-500'} blur-2xl opacity-30 group-hover:opacity-50 transition-opacity`}></div>
-                <div className={`w-32 h-32 rounded-[2.5rem] ${form.bg || 'bg-indigo-500'} flex items-center justify-center text-white font-black text-4xl shadow-2xl relative z-10 border-4 border-white/10 animate-glow text-white`}>
+                <div className={`w-24 h-24 rounded-[2rem] ${form.bg || 'bg-indigo-500'} flex items-center justify-center text-white font-black text-3xl shadow-2xl relative z-10 border-4 border-white/10 animate-glow text-white`}>
                   {(form.name || 'NB').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
                 </div>
               </div>
               
-              <h4 className="text-2xl font-black text-white uppercase tracking-tighter text-center mb-1 leading-none">{form.name || 'Sin Nombre'}</h4>
-              <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-[0.18em] text-center mb-2">{form.fullName || 'Nombre legal pendiente'}</p>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.18em] mb-6 italic">Cédula: {form.cedula || 'Sin registrar'}</p>
-              <div className="mb-6 px-4 py-3 w-full rounded-2xl border border-white/5 bg-white/5 text-white">
+              <h4 className="text-xl font-black text-white uppercase tracking-tighter text-center mb-1 leading-none">{form.name || 'Sin Nombre'}</h4>
+              <p className="text-[9px] font-bold text-indigo-200 uppercase tracking-[0.16em] text-center mb-2">{form.fullName || 'Nombre legal pendiente'}</p>
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.16em] mb-4 italic">Cédula: {form.cedula || 'Sin registrar'}</p>
+              <div className="mb-4 px-4 py-3 w-full rounded-2xl border border-white/5 bg-white/5 text-white">
                 <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] italic leading-none">Sucursal actual</p>
-                <p className="mt-3 text-sm font-black text-white italic">{branchNameById.get(String(form.branchId || '')) || 'Sucursal obligatoria'}</p>
+                <p className="mt-2 text-sm font-black text-white italic">{branchNameById.get(String(form.branchId || '')) || 'Sucursal obligatoria'}</p>
               </div>
               
-              <div className="w-full space-y-4 text-white">
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between text-white">
+              <div className="w-full space-y-3 text-white">
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex items-center justify-between text-white">
                   <div className="flex items-center gap-3 text-white/40"><Briefcase size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Modo</span></div>
                   <span className="text-[11px] font-black uppercase text-indigo-400 italic leading-none">{getBarberPaymentModeLabel(form.paymentMode, form.commission || 0)}</span>
                 </div>
 
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 text-white">
-                  <div className="flex items-center gap-3 text-white/40 mb-3"><Repeat size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Frecuencia de Pago</span></div>
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5 text-white">
+                  <div className="flex items-center gap-3 text-white/40 mb-2"><Repeat size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Frecuencia de Pago</span></div>
                   <div className="grid grid-cols-2 gap-2 text-white">
                     {['Diario', 'Semanal', 'Quincenal', 'Mensual'].map(freq => (
                       <button key={freq} onClick={() => setForm({...form, paymentFrequency: freq})} className={`py-2 rounded-xl text-[8px] font-black uppercase transition-all ${form.paymentFrequency === freq ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'bg-black/40 text-white/40 hover:text-white/60'}`}>
@@ -3905,8 +3905,8 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   </div>
                 </div>
 
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 text-white">
-                  <div className="flex items-center gap-3 text-white/40 mb-3"><Award size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Nivel de Rango</span></div>
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5 text-white">
+                  <div className="flex items-center gap-3 text-white/40 mb-2"><Award size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Nivel de Rango</span></div>
                   <div className="grid grid-cols-3 gap-2 text-white">
                     {['Junior', 'Medium', 'Senior'].map(lvl => (
                       <button key={lvl} onClick={() => setForm({...form, level: lvl})} className={`py-2 rounded-xl text-[8px] font-black uppercase transition-all ${form.level === lvl ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'bg-black/40 text-white/40 hover:text-white/60'}`}>
@@ -3918,8 +3918,8 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
               </div>
             </div>
 
-            <div className="flex-1 p-10 flex flex-col text-white">
-              <div className="flex items-center gap-4 mb-10 text-white">
+            <div className="flex-1 p-7 overflow-y-auto custom-scrollbar flex flex-col text-white">
+              <div className="flex items-center gap-4 mb-6 text-white">
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><IdCard size={20}/></div>
                 <div>
                   <h3 className="text-xl font-black uppercase italic text-white tracking-tighter leading-none">{editing ? 'Editar Perfil' : 'Alta de Personal'}</h3>
@@ -3927,40 +3927,40 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 text-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-white">
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Comercial</label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Completo</label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos Pérez López" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos Pérez López" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Teléfono móvil</label>
                   <div className="relative group text-white">
                     <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} placeholder="Ej. 8899-4455" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} placeholder="Ej. 8899-4455" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Cédula</label>
                   <div className="relative group text-white">
                     <IdCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: e.target.value })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: e.target.value })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Modalidad de Pago</label>
                   <div className="relative group text-white">
                     <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-400 transition-colors" size={16}/>
-                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
+                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
                         {BARBER_PAYMENT_MODE_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id} className="bg-slate-950 text-white">{option.label}</option>
                         ))}
@@ -3972,7 +3972,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                     <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sueldo base (C$)</label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">C$</div>
-                      <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                      <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
                     </div>
                   </div>
                   )}
@@ -3981,7 +3981,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                     <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisión (%)</label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">%</div>
-                      <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                      <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
                     </div>
                   </div>
                   )}
@@ -3994,7 +3994,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                         value={form.branchId || ''}
                         onChange={(e) => setForm({ ...form, branchId: e.target.value })}
                         disabled={!branchesForCurrentBarbershop.length}
-                        className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all disabled:opacity-60 appearance-none cursor-pointer"
+                        className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all disabled:opacity-60 appearance-none cursor-pointer"
                       >
                         <option value="" disabled className="bg-slate-950 text-white">
                           {branchesForCurrentBarbershop.length ? 'Selecciona una sucursal' : 'Sin sucursales disponibles'}
@@ -4010,7 +4010,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                 )}
               </div>
 
-              <div className="mb-10 text-white">
+              <div className="mb-6 text-white">
                 <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] ml-2 block mb-4 italic leading-none">Color de Identificaci?n Visual</label>
                 <div className="grid grid-cols-4 md:grid-cols-6 gap-3 text-white">
                   {BARBER_THEME_PALETTE.map((theme) => {
@@ -4025,11 +4025,11 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-auto pt-6 border-t border-white/5 text-white">
-                <button onClick={() => void submit()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest italic shadow-xl shadow-emerald-900/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+              <div className="flex gap-4 mt-auto pt-5 border-t border-white/5 text-white">
+                <button onClick={() => void submit()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest italic shadow-xl shadow-emerald-900/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
                   <CheckCircle2 size={16}/> {editing ? 'Actualizar Perfil' : 'Dar de Alta'}
                 </button>
-                <button onClick={closeModal} className="px-8 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest italic transition-all flex items-center justify-center gap-3 border border-white/5">
+                <button onClick={closeModal} className="px-8 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest italic transition-all flex items-center justify-center gap-3 border border-white/5">
                   <X size={16}/> Cancelar
                 </button>
               </div>

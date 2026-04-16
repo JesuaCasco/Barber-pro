@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, Printer, HandCoins } from 'lucide-react';
+import { getBarberPaymentModeLabel } from './shared';
 
 const noopConfirm = async () => false;
 
@@ -335,7 +336,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="text-[11px] font-black uppercase text-slate-700">{nomina.modalityLabel}</p>
+                      <p className="text-[11px] font-black uppercase text-slate-700">{getBarberPaymentModeLabel(barber.paymentMode, nomina.commissionRate)}</p>
                       <p className="text-[11px] text-slate-500 mt-2">Servicios: {nomina.pendingServices}</p>
                       <p className="text-[11px] text-slate-500">Ventas base comisión: C$ {nomina.salesTotal.toLocaleString()}</p>
                     </td>

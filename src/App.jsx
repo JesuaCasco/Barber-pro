@@ -92,6 +92,7 @@ import {
 import {
   CATEGORY_LABELS,
   BARBER_THEME_PALETTE,
+  BARBER_PAYMENT_MODE_OPTIONS,
   BUSINESS_PLANS,
   CATEGORIES,
   HOURS,
@@ -101,9 +102,12 @@ import {
   ROLE_META,
   ensureBarberTheme,
   findClientByPhone,
+  barberHasBasePay,
+  barberHasCommissionPay,
   formatPhoneNumber,
   formatLocalDateYmd,
   getBarberNominaData,
+  getBarberPaymentModeLabel,
   getCurrentTimeHHmm,
   getPhoneDigits,
   getPrimaryRole,
@@ -3540,7 +3544,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
   }, [appointments]);
 
   const getBarberEarnings = (barber) => {
-    if (barber.paymentMode !== 'porcentaje') return 0;
+    if (!barberHasCommissionPay(barber.paymentMode)) return 0;
     const totalSales = pendingEarningsByBarber.get(String(barber.id)) || 0;
     return totalSales * (Number(barber.commission) / 100);
   };
@@ -3576,11 +3580,11 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       name: barber.name || '',
       fullName: barber.fullName || barber.name || '',
       cedula: barber.cedula || '',
-      salary: formatSalary(barber.paymentMode === 'salario' ? barber.salary : ''),
+      salary: formatSalary(barberHasBasePay(barber.paymentMode) ? barber.salary : ''),
       phone: barber.phone || '',
       paymentMode: barber.paymentMode || 'salario',
       paymentFrequency: barber.paymentFrequency || 'Quincenal',
-      commission: barber.paymentMode === 'porcentaje' ? String(barber.commission || '') : '',
+      commission: barberHasCommissionPay(barber.paymentMode) ? String(barber.commission || '') : '',
       level: barber.level || 'Junior',
       color: barber.color || BARBER_THEME_PALETTE[0].color,
       bg: barber.bg || BARBER_THEME_PALETTE[0].bg,
@@ -3615,6 +3619,21 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       notify('El teléfono móvil debe tener exactamente 8 dígitos.', 'warning');
       return;
     }
+    if (barberHasBasePay(form.paymentMode) && parseSalary(form.salary) <= 0) {
+      notify('Debes ingresar un salario base válido para esta modalidad.', 'warning');
+      return;
+    }
+    if (barberHasCommissionPay(form.paymentMode)) {
+      const commissionRate = parseSalary(form.commission);
+      if (commissionRate <= 0) {
+        notify('Debes ingresar un porcentaje de comisión válido para esta modalidad.', 'warning');
+        return;
+      }
+      if (commissionRate > 100) {
+        notify('La comisión no puede ser mayor al 100%.', 'warning');
+        return;
+      }
+    }
     const savedBarber = {
       id: editing,
       ...form,
@@ -3623,8 +3642,8 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       phone: formatPhoneNumber(form.phone),
       paymentMode: form.paymentMode,
       paymentFrequency: form.paymentFrequency,
-      salary: form.paymentMode === 'salario' ? parseSalary(form.salary) : 0,
-      commission: form.paymentMode === 'porcentaje' ? parseSalary(form.commission) : 0,
+      salary: barberHasBasePay(form.paymentMode) ? parseSalary(form.salary) : 0,
+      commission: barberHasCommissionPay(form.paymentMode) ? parseSalary(form.commission) : 0,
       level: form.level || 'Junior',
       branchId: form.branchId,
       barbershopId: currentBarbershopId || null,
@@ -3641,12 +3660,12 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
   const staffMetrics = useMemo(() => {
     const roster = barbers || [];
     const salariedBarbers = roster.filter(
-      (barber) => barber.paymentMode === 'salario' && Number(barber.salary || 0) > 0
+      (barber) => barberHasBasePay(barber.paymentMode) && Number(barber.salary || 0) > 0
     );
     const avgSalary = salariedBarbers.length
       ? salariedBarbers.reduce((sum, barber) => sum + (Number(barber.salary) || 0), 0) / salariedBarbers.length
       : 0;
-    const commissionBarbers = roster.filter((barber) => barber.paymentMode === 'porcentaje');
+    const commissionBarbers = roster.filter((barber) => barberHasCommissionPay(barber.paymentMode));
     const avgCommission = commissionBarbers.length
       ? commissionBarbers.reduce((sum, barber) => {
           const totalSales = pendingEarningsByBarber.get(String(barber.id)) || 0;
@@ -3811,7 +3830,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.16em] truncate mb-3">{b.fullName || b.name}</p>
                   <div className="flex items-center gap-2 mb-4 text-white">
                       <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-md border ${b.color} text-white`}>{b.level || 'Junior'}</span>
-                      <span className="text-[8px] font-black uppercase px-2 py-1 rounded-md bg-black/40 text-slate-400 border border-white/5">{b.paymentMode === 'salario' ? 'Salario Fijo' : 'Comisión %'}</span>
+                      <span className="text-[8px] font-black uppercase px-2 py-1 rounded-md bg-black/40 text-slate-400 border border-white/5">{getBarberPaymentModeLabel(b.paymentMode, b.commission || 0)}</span>
                   </div>
 
                   <div className="space-y-3 py-4 border-y border-white/5 mb-4 text-white">
@@ -3824,8 +3843,8 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                         <span className="text-[10px] font-black text-slate-300 italic">{b.cedula?.trim() || 'Sin registrar'}</span>
                     </div>
                     <div className="flex justify-between items-center text-white">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pago Base</span>
-                        <span className="text-xs font-black text-white italic">{b.paymentMode === 'salario' ? `C$ ${Number(b.salary || 0).toLocaleString()}` : 'N/A'}</span>
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pago Base</span>
+                          <span className="text-xs font-black text-white italic">{barberHasBasePay(b.paymentMode) ? `C$ ${Number(b.salary || 0).toLocaleString()}` : 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center text-white">
                         <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Pendiente Pago</span>
@@ -3872,7 +3891,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
               <div className="w-full space-y-4 text-white">
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between text-white">
                   <div className="flex items-center gap-3 text-white/40"><Briefcase size={14}/> <span className="text-[10px] font-black uppercase tracking-widest italic leading-none">Modo</span></div>
-                  <span className="text-[11px] font-black uppercase text-indigo-400 italic leading-none">{form.paymentMode === 'salario' ? 'Salario Fijo' : 'Comisión'}</span>
+                  <span className="text-[11px] font-black uppercase text-indigo-400 italic leading-none">{getBarberPaymentModeLabel(form.paymentMode, form.commission || 0)}</span>
                 </div>
 
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/5 text-white">
@@ -3941,19 +3960,31 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Modalidad de Pago</label>
                   <div className="relative group text-white">
                     <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-400 transition-colors" size={16}/>
-                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: '', commission: '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
-                      <option value="salario" className="bg-slate-950 text-white">Pago por Salario</option>
-                      <option value="porcentaje" className="bg-slate-950 text-white">Porcentaje por Corte</option>
-                    </select>
+                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
+                        {BARBER_PAYMENT_MODE_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id} className="bg-slate-950 text-white">{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">{form.paymentMode === 'salario' ? 'Sueldo Mensual (C$)' : 'Porcentaje (%)'}</label>
-                  <div className="relative group text-white">
-                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">{form.paymentMode === 'salario' ? 'C$' : '%'}</div>
-                    <input value={form.paymentMode === 'salario' ? form.salary : form.commission} onChange={(e) => setForm({ ...form, [form.paymentMode === 'salario' ? 'salary' : 'commission']: form.paymentMode === 'salario' ? formatSalary(e.target.value) : formatCommission(e.target.value) })} placeholder={form.paymentMode === 'salario' ? "0,000" : "15"} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                  {barberHasBasePay(form.paymentMode) && (
+                  <div className="space-y-2 text-white">
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sueldo base (C$)</label>
+                    <div className="relative group text-white">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">C$</div>
+                      <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                    </div>
                   </div>
-                </div>
+                  )}
+                  {barberHasCommissionPay(form.paymentMode) && (
+                  <div className="space-y-2 text-white">
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisión (%)</label>
+                    <div className="relative group text-white">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">%</div>
+                      <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                    </div>
+                  </div>
+                  )}
                 {canChooseBranch && (
                   <div className="space-y-2 text-white md:col-span-2">
                     <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sucursal de trabajo</label>
@@ -4137,7 +4168,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
                     </div>
                   </td>
                   <td className="px-10 py-6 text-center">
-                    <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">{b.paymentMode === 'salario' ? 'Salario Fijo' : 'Comisión %'}</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">{getBarberPaymentModeLabel(b.paymentMode, data.commissionRate)}</span>
                   </td>
                   <td className="px-10 py-6 text-center">
                     <span className="text-xs font-black text-white italic">C$ {data.base.toLocaleString()}</span>

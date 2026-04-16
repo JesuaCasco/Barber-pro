@@ -235,6 +235,21 @@ export const MOCK_BARBERS = [
   { id: 6, name: 'Dani "Clipper"', fullName: 'Daniel Enrique Morales Soto', cedula: '', avatar: 'DC', color: 'border-cyan-500', bg: 'bg-cyan-600', shadow: 'shadow-cyan-500/50', paymentMode: 'porcentaje', commission: 15, paymentFrequency: 'Diario' },
 ];
 
+export const BARBER_PAYMENT_MODE_OPTIONS = [
+  { id: 'salario', label: 'Pago por salario' },
+  { id: 'porcentaje', label: 'Porcentaje por corte' },
+  { id: 'mixto', label: 'Pago mixto' },
+];
+
+export const barberHasBasePay = (paymentMode) => ['salario', 'mixto'].includes(paymentMode || 'salario');
+export const barberHasCommissionPay = (paymentMode) => ['porcentaje', 'mixto'].includes(paymentMode || 'salario');
+
+export const getBarberPaymentModeLabel = (paymentMode, commissionRate = 0) => {
+  if (paymentMode === 'mixto') return `Mixto · Base + ${Number(commissionRate || 0)}%`;
+  if (paymentMode === 'porcentaje') return `Comisión ${Number(commissionRate || 0)}%`;
+  return 'Salario fijo';
+};
+
 const LEGACY_BARBER_NAME_BY_ID = {
   1: 'Juan "El Master"',
   2: 'Luis "Barbas"',
@@ -646,8 +661,8 @@ export const getBarberNominaData = (barber, appointments = []) => {
   );
   const totalComissionSales = finishedApts.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const commissionRate = Number(barber.commission || 0);
-  const comission = barber.paymentMode === 'porcentaje' ? totalComissionSales * (commissionRate / 100) : 0;
-  const base = barber.paymentMode === 'salario' ? Number(barber.salary || 0) : 0;
+  const comission = barberHasCommissionPay(barber.paymentMode) ? totalComissionSales * (commissionRate / 100) : 0;
+  const base = barberHasBasePay(barber.paymentMode) ? Number(barber.salary || 0) : 0;
 
   return {
     base,
@@ -656,6 +671,6 @@ export const getBarberNominaData = (barber, appointments = []) => {
     pendingServices: finishedApts.length,
     salesTotal: totalComissionSales,
     commissionRate,
-    modalityLabel: barber.paymentMode === 'salario' ? 'Salario fijo' : `Comisión ${commissionRate}%`,
+    modalityLabel: getBarberPaymentModeLabel(barber.paymentMode, commissionRate),
   };
 };

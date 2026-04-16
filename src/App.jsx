@@ -1704,7 +1704,14 @@ export default function App() {
       } catch (error) {
         console.error('No se pudo cargar Supabase:', error);
         if (!ignore) {
-          setOperationalWarnings([]);
+          clearScopedOperationalState();
+          setOperationalWarnings([
+            error?.message || 'No se pudieron cargar los datos operativos desde Supabase.',
+          ]);
+          notify(
+            `No pude cargar los datos operativos de esta barbería.\n\nMostré el estado vacío para evitar que se mezclen datos anteriores con información incompleta.`,
+            'error',
+          );
         }
       } finally {
         if (!ignore) {
@@ -1785,7 +1792,15 @@ export default function App() {
       } catch (error) {
         console.error('No se pudo cargar el directorio de clientes:', error);
         if (!ignore) {
-          setClientDirectoryWarnings([]);
+          setClientDirectoryData({ clients: [], appointments: [], barbers: [] });
+          setClientDirectoryWarnings([
+            error?.message || 'No se pudo cargar el directorio de clientes.',
+          ]);
+          setClientDirectoryLoaded(true);
+          notify(
+            'No pude cargar el directorio de clientes. Dejé la vista vacía para evitar métricas parciales o datos engañosos.',
+            'error',
+          );
         }
       }
     };
@@ -4575,7 +4590,10 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
     
     // Servicios m?s vendidos
     const serviceCounts = {};
-    finished.forEach(a => { serviceCounts[a.service] = (serviceCounts[a.service] || 0) + 1; });
+    finished.forEach((appointment) => {
+      const normalizedServiceName = normalizeFavoriteServiceName(appointment.service) || 'Servicio sin nombre';
+      serviceCounts[normalizedServiceName] = (serviceCounts[normalizedServiceName] || 0) + 1;
+    });
     const topServiceNameVal = Object.keys(serviceCounts).length > 0 ? Object.keys(serviceCounts).reduce((a, b) => serviceCounts[a] > serviceCounts[b] ? a : b, null) : 'Sin datos';
     const topServiceCountVal = serviceCounts[topServiceNameVal] || 0;
 

@@ -1,4 +1,4 @@
-Ôªøimport React, { Suspense, createContext, lazy, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import React, { Suspense, createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   createManagedUser,
   createPosSale,
@@ -134,13 +134,9 @@ import { ClientDetailModal, ClientsTableView } from './features/app/clientViews'
 import { FinalizeModal } from './features/app/finalizeModal';
 import { ServiceEditorModal } from './features/app/serviceEditorModal';
 import { PaymentReceiptModal, PosSaleReceiptModal, StaffSettlementModal } from './features/app/receiptModals';
+import { LoginScreen, PasswordActionModal, UserEditorModal } from './features/system/accessUi';
 
 const { useCallback } = React;
-
-const loadAccessUiModule = () => import('./features/system/accessUi');
-const LoginScreen = lazy(() => loadAccessUiModule().then((module) => ({ default: module.LoginScreen })));
-const PasswordActionModal = lazy(() => loadAccessUiModule().then((module) => ({ default: module.PasswordActionModal })));
-const UserEditorModal = lazy(() => loadAccessUiModule().then((module) => ({ default: module.UserEditorModal })));
 
 const accessUiFallback = (
   <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -231,8 +227,8 @@ function SystemView({
     ? accessControl.roles.filter((role) => ['super_admin', 'admin', 'cashier'].includes(role.roleName))
     : [
         { roleName: 'super_admin', description: 'Control total de la plataforma SaaS' },
-  { roleName: 'admin', description: 'Administra la barber√≠a y su configuraci√≥n' },
-  { roleName: 'cashier', description: 'Caja / recepci√≥n' },
+  { roleName: 'admin', description: 'Administra la barberÌa y su configuraciÛn' },
+  { roleName: 'cashier', description: 'Caja / recepciÛn' },
       ];
   const editableRoleCatalog = roleCatalog.filter((role) => isSuperAdmin || role.roleName !== 'super_admin');
   const barbershops = useMemo(() => accessControl.barbershops || [], [accessControl.barbershops]);
@@ -380,7 +376,7 @@ function SystemView({
   const handleSubmitOnboarding = async (event) => {
     event.preventDefault();
     if (!onboarding.name.trim()) {
-      notify('Ingresa el nombre de la barber√≠a para completar el onboarding.', 'warning');
+      notify('Ingresa el nombre de la barberÌa para completar el onboarding.', 'warning');
       return;
     }
     const created = await onCreateBarbershop({
@@ -402,7 +398,7 @@ function SystemView({
     }
 
     if (newUser.password.trim().length < PASSWORD_MIN_LENGTH) {
-      notify(`Define una contrase√±a temporal de al menos ${PASSWORD_MIN_LENGTH} caracteres.`, 'warning');
+      notify(`Define una contraseÒa temporal de al menos ${PASSWORD_MIN_LENGTH} caracteres.`, 'warning');
       return;
     }
 
@@ -417,8 +413,8 @@ function SystemView({
     if (!resolvedBarbershopId) {
       notify(
         isSuperAdmin
-          ? 'Selecciona la barber√≠a a la que pertenecer√° este usuario.'
-          : 'Tu cuenta de administrador todav√≠a no est√° vinculada a una barber√≠a.',
+          ? 'Selecciona la barberÌa a la que pertenecer· este usuario.'
+          : 'Tu cuenta de administrador todavÌa no est· vinculada a una barberÌa.',
         'warning',
       );
       return;
@@ -455,7 +451,7 @@ function SystemView({
       : (defaultBarbershopId || accessControl.currentBarbershopId || '');
 
     if (!resolvedBarbershopId || !branchForm.name.trim()) {
-      notify('Completa el nombre de la sucursal y la barber√≠a correspondiente.', 'warning');
+      notify('Completa el nombre de la sucursal y la barberÌa correspondiente.', 'warning');
       return;
     }
 
@@ -496,7 +492,7 @@ function SystemView({
     <div className="p-4 md:p-10 space-y-6 md:space-y-8 animate-in fade-in text-white no-print">
       {isSuperAdmin && (
         <section className="flex flex-wrap gap-3">
-          {[{ id: 'barbershops', label: 'Barber√≠as' }, { id: 'branches', label: 'Sucursales' }, { id: 'users', label: 'Usuarios' }].map((item) => (
+          {[{ id: 'barbershops', label: 'BarberÌas' }, { id: 'branches', label: 'Sucursales' }, { id: 'users', label: 'Usuarios' }].map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveSystemPanel(item.id)}
@@ -526,9 +522,9 @@ function SystemView({
             <form onSubmit={handleSubmitOnboarding}>
               <div className="px-8 py-7 border-b border-white/5 flex items-center justify-between gap-6">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">Configuraci√≥n comercial</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">ConfiguraciÛn comercial</p>
                   <h3 className="mt-3 text-[2rem] font-black uppercase italic tracking-tighter text-white leading-none">
-                    Nueva barber√≠a
+                    Nueva barberÌa
                   </h3>
                 </div>
               </div>
@@ -539,12 +535,12 @@ function SystemView({
                   <input
                     value={onboarding.name}
                     onChange={(e) => setOnboarding((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Ej. Barber√≠a Central"
+                    placeholder="Ej. BarberÌa Central"
                     className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Correo del due√±o</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Correo del dueÒo</label>
                   <input
                     value={onboarding.ownerEmail}
                     onChange={(e) => setOnboarding((prev) => ({ ...prev, ownerEmail: e.target.value }))}
@@ -553,7 +549,7 @@ function SystemView({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Tel√©fono</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">TelÈfono</label>
                   <input
                     value={onboarding.phone}
                     onChange={(e) => setOnboarding((prev) => ({ ...prev, phone: e.target.value }))}
@@ -589,7 +585,7 @@ function SystemView({
                     onChange={(e) => setOnboarding((prev) => ({ ...prev, adminUserId: e.target.value }))}
                     className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                   >
-                    <option value="">Asignar despu√©s</option>
+                    <option value="">Asignar despuÈs</option>
                     {onboardingCandidates.map((user) => (
                       <option key={user.id} value={user.id}>
                         {(user.fullName || user.email)}{user.email ? ` - ${user.email}` : ''}
@@ -606,7 +602,7 @@ function SystemView({
                   className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white py-4.5 rounded-[1.6rem] font-black uppercase italic text-[11px] tracking-[0.22em] transition-all flex items-center justify-center gap-3 shadow-[0_12px_30px_rgba(99,102,241,0.24)]"
                 >
                   {onboardingBusy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Crear barber√≠a
+                  Crear barberÌa
                 </button>
                 <button
                   type="button"
@@ -648,13 +644,13 @@ function SystemView({
               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                 {isSuperAdmin && (
                   <div className="space-y-3 md:col-span-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Barber√≠a</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">BarberÌa</label>
                     <select
                       value={effectiveBranchFormBarbershopId}
                       onChange={(e) => setBranchForm((prev) => ({ ...prev, barbershopId: e.target.value }))}
                       className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                     >
-                      <option value="">Selecciona una barber√≠a</option>
+                      <option value="">Selecciona una barberÌa</option>
                       {barbershops.map((shop) => (
                         <option key={shop.id} value={shop.id}>{shop.name}</option>
                       ))}
@@ -672,7 +668,7 @@ function SystemView({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">C√≥digo interno</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">CÛdigo interno</label>
                   <input
                     value={branchForm.code}
                     onChange={(e) => setBranchForm((prev) => ({ ...prev, code: e.target.value }))}
@@ -690,7 +686,7 @@ function SystemView({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Direcci√≥n</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">DirecciÛn</label>
                   <input
                     value={branchForm.address}
                     onChange={(e) => setBranchForm((prev) => ({ ...prev, address: e.target.value }))}
@@ -749,12 +745,12 @@ function SystemView({
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Negocios activos</p>
-                <h4 className="mt-3 text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Barber√≠as registradas</h4>
+                <h4 className="mt-3 text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">BarberÌas registradas</h4>
               </div>
 
               <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-3">
                 <div className="rounded-[1.6rem] border border-white/5 bg-slate-950 px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  {barbershops.length} barber√≠as
+                  {barbershops.length} barberÌas
                 </div>
                 <button
                   type="button"
@@ -762,7 +758,7 @@ function SystemView({
                   className="px-5 py-4 rounded-[1.6rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase italic text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-2"
                 >
                   <Plus size={16} />
-                  Nueva barber√≠a
+                  Nueva barberÌa
                 </button>
               </div>
             </div>
@@ -782,7 +778,7 @@ function SystemView({
                         </div>
                         <div>
                           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Propietario</p>
-                          <p className="mt-1 font-bold text-slate-300 break-all">{shop.ownerEmail || 'Sin correo del due√±o'}</p>
+                          <p className="mt-1 font-bold text-slate-300 break-all">{shop.ownerEmail || 'Sin correo del dueÒo'}</p>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <span className="inline-flex px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
@@ -797,7 +793,7 @@ function SystemView({
                 <div className="hidden md:block rounded-[2.4rem] border border-white/5 bg-black/35 overflow-x-auto">
                 <div className="min-w-[980px]">
                   <div className="grid grid-cols-[minmax(220px,1.2fr)_160px_minmax(260px,1.2fr)_140px_140px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
-                    <span>Barber√≠a</span>
+                    <span>BarberÌa</span>
                     <span>Ciudad</span>
                     <span>Propietario</span>
                     <span>Plan</span>
@@ -822,7 +818,7 @@ function SystemView({
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-300 break-all">
-                            {shop.ownerEmail || 'Sin correo del due√±o'}
+                            {shop.ownerEmail || 'Sin correo del dueÒo'}
                           </p>
                           {shop.phone && (
                             <p className="mt-2 text-[11px] text-slate-500">
@@ -848,7 +844,7 @@ function SystemView({
               </>
             ) : (
               <div className="rounded-[2.4rem] border border-white/5 bg-black/20 px-6 py-16 text-center">
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">Todav√≠a no hay barber√≠as registradas</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">TodavÌa no hay barberÌas registradas</p>
               </div>
             )}
           </div>
@@ -872,7 +868,7 @@ function SystemView({
                       onChange={(e) => setSelectedBranchesBarbershopId(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-[1.6rem] px-5 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                     >
-                      <option value="all">Todas las barber√≠as</option>
+                      <option value="all">Todas las barberÌas</option>
                       {barbershops.map((shop) => (
                         <option key={shop.id} value={shop.id}>{shop.name}</option>
                       ))}
@@ -903,13 +899,13 @@ function SystemView({
                       <p className="text-lg font-black uppercase italic tracking-tighter text-white break-words">{branch.name || 'Sin nombre'}</p>
                       <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Barber√≠a</p>
-                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.barbershopName || currentBarbershop?.name || 'Sin barber√≠a'}</p>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">BarberÌa</p>
+                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.barbershopName || currentBarbershop?.name || 'Sin barberÌa'}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">C√≥digo</p>
-                            <p className="mt-1 font-bold text-slate-300">{branch.code || 'Sin c√≥digo'}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">CÛdigo</p>
+                            <p className="mt-1 font-bold text-slate-300">{branch.code || 'Sin cÛdigo'}</p>
                           </div>
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Ciudad</p>
@@ -917,8 +913,8 @@ function SystemView({
                           </div>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Direcci√≥n</p>
-                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.address || 'Sin direcci√≥n'}</p>
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">DirecciÛn</p>
+                          <p className="mt-1 font-bold text-slate-300 break-words">{branch.address || 'Sin direcciÛn'}</p>
                         </div>
                         <button
                           type="button"
@@ -936,10 +932,10 @@ function SystemView({
                 <div className="min-w-[1120px]">
                   <div className="grid grid-cols-[minmax(220px,1.1fr)_minmax(220px,1fr)_140px_150px_minmax(260px,1.3fr)_130px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
                     <span>Sucursal</span>
-                    <span>Barber√≠a</span>
-                    <span>C√≥digo</span>
+                    <span>BarberÌa</span>
+                    <span>CÛdigo</span>
                     <span>Ciudad</span>
-                    <span>Direcci√≥n</span>
+                    <span>DirecciÛn</span>
                     <span>Acciones</span>
                   </div>
 
@@ -956,12 +952,12 @@ function SystemView({
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-300 break-all">
-                            {branch.barbershopName || currentBarbershop?.name || 'Sin barber√≠a'}
+                            {branch.barbershopName || currentBarbershop?.name || 'Sin barberÌa'}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-300">
-                            {branch.code || 'Sin c√≥digo'}
+                            {branch.code || 'Sin cÛdigo'}
                           </p>
                         </div>
                         <div>
@@ -971,7 +967,7 @@ function SystemView({
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-300 break-all">
-                            {branch.address || 'Sin direcci√≥n'}
+                            {branch.address || 'Sin direcciÛn'}
                           </p>
                         </div>
                         <div>
@@ -992,7 +988,7 @@ function SystemView({
               </>
             ) : (
               <div className="rounded-[2.4rem] border border-white/5 bg-black/20 px-6 py-16 text-center">
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">Todav√≠a no hay sucursales registradas</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">TodavÌa no hay sucursales registradas</p>
               </div>
             )}
           </div>
@@ -1027,7 +1023,7 @@ function SystemView({
                     }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-[1.6rem] px-5 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                   >
-                    <option value="all">Todas las barber√≠as</option>
+                    <option value="all">Todas las barberÌas</option>
                     {barbershops.map((shop) => (
                       <option key={shop.id} value={shop.id}>{shop.name}</option>
                     ))}
@@ -1054,7 +1050,7 @@ function SystemView({
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por nombre, correo, rol, barber√≠a o sucursal"
+                  placeholder="Buscar por nombre, correo, rol, barberÌa o sucursal"
                   className="w-full bg-slate-950 border border-slate-800 rounded-[1.6rem] pl-5 pr-12 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                 />
               </div>
@@ -1114,12 +1110,12 @@ function SystemView({
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Contrase√±a temporal</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">ContraseÒa temporal</label>
                       <input
                         type="password"
                         value={newUser.password}
                         onChange={(e) => setNewUser((prev) => ({ ...prev, password: e.target.value }))}
-                        placeholder={`M√≠nimo ${PASSWORD_MIN_LENGTH} caracteres`}
+                        placeholder={`MÌnimo ${PASSWORD_MIN_LENGTH} caracteres`}
                         className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                       />
                     </div>
@@ -1147,13 +1143,13 @@ function SystemView({
 
                       {isSuperAdmin && (
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Barber√≠a</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">BarberÌa</label>
                           <select
                             value={effectiveNewUserBarbershopId}
                             onChange={(e) => setNewUser((prev) => ({ ...prev, barbershopId: e.target.value, branchId: '' }))}
                             className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                           >
-                            <option value="">Selecciona una barber√≠a</option>
+                            <option value="">Selecciona una barberÌa</option>
                             {barbershops.map((shop) => (
                               <option key={shop.id} value={shop.id}>{shop.name}</option>
                             ))}
@@ -1184,7 +1180,7 @@ function SystemView({
                       className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white py-4.5 rounded-[1.6rem] font-black uppercase italic text-[11px] tracking-[0.22em] transition-all flex items-center justify-center gap-3 shadow-[0_12px_30px_rgba(99,102,241,0.24)]"
                     >
                       {creatingUser ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-              Guardar configuraci√≥n de acceso
+              Guardar configuraciÛn de acceso
                     </button>
                   </div>
                 </form>
@@ -1201,7 +1197,7 @@ function SystemView({
                   : { label: 'Sin rol', badge: 'bg-slate-950 text-slate-400 border-slate-700' };
                 const displayName = user.fullName || user.email || 'Usuario sin nombre';
                 const scopeLabel = isSuperAdmin
-                  ? [user.barbershopName, user.branchName].filter(Boolean).join(' ‚Ä¢ ')
+                  ? [user.barbershopName, user.branchName].filter(Boolean).join(' ï ')
                   : (user.branchName || '');
                 return (
                   <div key={user.id} className="rounded-[2rem] border border-white/5 bg-black/25 p-5">
@@ -1223,7 +1219,7 @@ function SystemView({
                         onClick={() => setResetPasswordTarget(user)}
                         className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400 hover:text-indigo-300 transition-all"
                       >
-                        Restablecer contrase√±a
+                        Restablecer contraseÒa
                       </button>
                     )}
                     <div className="mt-4 flex items-center justify-between gap-3">
@@ -1239,7 +1235,7 @@ function SystemView({
                           Editar
                         </button>
                       ) : (
-                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Sin edici√≥n</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Sin ediciÛn</span>
                       )}
                     </div>
                   </div>
@@ -1280,7 +1276,7 @@ function SystemView({
                         </p>
                         {(() => {
                           const scopeLabel = isSuperAdmin
-                            ? [user.barbershopName, user.branchName].filter(Boolean).join(' ‚Ä¢ ')
+                            ? [user.barbershopName, user.branchName].filter(Boolean).join(' ï ')
                             : (user.branchName || '');
                           return scopeLabel ? (
                             <p className="mt-2 text-[11px] text-slate-500">
@@ -1294,7 +1290,7 @@ function SystemView({
                             onClick={() => setResetPasswordTarget(user)}
                             className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400 hover:text-indigo-300 transition-all"
                           >
-                            Restablecer contrase√±a
+                            Restablecer contraseÒa
                           </button>
                         )}
                       </div>
@@ -1322,7 +1318,7 @@ function SystemView({
                           </button>
                         ) : (
                           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
-                            Sin edici√≥n
+                            Sin ediciÛn
                           </span>
                         )}
                       </div>
@@ -1337,7 +1333,7 @@ function SystemView({
           {!users.length && (
             <div className="rounded-[2.4rem] border border-dashed border-slate-800 bg-black/20 px-8 py-16 text-center">
               <p className="text-[11px] font-black uppercase italic tracking-[0.24em] text-slate-500">
-            No encontramos usuarios con ese criterio de b√∫squeda
+            No encontramos usuarios con ese criterio de b˙squeda
               </p>
             </div>
           )}
@@ -1345,22 +1341,22 @@ function SystemView({
           {resetPasswordTarget && (
             <Suspense fallback={accessUiFallback}>
                 <PasswordActionModal
-              title="Contrase√±a temporal"
+              title="ContraseÒa temporal"
               subtitle={resetPasswordTarget.fullName || resetPasswordTarget.email}
-              submitLabel="Guardar contrase√±a temporal"
+              submitLabel="Guardar contraseÒa temporal"
               busy={resettingPasswordUserId === resetPasswordTarget.id}
                   onClose={() => setResetPasswordTarget(null)}
                   onSubmit={async ({ nextPassword }) => {
                     const success = await onResetUserPassword(resetPasswordTarget, nextPassword);
                     if (success) {
-                      notify(`Contrase√±a temporal actualizada para ${resetPasswordTarget.email}.`, 'success');
+                      notify(`ContraseÒa temporal actualizada para ${resetPasswordTarget.email}.`, 'success');
                       setResetPasswordTarget(null);
                       return true;
                     }
                     return false;
                   }}
-                  nextLabel="Nueva contrase√±a temporal"
-                  nextPlaceholder="M√≠nimo 6 caracteres"
+                  nextLabel="Nueva contraseÒa temporal"
+                  nextPlaceholder="MÌnimo 6 caracteres"
                   initialNextPassword=""
                   initialConfirmPassword=""
                   nextInputType="password"
@@ -1457,7 +1453,7 @@ export default function App() {
     if (saved) return JSON.parse(saved);
     if (!shouldSeedLocalDevMode) return [];
     return [
-      { id: '1', name: 'Corte Cl√°sico', price: 250, category: 'Cortes' },
+      { id: '1', name: 'Corte Cl·sico', price: 250, category: 'Cortes' },
       { id: '2', name: 'Perfilado Barba', price: 150, category: 'Barba' },
       { id: '3', name: 'Pomada Premium', price: 350, category: 'Producto' },
       { id: '4', name: 'Combo Master', price: 400, category: 'Combo', items: ['1', '2'] },
@@ -1573,7 +1569,7 @@ export default function App() {
 
   const confirmAction = (options) => new Promise((resolve) => {
     setConfirmState({
-      title: options?.title || 'Confirmar acci√≥n',
+      title: options?.title || 'Confirmar acciÛn',
       message: options?.message || '',
       confirmLabel: options?.confirmLabel || 'Confirmar',
       cancelLabel: options?.cancelLabel || 'Cancelar',
@@ -1698,9 +1694,9 @@ export default function App() {
     const authBootstrapTimeout = window.setTimeout(() => {
       if (!mounted) return;
       authBootstrapTimedOut = true;
-      console.error('La restauraci√≥n de sesi√≥n tard√≥ demasiado y se cancel√≥ para mostrar el login.');
+      console.error('La restauraciÛn de sesiÛn tardÛ demasiado y se cancelÛ para mostrar el login.');
       setSession(null);
-      setAuthError('La sesi√≥n guardada tard√≥ demasiado en responder. Ingresa de nuevo.');
+      setAuthError('La sesiÛn guardada tardÛ demasiado en responder. Ingresa de nuevo.');
       setAuthLoading(false);
     }, 6000);
 
@@ -1709,8 +1705,8 @@ export default function App() {
         if (!mounted || authBootstrapTimedOut) return;
         window.clearTimeout(authBootstrapTimeout);
         if (error) {
-          console.error('No se pudo restaurar la sesi√≥n:', error);
-          setAuthError('No pude restaurar la sesi√≥n guardada.');
+          console.error('No se pudo restaurar la sesiÛn:', error);
+          setAuthError('No pude restaurar la sesiÛn guardada.');
         }
         const restoredSession = data.session ?? null;
         const restoredUserId = restoredSession?.user?.id || null;
@@ -1725,9 +1721,9 @@ export default function App() {
       .catch((error) => {
         if (!mounted || authBootstrapTimedOut) return;
         window.clearTimeout(authBootstrapTimeout);
-        console.error('Fall√≥ la verificaci√≥n de sesi√≥n:', error);
+        console.error('FallÛ la verificaciÛn de sesiÛn:', error);
         setSession(null);
-        setAuthError('No pude verificar la sesi√≥n guardada. Ingresa de nuevo.');
+        setAuthError('No pude verificar la sesiÛn guardada. Ingresa de nuevo.');
         setAuthLoading(false);
       });
 
@@ -1815,7 +1811,7 @@ export default function App() {
             error?.message || 'No se pudieron cargar los datos operativos desde Supabase.',
           ]);
           notify(
-            `No pude cargar los datos operativos de esta barber√≠a.\n\nMostr√© el estado vac√≠o para evitar que se mezclen datos anteriores con informaci√≥n incompleta.`,
+            `No pude cargar los datos operativos de esta barberÌa.\n\nMostrÈ el estado vacÌo para evitar que se mezclen datos anteriores con informaciÛn incompleta.`,
             'error',
           );
         }
@@ -1948,7 +1944,7 @@ export default function App() {
           ]);
           setClientDirectoryLoaded(true);
           notify(
-            'No pude cargar el directorio de clientes. Dej√© la vista vac√≠a para evitar m√©tricas parciales o datos enga√±osos.',
+            'No pude cargar el directorio de clientes. DejÈ la vista vacÌa para evitar mÈtricas parciales o datos engaÒosos.',
             'error',
           );
         }
@@ -1971,7 +1967,7 @@ export default function App() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setAuthError(error.message || 'No pude iniciar sesi√≥n.');
+      setAuthError(error.message || 'No pude iniciar sesiÛn.');
     }
 
     setAuthBusy(false);
@@ -1983,7 +1979,7 @@ export default function App() {
     setAuthBusy(true);
     const { error } = await supabase.auth.signOut();
     if (error) {
-      setAuthError(error.message || 'No pude cerrar sesi√≥n.');
+      setAuthError(error.message || 'No pude cerrar sesiÛn.');
     } else {
       bootstrapCompletedRef.current = false;
     }
@@ -2004,11 +2000,11 @@ export default function App() {
       if (error) throw error;
       const { data: refreshedSession } = await supabase.auth.getSession();
       setSession(refreshedSession.session ?? session);
-      notify('Tu contrase√±a se actualiz√≥ correctamente.', 'success');
+      notify('Tu contraseÒa se actualizÛ correctamente.', 'success');
       setShowSelfPasswordModal(false);
       return true;
     } catch (error) {
-      handleSyncError(error, 'No pude actualizar tu contrase√±a.');
+      handleSyncError(error, 'No pude actualizar tu contraseÒa.');
       return false;
     } finally {
       setPasswordBusy(false);
@@ -2032,13 +2028,13 @@ export default function App() {
 
     if (!isSuperAdmin) {
       if (currentRole !== 'cashier' || String(user.barbershopId || '') !== String(currentBarbershopId || '')) {
-        notify('Solo puedes editar usuarios Caja de tu propia barber√≠a.', 'warning');
+        notify('Solo puedes editar usuarios Caja de tu propia barberÌa.', 'warning');
         return false;
       }
     }
 
     if (!isSuperAdmin && nextRole !== 'cashier') {
-      notify('Un administrador de barber√≠a solo puede asignar el rol Caja.', 'warning');
+      notify('Un administrador de barberÌa solo puede asignar el rol Caja.', 'warning');
       return false;
     }
 
@@ -2076,12 +2072,12 @@ export default function App() {
     }
 
     if (!isSuperAdmin && payload.roleName !== 'cashier') {
-      notify('Un administrador de barber√≠a solo puede crear usuarios de caja.', 'warning');
+      notify('Un administrador de barberÌa solo puede crear usuarios de caja.', 'warning');
       return null;
     }
 
     if (!isSuperAdmin && !currentBarbershopId) {
-      notify('Tu usuario administrador no tiene una barber√≠a asignada.', 'error');
+      notify('Tu usuario administrador no tiene una barberÌa asignada.', 'error');
       return null;
     }
 
@@ -2137,12 +2133,12 @@ export default function App() {
 
   const handleResetUserPassword = async (user, password) => {
     if (!isAdmin) {
-      notify('Solo un administrador puede restablecer contrase√±as.', 'warning');
+      notify('Solo un administrador puede restablecer contraseÒas.', 'warning');
       return false;
     }
 
     if (!isSuperAdmin && getPrimaryRole(user) !== 'cashier') {
-      notify('Un administrador de barber√≠a solo puede restablecer contrase√±as de usuarios Caja.', 'warning');
+      notify('Un administrador de barberÌa solo puede restablecer contraseÒas de usuarios Caja.', 'warning');
       return false;
     }
 
@@ -2151,7 +2147,7 @@ export default function App() {
       await resetManagedUserPassword({ userId: user.id, password });
       return true;
     } catch (error) {
-      throw new Error(error?.message || 'No pude restablecer la contrase√±a de este usuario.');
+      throw new Error(error?.message || 'No pude restablecer la contraseÒa de este usuario.');
     } finally {
       setResettingPasswordUserId(null);
     }
@@ -2170,7 +2166,7 @@ export default function App() {
         : (currentBarbershopId || currentBarbershop?.id || '');
 
       if (!resolvedBarbershopId) {
-        notify('Selecciona una barber√≠a para crear la sucursal.', 'warning');
+        notify('Selecciona una barberÌa para crear la sucursal.', 'warning');
         return null;
       }
 
@@ -2408,7 +2404,7 @@ export default function App() {
           const remainingMinutes = Math.max(1, Math.ceil((15 * 60 * 1000 - delayMs) / 60000));
           reservationNearExpiryAlertsRef.current.add(alertKey);
           notify(
-            `La cita de "${clientName}" est√° por vencerse\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\nTiempo restante: ${remainingMinutes} minuto${remainingMinutes === 1 ? '' : 's'}\n\nMarca la llegada del cliente antes de que se venza la reserva.`,
+            `La cita de "${clientName}" est· por vencerse\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\nTiempo restante: ${remainingMinutes} minuto${remainingMinutes === 1 ? '' : 's'}\n\nMarca la llegada del cliente antes de que se venza la reserva.`,
             'reservation-warning',
           );
         }
@@ -2422,7 +2418,7 @@ export default function App() {
           reservationExpiredAlertsRef.current.add(alertKey);
 
           notify(
-            `La cita de "${clientName}" ya se venci√≥\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\n\nLa reserva se marc√≥ como cita perdida.`,
+            `La cita de "${clientName}" ya se venciÛ\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\n\nLa reserva se marcÛ como cita perdida.`,
             'reservation-expired',
           );
 
@@ -2457,7 +2453,7 @@ export default function App() {
       <div className="h-screen flex flex-col items-center justify-center bg-black gap-4 text-white">
         <style>{styleTag}</style>
         <Loader2 className="animate-spin text-indigo-500" size={48} />
-        <span className="text-[10px] font-black uppercase tracking-widest italic">Verificando sesi√≥n...</span>
+        <span className="text-[10px] font-black uppercase tracking-widest italic">Verificando sesiÛn...</span>
       </div>
     );
   }
@@ -2472,9 +2468,9 @@ export default function App() {
               <ShieldCheck size={26} className="text-rose-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-black uppercase italic tracking-tighter">Configuraci√≥n requerida</h1>
+              <h1 className="text-2xl font-black uppercase italic tracking-tighter">ConfiguraciÛn requerida</h1>
               <p className="mt-2 text-sm text-slate-300">
-                Esta instalaci√≥n est√° en modo producci√≥n y requiere una conexi√≥n v√°lida a Supabase.
+                Esta instalaciÛn est· en modo producciÛn y requiere una conexiÛn v·lida a Supabase.
               </p>
             </div>
           </div>
@@ -2486,7 +2482,7 @@ export default function App() {
             </div>
           </div>
           <p className="mt-6 text-sm text-slate-400 leading-relaxed">
-            La aplicaci√≥n fue bloqueada para evitar que opere con datos locales aislados en cada navegador. Configura las variables de entorno del servidor y vuelve a desplegar.
+            La aplicaciÛn fue bloqueada para evitar que opere con datos locales aislados en cada navegador. Configura las variables de entorno del servidor y vuelve a desplegar.
           </p>
         </div>
       </div>
@@ -2503,17 +2499,17 @@ export default function App() {
               <Info size={26} className="text-amber-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-black uppercase italic tracking-tighter">Configuraci√≥n pendiente</h1>
+              <h1 className="text-2xl font-black uppercase italic tracking-tighter">ConfiguraciÛn pendiente</h1>
               <p className="mt-2 text-sm text-slate-300">
-                No hay una conexi√≥n v√°lida a Supabase y el modo local est√° desactivado para evitar datos de prueba confusos.
+                No hay una conexiÛn v·lida a Supabase y el modo local est· desactivado para evitar datos de prueba confusos.
               </p>
             </div>
           </div>
           <div className="rounded-[1.5rem] border border-white/10 bg-black/40 p-5 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">C√≥mo continuar</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">CÛmo continuar</p>
             <p className="text-sm text-slate-300">Configura `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` para trabajar con datos reales.</p>
             <p className="text-sm text-slate-300">Si necesitas una prueba local intencional, activa `VITE_ENABLE_LOCAL_MODE=true`.</p>
-            <p className="text-sm text-slate-500">Para sembrar datos demo en ese modo, agrega tambi√©n `VITE_SEED_LOCAL_MODE=true`.</p>
+            <p className="text-sm text-slate-500">Para sembrar datos demo en ese modo, agrega tambiÈn `VITE_SEED_LOCAL_MODE=true`.</p>
           </div>
         </div>
       </div>
@@ -2593,7 +2589,7 @@ export default function App() {
     const today = getTodayString();
 
     if (appointment.status === 'Cita Perdida') {
-      notify('Esta cita ya est√° marcada como perdida.', 'info');
+      notify('Esta cita ya est· marcada como perdida.', 'info');
       return;
     }
 
@@ -2606,7 +2602,7 @@ export default function App() {
       if (normalizedDate && normalizedDate < today) {
         const shouldMarkLost = await confirmAction({
           title: 'Cita vencida',
-          message: 'Esta cita qued√≥ en un d√≠a anterior y nunca se inici√≥. ¬øDeseas marcarla como cita perdida?',
+          message: 'Esta cita quedÛ en un dÌa anterior y nunca se iniciÛ. øDeseas marcarla como cita perdida?',
           confirmLabel: 'Marcar perdida',
           cancelLabel: 'Cerrar',
           tone: 'danger',
@@ -2620,7 +2616,7 @@ export default function App() {
 
       const shouldCheckIn = await confirmAction({
         title: 'Cita pendiente',
-        message: 'Esta cita todav√≠a no ha iniciado. ¬øDeseas marcar la llegada del cliente para pasarla a espera?',
+        message: 'Esta cita todavÌa no ha iniciado. øDeseas marcar la llegada del cliente para pasarla a espera?',
         confirmLabel: 'Marcar llegada',
         cancelLabel: 'Cerrar',
         tone: 'info',
@@ -2686,7 +2682,7 @@ export default function App() {
     if (clientData.isNew) {
       const duplicateClient = findClientByPhone(clients, normalizedPhone);
       if (duplicateClient) {
-        notify(`Este n√∫mero ya pertenece a ${duplicateClient.name}. Selecciona ese cliente existente.`, 'warning');
+        notify(`Este n˙mero ya pertenece a ${duplicateClient.name}. Selecciona ese cliente existente.`, 'warning');
         return;
       }
 
@@ -2744,7 +2740,7 @@ export default function App() {
     const duplicateClient = findClientByPhone(clients, normalizedClient.phone, selectedData.client?.id);
 
     if (duplicateClient) {
-      notify(`Este n√∫mero ya pertenece a ${duplicateClient.name}.`, 'warning');
+      notify(`Este n˙mero ya pertenece a ${duplicateClient.name}.`, 'warning');
       return;
     }
 
@@ -2827,7 +2823,7 @@ export default function App() {
 
     const confirmed = await confirmAction({
       title: 'Eliminar cliente',
-      message: '¬øEliminar cliente permanentemente?',
+      message: 'øEliminar cliente permanentemente?',
       confirmLabel: 'Eliminar',
     });
 
@@ -2902,7 +2898,7 @@ export default function App() {
 
     const confirmed = await confirmAction({
       title: 'Eliminar barbero',
-      message: '¬øEliminar barbero permanentemente?',
+      message: 'øEliminar barbero permanentemente?',
       confirmLabel: 'Eliminar',
     });
 
@@ -2942,7 +2938,7 @@ export default function App() {
   const handleRegisterPosSale = async (saleDraft) => {
     const normalizedItems = Array.isArray(saleDraft?.items) ? saleDraft.items : [];
     if (!currentBarbershopId) {
-      notify('No se puede registrar la venta porque no hay una barber√≠a activa.', 'error');
+      notify('No se puede registrar la venta porque no hay una barberÌa activa.', 'error');
       return null;
     }
     if (!currentBranchId) {
@@ -2981,7 +2977,7 @@ export default function App() {
           ? `Descuento manual ${saleDraft.manualDiscount.type === 'percentage' ? `${saleDraft.manualDiscount.value}%` : `C$ ${Number(saleDraft.manualDiscount.value || 0).toLocaleString('es-NI')}`}`
           : ''),
       notes: saleDraft?.promotion?.name
-        ? `Promoci√≥n aplicada: ${saleDraft.promotion.name}`
+        ? `PromociÛn aplicada: ${saleDraft.promotion.name}`
         : (saleDraft?.manualDiscount
           ? `Descuento manual aplicado: ${saleDraft.manualDiscount.type === 'percentage' ? `${saleDraft.manualDiscount.value}%` : `C$ ${Number(saleDraft.manualDiscount.value || 0).toLocaleString('es-NI')}`}`
           : ''),
@@ -3089,7 +3085,7 @@ export default function App() {
       {mobileSidebarOpen && (
         <button
           type="button"
-          aria-label="Cerrar men√∫"
+          aria-label="Cerrar men˙"
           onClick={() => setMobileSidebarOpen(false)}
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden no-print"
         />
@@ -3116,7 +3112,7 @@ export default function App() {
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
             className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white lg:hidden"
-            aria-label="Cerrar men√∫ lateral"
+            aria-label="Cerrar men˙ lateral"
           >
             <X size={16} />
           </button>
@@ -3135,7 +3131,7 @@ export default function App() {
               type="button"
               onClick={() => setSidebarCollapsed(false)}
               className="mb-4 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
-              title={currentBarbershop?.name ? `Cambiar barber√≠a actual: ${currentBarbershop.name}` : 'Cambiar barber√≠a'}
+              title={currentBarbershop?.name ? `Cambiar barberÌa actual: ${currentBarbershop.name}` : 'Cambiar barberÌa'}
             >
               <Crown size={16} />
             </button>
@@ -3147,7 +3143,7 @@ export default function App() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Vista actual</p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-indigo-300">Barber√≠a</p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-indigo-300">BarberÌa</p>
                     </div>
                     <Crown size={14} className="text-indigo-300" />
                   </div>
@@ -3165,7 +3161,7 @@ export default function App() {
                 </div>
               ) : currentBarbershop?.name ? (
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barber√≠a</p>
+                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">BarberÌa</p>
                   <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
                 </div>
               ) : null}
@@ -3181,10 +3177,10 @@ export default function App() {
                 onClick={() => setShowSelfPasswordModal(true)}
                 disabled={passwordBusy}
                 className={`w-full mb-2.5 lg:mb-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 lg:px-4 py-2.5 lg:py-3 rounded-2xl font-black text-[9px] lg:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'lg:px-0' : 'gap-2'}`}
-                title={sidebarCollapsed ? 'Cambiar contrase√±a' : undefined}
+                title={sidebarCollapsed ? 'Cambiar contraseÒa' : undefined}
               >
                 {passwordBusy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cambiar contrase√±a</span>
+                <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cambiar contraseÒa</span>
               </button>
             )}
             {hasSupabaseConfig && (
@@ -3192,10 +3188,10 @@ export default function App() {
                 onClick={handleSignOut}
                 disabled={authBusy}
                 className={`w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 lg:px-4 py-2.5 lg:py-3 rounded-2xl font-black text-[9px] lg:text-[10px] uppercase flex items-center justify-center border border-slate-800 transition-all ${sidebarCollapsed ? 'lg:px-0' : 'gap-2'}`}
-                title={sidebarCollapsed ? 'Cerrar sesi√≥n' : undefined}
+                title={sidebarCollapsed ? 'Cerrar sesiÛn' : undefined}
               >
                 {authBusy ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
-                <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cerrar Sesi√≥n</span>
+                <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cerrar SesiÛn</span>
               </button>
             )}
           </div>
@@ -3209,7 +3205,7 @@ export default function App() {
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white lg:hidden shrink-0"
-              aria-label="Abrir men√∫ lateral"
+              aria-label="Abrir men˙ lateral"
             >
               <Menu size={18} />
             </button>
@@ -3217,7 +3213,7 @@ export default function App() {
               type="button"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
               className="hidden lg:flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white"
-              aria-label={sidebarCollapsed ? 'Expandir men√∫ lateral' : 'Colapsar men√∫ lateral'}
+              aria-label={sidebarCollapsed ? 'Expandir men˙ lateral' : 'Colapsar men˙ lateral'}
             >
               <Menu size={18} />
             </button>
@@ -3310,17 +3306,17 @@ export default function App() {
       {showSelfPasswordModal && (
         <Suspense fallback={accessUiFallback}>
         <PasswordActionModal
-          title={session?.user?.user_metadata?.must_change_password ? 'Actualiza tu contrase√±a' : 'Cambiar contrase√±a'}
+          title={session?.user?.user_metadata?.must_change_password ? 'Actualiza tu contraseÒa' : 'Cambiar contraseÒa'}
           subtitle={session?.user?.user_metadata?.must_change_password ? 'Cambio obligatorio al primer acceso' : 'Mi cuenta'}
-          submitLabel="Actualizar contrase√±a"
+          submitLabel="Actualizar contraseÒa"
           busy={passwordBusy}
           onClose={() => {
             if (session?.user?.user_metadata?.must_change_password) return;
             setShowSelfPasswordModal(false);
           }}
           onSubmit={handleChangeOwnPassword}
-          nextLabel="Nueva contrase√±a"
-          nextPlaceholder="M√≠nimo 6 caracteres"
+          nextLabel="Nueva contraseÒa"
+          nextPlaceholder="MÌnimo 6 caracteres"
           lockOpen={Boolean(session?.user?.user_metadata?.must_change_password)}
         />
         </Suspense>
@@ -3466,7 +3462,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           <button onClick={() => changeDay(1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronRight size={20}/></button>
         </div>
         <div className="text-center lg:text-right">
-          <p className="mobile-simplify-subtitle text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barber√≠a</p>
+          <p className="mobile-simplify-subtitle text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de BarberÌa</p>
           <h3 className="text-2xl sm:text-3xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
             {new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </h3>
@@ -3577,7 +3573,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                           <div className="flex items-center justify-between mt-2 text-white">
                             <span className="text-white text-[8px] font-black truncate flex items-center gap-1">
                               {apt.service?.toLowerCase().includes('barba') ? <BeardIcon size={10}/> : <Scissors size={10}/>}
-                          {apt.status === 'Cita Perdida' ? 'NO LLEG√ì' : getAgendaServiceLabel(apt.service)}
+                          {apt.status === 'Cita Perdida' ? 'NO LLEG”' : getAgendaServiceLabel(apt.service)}
                             </span>
                             <span className="text-[7px] opacity-70 font-black">{apt.time}</span>
                           </div>
@@ -3619,10 +3615,10 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
     <div className="p-4 md:p-10 space-y-6 md:space-y-12 h-full animate-in fade-in text-white no-print">
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 text-white">
         <div>
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Men√∫ de Servicios</h3>
-          <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gesti√≥n Maestra de Cat√°logo</p>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Men˙ de Servicios</h3>
+          <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">GestiÛn Maestra de Cat·logo</p>
         </div>
-        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoci√≥n' : 'Nuevo Servicio'}</button>
+        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva PromociÛn' : 'Nuevo Servicio'}</button>
       </div>
       <div className="grid w-full grid-cols-2 gap-3 p-3 bg-black border border-slate-800 rounded-[2.5rem] text-white sm:flex sm:flex-wrap sm:items-center sm:w-fit">
         {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 md:px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>{CATEGORY_LABELS[cat] || cat}</button>)}
@@ -3640,14 +3636,14 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
                 <div className="mt-5 space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-300">
-                      {'Promoci√≥n general'}
+                      {'PromociÛn general'}
                     </span>
                     <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-300">
                       {formatPromotionValue(s)}
                     </span>
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Aplicaci√≥n manual al momento de cobrar
+                    AplicaciÛn manual al momento de cobrar
                   </p>
                 </div>
               )}
@@ -3661,7 +3657,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
             </div>
           </div>
         ))}
-        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[260px] md:min-h-[320px] text-white"><div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={28} /></div><p className="font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-white text-center">{activeCategory === 'Promocion' ? 'A√±adir promoci√≥n' : `A√±adir a ${CATEGORY_LABELS[activeCategory] || activeCategory}`}</p></div>
+        <div onClick={() => onAdd(activeCategory)} className="border-4 border-dashed border-slate-900 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center text-slate-800 hover:border-indigo-600 hover:text-indigo-400 transition-all cursor-pointer group min-h-[260px] md:min-h-[320px] text-white"><div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-white"><Plus size={28} /></div><p className="font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-white text-center">{activeCategory === 'Promocion' ? 'AÒadir promociÛn' : `AÒadir a ${CATEGORY_LABELS[activeCategory] || activeCategory}`}</p></div>
       </div>
     </div>
   );
@@ -3781,21 +3777,21 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       return;
     }
     if (getPhoneDigits(form.phone).length > 0 && !isValidPhoneNumber(form.phone)) {
-      notify('El tel√©fono m√≥vil debe tener exactamente 8 d√≠gitos.', 'warning');
+      notify('El telÈfono mÛvil debe tener exactamente 8 dÌgitos.', 'warning');
       return;
     }
     if (barberHasBasePay(form.paymentMode) && parseSalary(form.salary) <= 0) {
-      notify('Debes ingresar un salario base v√°lido para esta modalidad.', 'warning');
+      notify('Debes ingresar un salario base v·lido para esta modalidad.', 'warning');
       return;
     }
     if (barberHasCommissionPay(form.paymentMode)) {
       const commissionRate = parseSalary(form.commission);
       if (commissionRate <= 0) {
-        notify('Debes ingresar un porcentaje de comisi√≥n v√°lido para esta modalidad.', 'warning');
+        notify('Debes ingresar un porcentaje de comisiÛn v·lido para esta modalidad.', 'warning');
         return;
       }
       if (commissionRate > 100) {
-        notify('La comisi√≥n no puede ser mayor al 100%.', 'warning');
+        notify('La comisiÛn no puede ser mayor al 100%.', 'warning');
         return;
       }
     }
@@ -3888,8 +3884,8 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
         ? `Solo ${salariedBarbers.length} con salario fijo`
         : 'No hay staff con salario fijo',
       avgCommissionCaption: commissionBarbers.length
-        ? `Promedio pendiente para ${commissionBarbers.length} por comisi√≥n`
-        : 'No hay staff por comisi√≥n',
+        ? `Promedio pendiente para ${commissionBarbers.length} por comisiÛn`
+        : 'No hay staff por comisiÛn',
       performanceCaption: monthlyFinishedAppointments.length
         ? `${activeBarbers} de ${roster.length || 0} barberos con servicios finalizados este mes`
         : 'Sin servicios finalizados este mes',
@@ -3915,14 +3911,14 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 text-white">
         <div>
           <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-white">Equipo de Barberos</h3>
-          <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Administre el staff, salarios y liquidaci√≥n de comisiones</p>
+          <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Administre el staff, salarios y liquidaciÛn de comisiones</p>
         </div>
         <div className="flex gap-4">
           <button 
             onClick={onGoToNomina}
             className="bg-[#6366f1] hover:bg-[#5356e3] text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] active:scale-95 transition-all flex items-center gap-2"
           >
-            <Wallet size={16} /> Pagar N√≥mina
+            <Wallet size={16} /> Pagar NÛmina
           </button>
           <button onClick={openNew} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95 transition-all">Nuevo Barbero</button>
         </div>
@@ -3949,7 +3945,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                 onClick={() => setCompensationIndicator('commission')}
                 className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${compensationIndicator === 'commission' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
               >
-                Comisi√≥n
+                ComisiÛn
               </button>
             </div>
           </div>
@@ -3974,7 +3970,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
           <h4 className="text-lg font-black uppercase text-white">Registro de Barberos</h4>
           <div className="relative text-white w-full max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, c√©dula o tel√©fono" className="pl-10 pr-4 py-3 w-full rounded-xl bg-black border border-slate-800 text-sm text-white outline-none focus:border-indigo-500" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, cÈdula o telÈfono" className="pl-10 pr-4 py-3 w-full rounded-xl bg-black border border-slate-800 text-sm text-white outline-none focus:border-indigo-500" />
           </div>
         </div>
 
@@ -4004,7 +4000,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                         <span className="text-[10px] font-black text-slate-300 italic">{branchNameById.get(String(b.branchId || '')) || 'Sucursal no asignada'}</span>
                     </div>
                     <div className="flex justify-between items-center text-white">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">C√©dula</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">CÈdula</span>
                         <span className="text-[10px] font-black text-slate-300 italic">{b.cedula?.trim() || 'Sin registrar'}</span>
                     </div>
                     <div className="flex justify-between items-center text-white">
@@ -4047,7 +4043,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
               
               <h4 className="text-xl font-black text-white uppercase tracking-tighter text-center mb-1 leading-none">{form.name || 'Sin Nombre'}</h4>
               <p className="text-[9px] font-bold text-indigo-200 uppercase tracking-[0.16em] text-center mb-2">{form.fullName || 'Nombre legal pendiente'}</p>
-              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.16em] mb-4 italic">C√©dula: {form.cedula || 'Sin registrar'}</p>
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.16em] mb-4 italic">CÈdula: {form.cedula || 'Sin registrar'}</p>
               <div className="mb-4 px-4 py-3 w-full rounded-2xl border border-white/5 bg-white/5 text-white">
                 <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] italic leading-none">Sucursal actual</p>
                 <p className="mt-2 text-sm font-black text-white italic">{branchNameById.get(String(form.branchId || '')) || 'Sucursal obligatoria'}</p>
@@ -4088,7 +4084,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><IdCard size={20}/></div>
                 <div>
                   <h3 className="text-xl font-black uppercase italic text-white tracking-tighter leading-none">{editing ? 'Editar Perfil' : 'Alta de Personal'}</h3>
-                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mt-1 leading-none">Informaci√≥n de n√≥mina y contacto</p>
+                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mt-1 leading-none">InformaciÛn de nÛmina y contacto</p>
                 </div>
               </div>
 
@@ -4097,25 +4093,25 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Comercial</label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan P√©rez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan PÈrez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Completo</label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos P√©rez L√≥pez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos PÈrez LÛpez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Tel√©fono m√≥vil</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">TelÈfono mÛvil</label>
                   <div className="relative group text-white">
                     <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
                     <input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} placeholder="Ej. 8899-4455" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">C√©dula</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">CÈdula</label>
                   <div className="relative group text-white">
                     <IdCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
                     <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: e.target.value })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
@@ -4143,7 +4139,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   )}
                   {barberHasCommissionPay(form.paymentMode) && (
                   <div className="space-y-2 text-white">
-                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisi√≥n (%)</label>
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">ComisiÛn (%)</label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">%</div>
                       <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
@@ -4230,7 +4226,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
       id: 'total',
       label: 'Total a Pagar',
       value: `C$ ${summary.total.toLocaleString()}`,
-      helper: `Base C$ ${summary.base.toLocaleString()} + comisi√≥n C$ ${summary.comission.toLocaleString()}`,
+      helper: `Base C$ ${summary.base.toLocaleString()} + comisiÛn C$ ${summary.comission.toLocaleString()}`,
       icon: Wallet,
       shellClass: 'bg-gradient-to-br from-indigo-500/20 via-slate-900 to-slate-950 border-indigo-500/30 shadow-[0_0_35px_rgba(99,102,241,0.18)]',
       iconWrapClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-400/20',
@@ -4252,7 +4248,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
       id: 'services',
       label: 'Servicios Pendientes',
       value: `${summary.pendingServices}`,
-      helper: summary.pendingServices > 0 ? 'Citas finalizadas a√∫n no liquidadas' : 'Todo el corte pendiente ya est√° bajo control',
+      helper: summary.pendingServices > 0 ? 'Citas finalizadas a˙n no liquidadas' : 'Todo el corte pendiente ya est· bajo control',
       icon: Scissors,
       shellClass: 'bg-gradient-to-br from-emerald-500/10 via-slate-900 to-slate-950 border-emerald-500/20 shadow-[0_0_35px_rgba(16,185,129,0.14)]',
       iconWrapClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/20',
@@ -4272,7 +4268,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
             <ChevronLeft size={20} />
           </button>
           <div>
-          <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-white">Liquidaci√≥n de N√≥mina</h3>
+          <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-white">LiquidaciÛn de NÛmina</h3>
             <p className="text-[#4ade80] text-[10px] font-black uppercase tracking-widest mt-1 italic leading-none">Procesar pagos pendientes del staff</p>
           </div>
         </div>
@@ -4316,7 +4312,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
               <th className="px-10 py-7 text-center">Base</th>
               <th className="px-10 py-7 text-center">Comisiones</th>
               <th className="px-10 py-7 text-right">Total a Pagar</th>
-              <th className="px-10 py-7 text-right">Acci√≥n</th>
+              <th className="px-10 py-7 text-right">AcciÛn</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
@@ -4913,7 +4909,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
   return (
     <div className="px-3 py-4 md:p-12 space-y-6 md:space-y-12 h-full animate-in fade-in pb-24 md:pb-32 text-white no-print">
       <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-4 md:gap-5 text-white">
-        <div><h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">An√°lisis del Negocio</h3><p className="text-[9px] md:text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.16em] md:tracking-[0.2em] leading-none">M√©tricas avanzadas y rendimiento comercial real</p></div>
+        <div><h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">An·lisis del Negocio</h3><p className="text-[9px] md:text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.16em] md:tracking-[0.2em] leading-none">MÈtricas avanzadas y rendimiento comercial real</p></div>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           {(branches || []).length > 0 && (
             <div className="w-full sm:min-w-[220px] sm:w-auto">
@@ -4922,7 +4918,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 onChange={(e) => setSelectedReportBranchId(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs md:text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
               >
-                <option value="all">Toda la barber√≠a</option>
+                <option value="all">Toda la barberÌa</option>
                 {branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>{branch.name}</option>
                 ))}
@@ -5000,7 +4996,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                     <div className="p-2 bg-emerald-600/20 rounded-lg text-emerald-400"><UserPlus size={16} /></div>
                   </div>
                   <h4 className="text-6xl font-black text-emerald-400 italic tracking-tighter leading-none drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">C$ {totalCombinedRevenue.toLocaleString()}</h4>
-                  <p className="text-[10px] text-slate-500 font-black mt-4 uppercase italic leading-none">Cortes + productos ‚Ä¢ {salesRangeLabel}</p>
+                  <p className="text-[10px] text-slate-500 font-black mt-4 uppercase italic leading-none">Cortes + productos ï {salesRangeLabel}</p>
                 </div>
               </div>
             </div>
@@ -5009,7 +5005,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6 mb-6 md:mb-12 text-white">
                 <div>
                   <h5 className="text-lg md:text-2xl font-black italic uppercase text-white flex items-center gap-3"><BarChart3 className="text-indigo-500" /> Rendimiento de Ingresos</h5>
-                  <p className="text-[9px] md:text-[10px] text-slate-500 font-black uppercase italic mt-1 tracking-[0.14em] md:tracking-widest leading-none">Hist√≥rico real de la semana en curso (Lunes - Domingo)</p>
+                  <p className="text-[9px] md:text-[10px] text-slate-500 font-black uppercase italic mt-1 tracking-[0.14em] md:tracking-widest leading-none">HistÛrico real de la semana en curso (Lunes - Domingo)</p>
                 </div>
                 <div className="flex w-full md:w-auto items-center gap-2 p-1.5 bg-black border border-slate-800 rounded-2xl text-white">
                   {periodOptions.map(period => (
@@ -5210,8 +5206,8 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
             <div className="flex items-center gap-4 text-white"><div className="h-px flex-1 bg-gradient-to-r from-indigo-500/50 to-transparent"></div><h4 className="text-xl font-black italic uppercase text-indigo-400 tracking-tighter">Eficiencia del Staff</h4><div className="h-px flex-1 bg-gradient-to-l from-indigo-500/50 to-transparent"></div></div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-white">
                <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] italic leading-none">Ticket Promedio Equipo</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-indigo-400 leading-none">C$ {stats.globalAvgTicket.toFixed(0)}</h5><div className="p-2 bg-indigo-600/10 rounded-lg text-indigo-500"><TrendingUp size={16}/></div></div></div>
-               <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] italic leading-none">Nivel Satisfacci√≥n</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-amber-500 leading-none">4.8 / 5.0</h5><div className="p-2 bg-amber-600/10 rounded-lg text-amber-500"><Star size={16} fill="currentColor"/></div></div></div>
-               <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] italic leading-none">Tasa de Retenci√≥n</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-emerald-400 leading-none">82%</h5><div className="p-2 bg-emerald-600/10 rounded-lg text-emerald-400"><UserCheck size={16}/></div></div></div>
+               <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] italic leading-none">Nivel SatisfacciÛn</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-amber-500 leading-none">4.8 / 5.0</h5><div className="p-2 bg-amber-600/10 rounded-lg text-amber-500"><Star size={16} fill="currentColor"/></div></div></div>
+               <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] italic leading-none">Tasa de RetenciÛn</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-emerald-400 leading-none">82%</h5><div className="p-2 bg-emerald-600/10 rounded-lg text-emerald-400"><UserCheck size={16}/></div></div></div>
                <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 flex flex-col gap-2 text-white"><p className="text-[9px] font-black text-slate-500 uppercase italic leading-none">Servicios Finalizados</p><div className="flex items-end justify-between text-white"><h5 className="text-2xl font-black italic text-rose-400 leading-none">{finished.length}</h5><div className="p-2 bg-rose-600/10 rounded-lg text-rose-400"><Scissors size={16}/></div></div></div>
             </div>
             
@@ -5260,7 +5256,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                             {staffRangeLabel}
                           </span>
                           <span className="hidden text-[11px] font-black text-white leading-tight break-words">
-                            {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`} ‚Ä¢ {staffRangeLabel}
+                            {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`} ï {staffRangeLabel}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -5343,7 +5339,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                     className="relative h-[280px] min-w-0 md:h-[300px] md:min-w-[340px]"
                     style={{ width: '100%' }}
                   >
-                    {/* CUADR√çCULA ESTRUCTURADA DE FONDO */}
+                    {/* CUADRÕCULA ESTRUCTURADA DE FONDO */}
                     <div className="absolute inset-0 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-8 md:ml-10 mb-16 md:mb-20">
                       {[100, 80, 60, 40, 20, 0].map((val) => (
                         <div key={val} className="w-full flex items-center relative">
@@ -5438,7 +5434,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                        </div>
                        <div className="grid grid-cols-2 gap-4 text-white">
                          <div className="bg-black p-4 rounded-2xl border border-slate-800 text-white"><p className="text-[9px] font-black text-slate-500 uppercase italic leading-none">Ticket Promedio</p><p className="text-base font-black text-white italic leading-none mt-2">C$ {Math.round(b.avgTicket)}</p></div>
-                         <div className="bg-black p-4 rounded-2xl border border-slate-800 text-white"><p className="text-[9px] font-black text-slate-500 uppercase italic leading-none">Retenci√≥n</p><p className="text-base font-black text-emerald-400 italic leading-none mt-2">{b.retention}%</p></div>
+                         <div className="bg-black p-4 rounded-2xl border border-slate-800 text-white"><p className="text-[9px] font-black text-slate-500 uppercase italic leading-none">RetenciÛn</p><p className="text-base font-black text-emerald-400 italic leading-none mt-2">{b.retention}%</p></div>
                        </div>
                     </div>
                   ))}
@@ -5451,7 +5447,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
   );
 }
 
-const periodOptions = [{ id: 'week', label: 'Semana' }, { id: 'month', label: 'Mes' }, { id: 'year', label: 'A√±o' }];
+const periodOptions = [{ id: 'week', label: 'Semana' }, { id: 'month', label: 'Mes' }, { id: 'year', label: 'AÒo' }];
 
 function ClientModal({ onClose, onSave, clients, initial }) {
   const [formData, setFormData] = useState({ name: initial?.name || '', phone: formatPhoneNumber(initial?.phone || ''), notes: initial?.notes || '' });
@@ -5460,9 +5456,9 @@ function ClientModal({ onClose, onSave, clients, initial }) {
     e.preventDefault(); 
     setErrorMsg(null); 
     const formattedPhone = formatPhoneNumber(formData.phone);
-    if (!isValidPhoneNumber(formattedPhone)) { setErrorMsg('El celular debe tener exactamente 8 d√≠gitos.'); return; }
+    if (!isValidPhoneNumber(formattedPhone)) { setErrorMsg('El celular debe tener exactamente 8 dÌgitos.'); return; }
     const duplicate = findClientByPhone(clients, formattedPhone, initial?.id);
-    if (duplicate) { setErrorMsg(`Este n√∫mero ya pertenece a: ${duplicate.name}`); return; } 
+    if (duplicate) { setErrorMsg(`Este n˙mero ya pertenece a: ${duplicate.name}`); return; } 
     onSave({ ...formData, phone: formattedPhone }); 
   };
   return (
@@ -5474,9 +5470,9 @@ function ClientModal({ onClose, onSave, clients, initial }) {
         </div>
         <form onSubmit={handleSubmit} className="p-10 space-y-8 text-white">
           {errorMsg && <div className="bg-rose-500/10 border border-rose-500/30 p-5 rounded-2xl text-rose-400 text-[10px] font-black uppercase italic leading-none">{errorMsg}</div>}
-          <div className="space-y-3 text-white"><label className="text-[11px] font-black text-slate-500 uppercase italic leading-none">Nombre Completo</label><input required placeholder="Ej. Juan P√©rez" className="w-full bg-black border border-slate-800 rounded-3xl px-8 py-5 text-sm font-bold text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+          <div className="space-y-3 text-white"><label className="text-[11px] font-black text-slate-500 uppercase italic leading-none">Nombre Completo</label><input required placeholder="Ej. Juan PÈrez" className="w-full bg-black border border-slate-800 rounded-3xl px-8 py-5 text-sm font-bold text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
           <div className="space-y-3 text-white"><label className="text-[11px] font-black text-slate-500 uppercase italic leading-none">Celular</label><input required type="tel" placeholder="0000-0000" className="w-full bg-black border border-slate-800 rounded-3xl px-8 py-5 text-sm font-bold text-white outline-none focus:border-indigo-600 italic leading-none" value={formData.phone} onChange={e => { setErrorMsg(null); setFormData({...formData, phone: formatPhoneNumber(e.target.value)}); }} /></div>
-          <div className="space-y-3 text-white"><label className="text-[11px] font-black text-slate-500 uppercase italic leading-none">Notas T√©cnicas</label><textarea placeholder="Ej. Piel sensible..." className="w-full bg-black border border-slate-800 rounded-3xl px-8 py-5 text-sm font-bold text-white min-h-[140px] outline-none focus:border-indigo-600 italic leading-relaxed" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} /></div>
+          <div className="space-y-3 text-white"><label className="text-[11px] font-black text-slate-500 uppercase italic leading-none">Notas TÈcnicas</label><textarea placeholder="Ej. Piel sensible..." className="w-full bg-black border border-slate-800 rounded-3xl px-8 py-5 text-sm font-bold text-white min-h-[140px] outline-none focus:border-indigo-600 italic leading-relaxed" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} /></div>
           <button type="submit" className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black uppercase italic text-xs text-white leading-none">GUARDAR EN BASE DE DATOS</button>
         </form>
       </div>
@@ -5587,9 +5583,9 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     } 
     
     if (!form.service) { setModalError("Por favor elige un servicio."); return; } 
-    if ((selectedClient || isNewClient) && phoneVal.trim() && !isValidPhoneNumber(phoneVal)) { setModalError("El celular debe tener exactamente 8 d√≠gitos."); return; }
-    if (isNewClient && !phoneVal.trim()) { setModalError("Ingresa el n√∫mero de celular del nuevo cliente."); return; }
-    if (isNewClient && duplicatePhoneClient) { setModalError(`Ese n√∫mero ya est√° registrado con ${duplicatePhoneClient.name}.`); return; }
+    if ((selectedClient || isNewClient) && phoneVal.trim() && !isValidPhoneNumber(phoneVal)) { setModalError("El celular debe tener exactamente 8 dÌgitos."); return; }
+    if (isNewClient && !phoneVal.trim()) { setModalError("Ingresa el n˙mero de celular del nuevo cliente."); return; }
+    if (isNewClient && duplicatePhoneClient) { setModalError(`Ese n˙mero ya est· registrado con ${duplicatePhoneClient.name}.`); return; }
     
     onSave(form, { name: searchTerm, phone: formatPhoneNumber(phoneVal), id: selectedClient?.id, isNew: isNewClient }); 
   };
@@ -5647,7 +5643,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                   </div>
                 )}
                 {(selectedClient || isNewClient) && (
-                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-5 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TEL√âFONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
+                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-5 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TEL…FONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
                 )}
               </div>
             </div>
@@ -5683,7 +5679,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                 {form.type === 'walkin' ? (
                   <div className="w-full bg-indigo-600/10 border border-indigo-500/30 py-4 px-6 rounded-[1.2rem] flex items-center gap-2 text-white">
                     <Clock size={14} className="text-indigo-400" />
-                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (Auto) ¬∑ {form.time || '--:--'}</span>
+                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (Auto) ∑ {form.time || '--:--'}</span>
                   </div>
                 ) : (
                   <input type="time" className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />
@@ -5701,5 +5697,6 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     </div>
   );
 }
+
 
 

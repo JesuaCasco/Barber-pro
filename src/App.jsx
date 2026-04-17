@@ -1694,23 +1694,42 @@ export default function App() {
     }
 
     let mounted = true;
-
-    supabase.auth.getSession().then(({ data, error }) => {
+    let authBootstrapTimedOut = false;
+    const authBootstrapTimeout = window.setTimeout(() => {
       if (!mounted) return;
-      if (error) {
-        console.error('No se pudo restaurar la sesión:', error);
-        setAuthError('No pude restaurar la sesión guardada.');
-      }
-      const restoredSession = data.session ?? null;
-      const restoredUserId = restoredSession?.user?.id || null;
-      lastSessionUserIdRef.current = restoredUserId;
-      cacheRestoreAttemptedRef.current = false;
-      if (restoredUserId) {
-        restoreRuntimeCache(restoredUserId);
-      }
-      setSession(restoredSession);
+      authBootstrapTimedOut = true;
+      console.error('La restauración de sesión tardó demasiado y se canceló para mostrar el login.');
+      setSession(null);
+      setAuthError('La sesión guardada tardó demasiado en responder. Ingresa de nuevo.');
       setAuthLoading(false);
-    });
+    }, 6000);
+
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (!mounted || authBootstrapTimedOut) return;
+        window.clearTimeout(authBootstrapTimeout);
+        if (error) {
+          console.error('No se pudo restaurar la sesión:', error);
+          setAuthError('No pude restaurar la sesión guardada.');
+        }
+        const restoredSession = data.session ?? null;
+        const restoredUserId = restoredSession?.user?.id || null;
+        lastSessionUserIdRef.current = restoredUserId;
+        cacheRestoreAttemptedRef.current = false;
+        if (restoredUserId) {
+          restoreRuntimeCache(restoredUserId);
+        }
+        setSession(restoredSession);
+        setAuthLoading(false);
+      })
+      .catch((error) => {
+        if (!mounted || authBootstrapTimedOut) return;
+        window.clearTimeout(authBootstrapTimeout);
+        console.error('Falló la verificación de sesión:', error);
+        setSession(null);
+        setAuthError('No pude verificar la sesión guardada. Ingresa de nuevo.');
+        setAuthLoading(false);
+      });
 
     const {
       data: { subscription },
@@ -1741,6 +1760,7 @@ export default function App() {
 
     return () => {
       mounted = false;
+      window.clearTimeout(authBootstrapTimeout);
       subscription.unsubscribe();
     };
   }, [restoreRuntimeCache]);

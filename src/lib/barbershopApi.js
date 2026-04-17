@@ -110,6 +110,21 @@ const normalizeError = (error, fallback) => {
   return new Error(fixMojibakeText(error.message || fallback));
 };
 
+const settleQuery = async (query, fallbackData = []) => {
+  try {
+    const result = await query;
+    return {
+      data: result?.data ?? fallbackData,
+      error: result?.error ?? null,
+    };
+  } catch (error) {
+    return {
+      data: fallbackData,
+      error,
+    };
+  }
+};
+
 const encodeBranchScope = (branchId) => `branch_id.is.null,branch_id.eq.${branchId}`;
 
 const applyTenantScope = (query, { isSuperAdmin, currentBarbershopId, currentBranchId }, options = {}) => {
@@ -584,7 +599,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
         .lte('created_at', `${appointmentsRange.to}T23:59:59.999`)
         .order('created_at', { ascending: true }),
       scope,
-    ).catch((error) => ({ data: [], error })),
+    ).then((result) => result, (error) => ({ data: [], error })),
   ]);
 
   if (servicesError) throw normalizeError(servicesError, 'No se pudieron cargar los servicios.');
@@ -720,15 +735,15 @@ export async function fetchClientDirectorySnapshot(currentUserId, scopeOverride 
       barbershopWideScope,
       { branchColumn: null },
     ),
-    applyTenantScope(
+    settleQuery(applyTenantScope(
       supabase
         .from('barbers')
         .select('id, name, full_name')
         .eq('is_active', true)
         .order('created_at', { ascending: true }),
       barbershopWideScope,
-    ).catch((error) => ({ data: [], error })),
-    applyTenantScope(
+    ), []),
+    settleQuery(applyTenantScope(
       supabase
         .from('appointments')
         .select('id, client_id, barber_id, barber_name, service_name, price, appointment_date, appointment_time, status')
@@ -738,7 +753,7 @@ export async function fetchClientDirectorySnapshot(currentUserId, scopeOverride 
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true }),
       barbershopWideScope,
-    ).catch((error) => ({ data: [], error })),
+    ), []),
   ]);
 
   if (clientsError) throw normalizeError(clientsError, 'No se pudieron cargar los clientes.');

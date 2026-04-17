@@ -156,6 +156,7 @@ const UiFeedbackContext = createContext({
 });
 
 const useUiFeedback = () => useContext(UiFeedbackContext);
+const AUTH_RUNTIME_CACHE_KEY = 'bp_auth_runtime_cache_v1';
 
 const resolveWalkinQueueTime = ({ appointments = [], barberId, date = getTodayString() }) => {
   if (!barberId || !date) return getCurrentTimeHHmm();
@@ -1391,7 +1392,24 @@ function SystemView({
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const readRuntimeCache = React.useCallback(() => {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const raw = window.localStorage.getItem(AUTH_RUNTIME_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.error('No se pudo leer el cache local de BarberPro:', error);
+      return null;
+    }
+  }, []);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const cached = typeof window !== 'undefined'
+      ? window.localStorage.getItem(`${AUTH_RUNTIME_CACHE_KEY}:activeTab`)
+      : null;
+    return cached || 'dashboard';
+  });
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1479,6 +1497,8 @@ export default function App() {
   
   const [viewDate, setViewDate] = useState(getTodayString());
   const bootstrapCompletedRef = useRef(false);
+  const hydratedFromCacheRef = useRef(false);
+  const cacheRestoreAttemptedRef = useRef(false);
   const lastSessionUserIdRef = useRef(null);
   const currentUserRoles = useMemo(() => accessControl.currentUserRoles || [], [accessControl.currentUserRoles]);
   const isSuperAdmin = currentUserRoles.includes('super_admin');
@@ -1579,6 +1599,46 @@ export default function App() {
     setClientDirectoryWarnings([]);
   };
 
+  const restoreRuntimeCache = React.useCallback((userId) => {
+    if (!userId || cacheRestoreAttemptedRef.current) return false;
+
+    const cached = readRuntimeCache();
+    if (!cached || String(cached.userId || '') !== String(userId)) {
+      cacheRestoreAttemptedRef.current = true;
+      hydratedFromCacheRef.current = false;
+      return false;
+    }
+
+    setServices(Array.isArray(cached.services) ? cached.services : []);
+    setClients(
+      Array.isArray(cached.clients)
+        ? cached.clients.map((client) => ({ ...client, phone: formatPhoneNumber(client.phone || '') }))
+        : [],
+    );
+    setBarbers(
+      Array.isArray(cached.barbers)
+        ? cached.barbers.map((barber, index) => ensureBarberTheme(barber, index))
+        : [],
+    );
+    setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
+    setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
+    setAccessControl(
+      cached.accessControl || { roles: [], users: [], currentUserRoles: [], currentBarbershopId: null, currentBranchId: null, barbershops: [], branches: [] },
+    );
+    setOperationalWarnings(Array.isArray(cached.operationalWarnings) ? cached.operationalWarnings : []);
+    setClientDirectoryData(cached.clientDirectoryData || { clients: [], appointments: [], barbers: [] });
+    setClientDirectoryLoaded(Boolean(cached.clientDirectoryLoaded));
+    setClientDirectoryWarnings(Array.isArray(cached.clientDirectoryWarnings) ? cached.clientDirectoryWarnings : []);
+    setSuperAdminViewBarbershopId(cached.superAdminViewBarbershopId || '');
+    setActiveTab(cached.activeTab || 'dashboard');
+    setLoading(false);
+
+    hydratedFromCacheRef.current = true;
+    cacheRestoreAttemptedRef.current = true;
+    bootstrapCompletedRef.current = true;
+    return true;
+  }, [readRuntimeCache]);
+
   useEffect(() => () => {
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
@@ -1587,6 +1647,13 @@ export default function App() {
       confirmState.resolve(false);
     }
   }, [confirmState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    window.localStorage.setItem(`${AUTH_RUNTIME_CACHE_KEY}:activeTab`, activeTab);
+    return undefined;
+  }, [activeTab]);
 
   useEffect(() => {
     if (!useBrowserCache) return;
@@ -1634,20 +1701,38 @@ export default function App() {
         console.error('No se pudo restaurar la sesión:', error);
         setAuthError('No pude restaurar la sesión guardada.');
       }
-      setSession(data.session ?? null);
+      const restoredSession = data.session ?? null;
+      const restoredUserId = restoredSession?.user?.id || null;
+      lastSessionUserIdRef.current = restoredUserId;
+      cacheRestoreAttemptedRef.current = false;
+      if (restoredUserId) {
+        restoreRuntimeCache(restoredUserId);
+      }
+      setSession(restoredSession);
       setAuthLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
       const previousUserId = lastSessionUserIdRef.current;
       const nextUserId = nextSession?.user?.id || null;
-      if (previousUserId !== nextUserId) {
+      const userChanged = previousUserId !== nextUserId;
+
+      if (userChanged) {
         bootstrapCompletedRef.current = false;
+        hydratedFromCacheRef.current = false;
+        cacheRestoreAttemptedRef.current = false;
         clearScopedOperationalState();
-        setLoading(Boolean(nextSession));
+        if (nextUserId) {
+          restoreRuntimeCache(nextUserId);
+          setLoading(!hydratedFromCacheRef.current);
+        } else {
+          setLoading(false);
+        }
+      } else if (event === 'SIGNED_IN' && nextUserId && !cacheRestoreAttemptedRef.current) {
+        restoreRuntimeCache(nextUserId);
       }
       lastSessionUserIdRef.current = nextUserId;
       setSession(nextSession ?? null);
@@ -1658,7 +1743,7 @@ export default function App() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [restoreRuntimeCache]);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -1684,10 +1769,11 @@ export default function App() {
           if (!session) {
             if (!ignore) {
               clearScopedOperationalState();
+              setLoading(false);
             }
             return;
           }
-          if (!ignore) setLoading(true);
+          if (!ignore && !bootstrapCompletedRef.current) setLoading(true);
           const snapshot = await fetchBarbershopSnapshot(session.user.id, superAdminScopeOverride);
           if (ignore) return;
 
@@ -1716,6 +1802,7 @@ export default function App() {
       } finally {
         if (!ignore) {
           bootstrapCompletedRef.current = true;
+          hydratedFromCacheRef.current = false;
           setLoading(false);
         }
       }
@@ -1727,6 +1814,49 @@ export default function App() {
       ignore = true;
     };
   }, [session, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !session?.user?.id || typeof window === 'undefined') return undefined;
+
+    const runtimeCache = {
+      userId: session.user.id,
+      activeTab,
+      services,
+      clients,
+      barbers,
+      appointments,
+      posSales,
+      accessControl,
+      operationalWarnings,
+      clientDirectoryData,
+      clientDirectoryLoaded,
+      clientDirectoryWarnings,
+      superAdminViewBarbershopId,
+      savedAt: new Date().toISOString(),
+    };
+
+    try {
+      window.localStorage.setItem(AUTH_RUNTIME_CACHE_KEY, JSON.stringify(runtimeCache));
+    } catch (error) {
+      console.error('No se pudo guardar el cache local de BarberPro:', error);
+    }
+
+    return undefined;
+  }, [
+    session,
+    activeTab,
+    services,
+    clients,
+    barbers,
+    appointments,
+    posSales,
+    accessControl,
+    operationalWarnings,
+    clientDirectoryData,
+    clientDirectoryLoaded,
+    clientDirectoryWarnings,
+    superAdminViewBarbershopId,
+  ]);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !session?.user?.id) {

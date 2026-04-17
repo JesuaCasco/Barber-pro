@@ -530,50 +530,53 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   const scope = await resolveUserScope(currentUserId, scopeOverride);
   const appointmentsRange = getOperationalAppointmentsRange();
 
-  const servicesQuery = applyTenantScope(supabase
-    .from('services')
-    .select('*')
-    .eq('is_active', true)
-    .order('created_at', { ascending: true }), scope, { branchColumn: null, includeLegacyBarbershopRows: true });
-  const { data: servicesData, error: servicesError } = await servicesQuery;
-  if (servicesError) throw normalizeError(servicesError, 'No se pudieron cargar los servicios.');
-
-  const { data: comboItemsData, error: comboItemsError } = await supabase
-    .from('service_combo_items')
-    .select('*');
-  if (comboItemsError) {
-    console.warn('No se pudieron cargar los combos para el snapshot principal:', comboItemsError);
-  }
-
-  const clientsQuery = applyTenantScope(supabase
-    .from('clients')
-    .select('*')
-    .order('created_at', { ascending: true }), scope, { branchColumn: null });
-  const { data: clientsData, error: clientsError } = await clientsQuery;
-  if (clientsError) throw normalizeError(clientsError, 'No se pudieron cargar los clientes.');
-
-  const barbersQuery = applyTenantScope(supabase
-    .from('barbers')
-    .select('*')
-    .eq('is_active', true)
-    .order('created_at', { ascending: true }), scope);
-  const { data: barbersData, error: barbersError } = await barbersQuery;
-  if (barbersError) throw normalizeError(barbersError, 'No se pudo cargar el staff.');
-
-  const appointmentsQuery = applyTenantScope(supabase
-    .from('appointments')
-    .select('*')
-    .gte('appointment_date', appointmentsRange.from)
-    .lte('appointment_date', appointmentsRange.to)
-    .order('appointment_date', { ascending: true })
-    .order('appointment_time', { ascending: true }), scope);
-  const { data: appointmentsData, error: appointmentsError } = await appointmentsQuery;
-  if (appointmentsError) throw normalizeError(appointmentsError, 'No se pudo cargar la agenda.');
-
-  let posSalesData = [];
-  let posSalesLoadError = null;
-  try {
-    const posSalesQuery = applyTenantScope(
+  const [
+    { data: servicesData, error: servicesError },
+    { data: comboItemsData, error: comboItemsError },
+    { data: clientsData, error: clientsError },
+    { data: barbersData, error: barbersError },
+    { data: appointmentsData, error: appointmentsError },
+    posSalesResult,
+  ] = await Promise.all([
+    applyTenantScope(
+      supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true }),
+      scope,
+      { branchColumn: null, includeLegacyBarbershopRows: true },
+    ),
+    supabase
+      .from('service_combo_items')
+      .select('*'),
+    applyTenantScope(
+      supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      scope,
+      { branchColumn: null },
+    ),
+    applyTenantScope(
+      supabase
+        .from('barbers')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true }),
+      scope,
+    ),
+    applyTenantScope(
+      supabase
+        .from('appointments')
+        .select('*')
+        .gte('appointment_date', appointmentsRange.from)
+        .lte('appointment_date', appointmentsRange.to)
+        .order('appointment_date', { ascending: true })
+        .order('appointment_time', { ascending: true }),
+      scope,
+    ),
+    applyTenantScope(
       supabase
         .from('pos_sales')
         .select('*')
@@ -581,14 +584,25 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
         .lte('created_at', `${appointmentsRange.to}T23:59:59.999`)
         .order('created_at', { ascending: true }),
       scope,
-    );
-    const { data, error } = await posSalesQuery;
-    if (error) throw error;
-    posSalesData = data || [];
-  } catch (error) {
-    const normalizedError = normalizeError(error, 'No se pudieron cargar las ventas de POS para el rango operativo actual.');
+    ).catch((error) => ({ data: [], error })),
+  ]);
+
+  if (servicesError) throw normalizeError(servicesError, 'No se pudieron cargar los servicios.');
+  if (clientsError) throw normalizeError(clientsError, 'No se pudieron cargar los clientes.');
+  if (barbersError) throw normalizeError(barbersError, 'No se pudo cargar el staff.');
+  if (appointmentsError) throw normalizeError(appointmentsError, 'No se pudo cargar la agenda.');
+  if (comboItemsError) {
+    console.warn('No se pudieron cargar los combos para el snapshot principal:', comboItemsError);
+  }
+
+  let posSalesData = [];
+  let posSalesLoadError = null;
+  if (posSalesResult?.error) {
+    const normalizedError = normalizeError(posSalesResult.error, 'No se pudieron cargar las ventas de POS para el rango operativo actual.');
     posSalesLoadError = normalizedError.message;
     console.warn('No se pudieron cargar las ventas de POS para el snapshot principal:', normalizedError);
+  } else {
+    posSalesData = posSalesResult?.data || [];
   }
 
   const scopedServiceIds = new Set((servicesData || []).map((row) => row.id));
@@ -693,39 +707,28 @@ export async function fetchClientDirectorySnapshot(currentUserId, scopeOverride 
   const clientDirectoryRange = getClientDirectoryAppointmentsRange();
   const warnings = [];
 
-  const clientsQuery = applyTenantScope(
-    supabase
-      .from('clients')
-      .select('*')
-      .order('created_at', { ascending: true }),
-    barbershopWideScope,
-    { branchColumn: null },
-  );
-  const { data: clientsData, error: clientsError } = await clientsQuery;
-  if (clientsError) throw normalizeError(clientsError, 'No se pudieron cargar los clientes.');
-
-  let barbersData = [];
-  try {
-    const barbersQuery = applyTenantScope(
+  const [
+    { data: clientsData, error: clientsError },
+    barbersResult,
+    appointmentsResult,
+  ] = await Promise.all([
+    applyTenantScope(
+      supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      barbershopWideScope,
+      { branchColumn: null },
+    ),
+    applyTenantScope(
       supabase
         .from('barbers')
         .select('id, name, full_name')
         .eq('is_active', true)
         .order('created_at', { ascending: true }),
       barbershopWideScope,
-    );
-    const { data, error } = await barbersQuery;
-    if (error) throw error;
-    barbersData = data || [];
-  } catch (error) {
-    const normalizedError = normalizeError(error, 'No se pudo cargar el staff para la vista de clientes.');
-    warnings.push(normalizedError.message);
-    console.error('No se pudo cargar el staff para clientes:', normalizedError);
-  }
-
-  let appointmentsData = [];
-  try {
-    const appointmentsQuery = applyTenantScope(
+    ).catch((error) => ({ data: [], error })),
+    applyTenantScope(
       supabase
         .from('appointments')
         .select('id, client_id, barber_id, barber_name, service_name, price, appointment_date, appointment_time, status')
@@ -735,12 +738,21 @@ export async function fetchClientDirectorySnapshot(currentUserId, scopeOverride 
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true }),
       barbershopWideScope,
-    );
-    const { data, error } = await appointmentsQuery;
-    if (error) throw error;
-    appointmentsData = data || [];
-  } catch (error) {
-    const normalizedError = normalizeError(error, 'No se pudo cargar el historial de clientes para calcular visitas y favoritos.');
+    ).catch((error) => ({ data: [], error })),
+  ]);
+
+  if (clientsError) throw normalizeError(clientsError, 'No se pudieron cargar los clientes.');
+
+  const barbersData = barbersResult?.data || [];
+  if (barbersResult?.error) {
+    const normalizedError = normalizeError(barbersResult.error, 'No se pudo cargar el staff para la vista de clientes.');
+    warnings.push(normalizedError.message);
+    console.error('No se pudo cargar el staff para clientes:', normalizedError);
+  }
+
+  const appointmentsData = appointmentsResult?.data || [];
+  if (appointmentsResult?.error) {
+    const normalizedError = normalizeError(appointmentsResult.error, 'No se pudo cargar el historial de clientes para calcular visitas y favoritos.');
     warnings.push(normalizedError.message);
     console.error('No se pudo cargar el historial de clientes:', normalizedError);
   }
@@ -791,59 +803,44 @@ export async function fetchAccessControlSnapshot(currentUserId) {
   const currentBarbershopId = currentProfile?.barbershop_id || null;
   const currentBranchId = currentProfile?.branch_id || null;
 
-  let barbershopsData = [];
-  if (isSuperAdmin) {
-    try {
-      const { data, error } = await supabase
-        .from('barbershops')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      barbershopsData = data || [];
-  } catch (error) {
-    throw normalizeError(error, 'No se pudieron cargar las barber\u00edas visibles para este usuario.');
-  }
-  }
-  if (!isSuperAdmin && currentBarbershopId) {
-    try {
-      const { data, error } = await supabase
+  const barbershopsPromise = isSuperAdmin
+    ? supabase
+      .from('barbershops')
+      .select('*')
+      .order('created_at', { ascending: true })
+    : currentBarbershopId
+      ? supabase
         .from('barbershops')
         .select('*')
         .eq('id', currentBarbershopId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      barbershopsData = data || [];
-    } catch (error) {
-      throw normalizeError(error, 'No se pudieron cargar las barber\u00edas visibles para este usuario.');
-    }
-  }
+        .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [], error: null });
 
-  let branchesData = [];
-  if (isSuperAdmin) {
-    try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      branchesData = data || [];
-    } catch (error) {
-      throw normalizeError(error, 'No se pudieron cargar las sucursales visibles para este usuario.');
-    }
-  } else if (currentBarbershopId) {
-    try {
-      const { data, error } = await supabase
+  const branchesPromise = isSuperAdmin
+    ? supabase
+      .from('branches')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+    : currentBarbershopId
+      ? supabase
         .from('branches')
         .select('*')
         .eq('is_active', true)
         .eq('barbershop_id', currentBarbershopId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      branchesData = data || [];
-    } catch (error) {
-      throw normalizeError(error, 'No se pudieron cargar las sucursales visibles para este usuario.');
-    }
+        .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [], error: null });
+
+  const [
+    { data: barbershopsData, error: barbershopsError },
+    { data: branchesData, error: branchesError },
+  ] = await Promise.all([barbershopsPromise, branchesPromise]);
+
+  if (barbershopsError) {
+    throw normalizeError(barbershopsError, 'No se pudieron cargar las barber\u00edas visibles para este usuario.');
+  }
+  if (branchesError) {
+    throw normalizeError(branchesError, 'No se pudieron cargar las sucursales visibles para este usuario.');
   }
 
   let profilesData = [];

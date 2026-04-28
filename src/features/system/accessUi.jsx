@@ -15,7 +15,13 @@ import { PASSWORD_MIN_LENGTH, ROLE_META, getPrimaryRole, styleTag } from '../app
 
 const getDisplayErrorMessage = (error, fallback = 'Ocurrió un problema inesperado.') => {
   if (!error) return fallback;
-  if (typeof error === 'string') return error.trim() || fallback;
+  if (typeof error === 'string') {
+    const normalized = error.trim();
+    if (!normalized || normalized === '{}' || normalized === '[]' || normalized === 'null' || normalized === 'undefined') {
+      return fallback;
+    }
+    return normalized;
+  }
 
   if (typeof error?.message === 'string' && error.message.trim()) return error.message.trim();
   if (typeof error?.error_description === 'string' && error.error_description.trim()) return error.error_description.trim();

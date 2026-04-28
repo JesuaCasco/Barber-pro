@@ -168,9 +168,39 @@ const isNetworkOrDnsError = (error) => {
   return NETWORK_ERROR_PATTERNS.some((pattern) => rawMessage.includes(pattern));
 };
 
+const getMeaningfulErrorMessage = (error) => {
+  const rawMessage = error?.message;
+
+  if (typeof rawMessage === 'string') {
+    const normalized = rawMessage.trim();
+    if (normalized && normalized !== '{}' && normalized !== '[]' && normalized !== 'null' && normalized !== 'undefined') {
+      return normalized;
+    }
+  }
+
+  if (typeof error === 'string') {
+    const normalized = error.trim();
+    if (normalized && normalized !== '{}' && normalized !== '[]' && normalized !== 'null' && normalized !== 'undefined') {
+      return normalized;
+    }
+  }
+
+  if (typeof error?.error_description === 'string' && error.error_description.trim()) {
+    return error.error_description.trim();
+  }
+
+  if (typeof error?.details === 'string' && error.details.trim()) {
+    return error.details.trim();
+  }
+
+  return '';
+};
+
 const getFriendlySupabaseErrorMessage = (error, context = 'general') => {
+  const meaningfulMessage = getMeaningfulErrorMessage(error);
+
   if (!isNetworkOrDnsError(error)) {
-    return error?.message || 'Ocurri\u00f3 un problema inesperado al conectar con Supabase.';
+    return meaningfulMessage || 'Ocurri\u00f3 un problema inesperado al conectar con Supabase.';
   }
 
   if (context === 'login') {

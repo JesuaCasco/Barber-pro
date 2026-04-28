@@ -13,11 +13,28 @@ import {
 } from 'lucide-react';
 import { PASSWORD_MIN_LENGTH, ROLE_META, getPrimaryRole, styleTag } from '../app/shared';
 
+const getDisplayErrorMessage = (error, fallback = 'Ocurrió un problema inesperado.') => {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error.trim() || fallback;
+
+  if (typeof error?.message === 'string' && error.message.trim()) return error.message.trim();
+  if (typeof error?.error_description === 'string' && error.error_description.trim()) return error.error_description.trim();
+  if (typeof error?.details === 'string' && error.details.trim()) return error.details.trim();
+
+  try {
+    const serialized = JSON.stringify(error);
+    return serialized && serialized !== '{}' ? serialized : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export function LoginScreen({ onSignIn, authBusy, authError }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const displayError = localError || getDisplayErrorMessage(authError, '');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -33,7 +50,11 @@ export function LoginScreen({ onSignIn, authBusy, authError }) {
       return;
     }
 
-    await onSignIn(email.trim(), password);
+    try {
+      await onSignIn(email.trim(), password);
+    } catch (error) {
+      setLocalError(getDisplayErrorMessage(error, 'No pude iniciar sesión. Intenta de nuevo.'));
+    }
   };
 
   return (
@@ -93,9 +114,9 @@ export function LoginScreen({ onSignIn, authBusy, authError }) {
                 </h2>
               </div>
 
-              {(localError || authError) && (
+              {displayError && (
                 <div className="bg-rose-500/10 border border-rose-400/30 rounded-[1.6rem] px-5 py-4 text-[11px] font-black uppercase italic leading-relaxed text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.18)]">
-                  {localError || authError}
+                  {displayError}
                 </div>
               )}
 

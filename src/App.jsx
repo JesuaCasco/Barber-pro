@@ -1418,6 +1418,11 @@ function SystemView({
 }
 
 export default function App() {
+  const getScopedActiveTabStorageKey = React.useCallback(
+    (userId) => `${AUTH_RUNTIME_CACHE_KEY}:activeTab:${userId}`,
+    [],
+  );
+
   const readRuntimeCache = React.useCallback(() => {
     if (typeof window === 'undefined') return null;
 
@@ -1430,12 +1435,7 @@ export default function App() {
     }
   }, []);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    const cached = typeof window !== 'undefined'
-      ? window.localStorage.getItem(`${AUTH_RUNTIME_CACHE_KEY}:activeTab`)
-      : null;
-    return cached || 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1525,6 +1525,7 @@ export default function App() {
   const bootstrapCompletedRef = useRef(false);
   const hydratedFromCacheRef = useRef(false);
   const cacheRestoreAttemptedRef = useRef(false);
+  const activeTabHydratedRef = useRef(false);
   const lastSessionUserIdRef = useRef(null);
   const currentUserRoles = useMemo(() => accessControl.currentUserRoles || [], [accessControl.currentUserRoles]);
   const isSuperAdmin = currentUserRoles.includes('super_admin');
@@ -1648,16 +1649,11 @@ export default function App() {
     );
     setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
     setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
-    setAccessControl(
-      cached.accessControl || { roles: [], users: [], currentUserRoles: [], currentBarbershopId: null, currentBranchId: null, barbershops: [], branches: [] },
-    );
     setOperationalWarnings(Array.isArray(cached.operationalWarnings) ? cached.operationalWarnings : []);
     setClientDirectoryData(cached.clientDirectoryData || { clients: [], appointments: [], barbers: [] });
     setClientDirectoryLoaded(Boolean(cached.clientDirectoryLoaded));
     setClientDirectoryWarnings(Array.isArray(cached.clientDirectoryWarnings) ? cached.clientDirectoryWarnings : []);
     setSuperAdminViewBarbershopId(cached.superAdminViewBarbershopId || '');
-    setActiveTab(cached.activeTab || 'dashboard');
-    setLoading(false);
 
     hydratedFromCacheRef.current = true;
     cacheRestoreAttemptedRef.current = true;
@@ -1675,11 +1671,11 @@ export default function App() {
   }, [confirmState]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined' || !session?.user?.id) return undefined;
 
-    window.localStorage.setItem(`${AUTH_RUNTIME_CACHE_KEY}:activeTab`, activeTab);
+    window.localStorage.setItem(getScopedActiveTabStorageKey(session.user.id), activeTab);
     return undefined;
-  }, [activeTab]);
+  }, [activeTab, getScopedActiveTabStorageKey, session?.user?.id]);
 
   useEffect(() => {
     if (!useBrowserCache) return;
@@ -1769,7 +1765,9 @@ export default function App() {
         bootstrapCompletedRef.current = false;
         hydratedFromCacheRef.current = false;
         cacheRestoreAttemptedRef.current = false;
+        activeTabHydratedRef.current = false;
         clearScopedOperationalState();
+        setActiveTab('dashboard');
         if (nextUserId) {
           restoreRuntimeCache(nextUserId);
           setLoading(!hydratedFromCacheRef.current);
@@ -1790,6 +1788,20 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, [restoreRuntimeCache]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !session?.user?.id || accessLoading || activeTabHydratedRef.current) {
+      return undefined;
+    }
+
+    const cachedTab = window.localStorage.getItem(getScopedActiveTabStorageKey(session.user.id));
+    if (cachedTab) {
+      setActiveTab(cachedTab);
+    }
+
+    activeTabHydratedRef.current = true;
+    return undefined;
+  }, [accessLoading, getScopedActiveTabStorageKey, session?.user?.id]);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -1849,8 +1861,9 @@ export default function App() {
       } finally {
         if (!ignore) {
           bootstrapCompletedRef.current = true;
-          hydratedFromCacheRef.current = false;
-          setLoading(false);
+          if (!hydratedFromCacheRef.current) {
+            setLoading(false);
+          }
         }
       }
     };
@@ -1867,13 +1880,11 @@ export default function App() {
 
     const runtimeCache = {
       userId: session.user.id,
-      activeTab,
       services,
       clients,
       barbers,
       appointments,
       posSales,
-      accessControl,
       operationalWarnings,
       clientDirectoryData,
       clientDirectoryLoaded,
@@ -1891,13 +1902,11 @@ export default function App() {
     return undefined;
   }, [
     session,
-    activeTab,
     services,
     clients,
     barbers,
     appointments,
     posSales,
-    accessControl,
     operationalWarnings,
     clientDirectoryData,
     clientDirectoryLoaded,
@@ -1919,12 +1928,18 @@ export default function App() {
         const snapshot = await fetchAccessControlSnapshot(session.user.id);
         if (!ignore) {
           setAccessControl(snapshot);
+          if (hydratedFromCacheRef.current) {
+            setLoading(false);
+          }
         }
       } catch (error) {
         console.error('No se pudo cargar control de acceso:', error);
         if (!ignore) {
           const details = error?.message ? `\n\n${error.message}` : '';
           notify(`No pude cargar usuarios/sucursales desde Supabase.${details}`, 'error');
+          if (hydratedFromCacheRef.current) {
+            setLoading(false);
+          }
         }
       } finally {
         if (!ignore) {

@@ -7,7 +7,7 @@ export const isProductionBuild = import.meta.env.PROD;
 export const isLocalDevModeEnabled = !isProductionBuild && import.meta.env.VITE_ENABLE_LOCAL_MODE === 'true';
 export const shouldSeedLocalDevMode = isLocalDevModeEnabled && import.meta.env.VITE_SEED_LOCAL_MODE === 'true';
 export const supabaseUrl = isProductionBuild && runtimeOrigin
-  ? `${runtimeOrigin}/supabase`
+  ? `${runtimeOrigin}/api/supabase`
   : directSupabaseUrl;
 export const supabaseDirectUrl = directSupabaseUrl;
 

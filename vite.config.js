@@ -9,10 +9,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       proxy: {
-        '/supabase': {
+        '/api/supabase': {
           target: env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/supabase/, ''),
+          rewrite: (path) => path.replace(/^\/api\/supabase/, ''),
         },
       },
     },

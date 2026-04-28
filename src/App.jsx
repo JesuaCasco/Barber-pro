@@ -160,6 +160,7 @@ const NETWORK_ERROR_PATTERNS = [
   'networkerror',
   'network request failed',
   'err_name_not_resolved',
+  'dns_hostname_not_found',
   'fetch failed',
 ];
 

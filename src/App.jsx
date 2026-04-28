@@ -1966,8 +1966,9 @@ export default function App() {
       } catch (error) {
         console.error('No se pudo cargar control de acceso:', error);
         if (!ignore) {
-          const details = error?.message ? `\n\n${error.message}` : '';
-          notify(`No pude cargar usuarios/sucursales desde Supabase.${details}`, 'error');
+          const friendlyErrorMessage = getFriendlySupabaseErrorMessage(error, 'dashboard');
+          setAccessControl({ roles: [], users: [], currentUserRoles: [], currentBarbershopId: null, currentBranchId: null, barbershops: [], branches: [] });
+          notify(`No pude cargar usuarios/sucursales desde Supabase.\n\n${friendlyErrorMessage}`, 'error');
           if (hydratedFromCacheRef.current) {
             setLoading(false);
           }

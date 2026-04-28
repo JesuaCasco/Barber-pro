@@ -17,6 +17,8 @@ const RETRYABLE_SUPABASE_ERROR_PATTERNS = [
   'failed to fetch',
   'load failed',
   'fetch failed',
+  'not_found',
+  'the page could not be found',
   'an error occurred with this application',
 ];
 
@@ -43,7 +45,7 @@ const isRetryableSupabaseProxyResponse = async (response) => {
 };
 
 export const supabaseProxyFetch = async (input, init) => {
-  const maxAttempts = isProductionBuild ? 2 : 1;
+  const maxAttempts = isProductionBuild ? 3 : 1;
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

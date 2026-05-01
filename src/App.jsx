@@ -3206,20 +3206,8 @@ export default function App() {
               <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
             </button>
           ))}
-        </nav>
-        <div className={`mobile-sidebar-footer shrink-0 mobile-safe-bottom px-2 lg:px-4 py-3 lg:py-4 border-t border-slate-900 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
-          {isSuperAdmin && availableBarbershops.length > 0 && sidebarCollapsed && (
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(false)}
-              className="mb-4 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
-              title={currentBarbershop?.name ? `Cambiar barbería actual: ${currentBarbershop.name}` : 'Cambiar barbería'}
-            >
-              <Crown size={16} />
-            </button>
-          )}
           {(currentBarbershop?.name || currentBranch?.name || (isSuperAdmin && availableBarbershops.length > 0)) && !sidebarCollapsed && (
-            <div className="mobile-sidebar-tenant-panel mb-4 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 space-y-2">
+            <div className="mobile-sidebar-tenant-panel mt-2 rounded-2xl border border-white/10 bg-slate-900/45 px-3 py-3 space-y-2">
               {isSuperAdmin && availableBarbershops.length > 0 ? (
                 <div className="min-w-0">
                   <div className="flex items-center justify-between gap-3">
@@ -3232,7 +3220,7 @@ export default function App() {
                   <select
                     value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
                     onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                    className="mt-3 w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white outline-none transition-all focus:border-indigo-500"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.14em] text-white outline-none transition-all focus:border-indigo-500"
                   >
                     {availableBarbershops.map((shop) => (
                       <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
@@ -3253,6 +3241,18 @@ export default function App() {
               </div>
             </div>
           )}
+          {isSuperAdmin && availableBarbershops.length > 0 && sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              className="mt-2 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
+              title={currentBarbershop?.name ? `Cambiar barbería actual: ${currentBarbershop.name}` : 'Cambiar barbería'}
+            >
+              <Crown size={16} />
+            </button>
+          )}
+        </nav>
+        <div className={`mobile-sidebar-footer shrink-0 mobile-safe-bottom px-2 lg:px-4 py-3 lg:py-4 border-t border-slate-900 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
           <div className="mobile-sidebar-actions">
             {hasSupabaseConfig && session?.user && (
               <button

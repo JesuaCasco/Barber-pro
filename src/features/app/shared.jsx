@@ -163,13 +163,13 @@ export const styleTag = `
     }
 
     .mobile-simplify-shell .mobile-sidebar-tenant-panel {
-      margin-bottom: 0.75rem !important;
-      padding: 0.75rem 1rem !important;
+      margin-top: 0.5rem !important;
+      padding: 0.65rem 0.75rem !important;
     }
 
     .mobile-simplify-shell .mobile-sidebar-tenant-panel select {
-      padding-top: 0.65rem !important;
-      padding-bottom: 0.65rem !important;
+      padding-top: 0.55rem !important;
+      padding-bottom: 0.55rem !important;
     }
 
     .mobile-simplify-shell .mobile-sidebar-footer {

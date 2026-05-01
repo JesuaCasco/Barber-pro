@@ -2486,7 +2486,7 @@ export default function App() {
           const remainingMinutes = Math.max(1, Math.ceil((15 * 60 * 1000 - delayMs) / 60000));
           reservationNearExpiryAlertsRef.current.add(alertKey);
           notify(
-            `La cita de "${clientName}" est? por vencerse\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\nTiempo restante: ${remainingMinutes} minuto${remainingMinutes === 1 ? '' : 's'}\n\nMarca la llegada del cliente antes de que se venza la reserva.`,
+            `La cita de "${clientName}" está por vencerse\n\nSucursal / barbero: ${barberName}\nHora reservada: ${appointment.time}\nTiempo restante: ${remainingMinutes} minuto${remainingMinutes === 1 ? '' : 's'}\n\nMarca la llegada del cliente antes de que se venza la reserva.`,
             'reservation-warning',
           );
         }
@@ -2905,7 +2905,7 @@ export default function App() {
 
     const confirmed = await confirmAction({
       title: 'Eliminar cliente',
-      message: '?Eliminar cliente permanentemente?',
+      message: '¿Eliminar cliente permanentemente?',
       confirmLabel: 'Eliminar',
     });
 
@@ -2980,7 +2980,7 @@ export default function App() {
 
     const confirmed = await confirmAction({
       title: 'Eliminar barbero',
-      message: '?Eliminar barbero permanentemente?',
+      message: '¿Eliminar barbero permanentemente?',
       confirmLabel: 'Eliminar',
     });
 
@@ -3167,7 +3167,7 @@ export default function App() {
       {mobileSidebarOpen && (
         <button
           type="button"
-          aria-label="Cerrar men?"
+          aria-label="Cerrar menú"
           onClick={() => setMobileSidebarOpen(false)}
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden no-print"
         />
@@ -3194,7 +3194,7 @@ export default function App() {
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
             className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white lg:hidden"
-            aria-label="Cerrar men? lateral"
+            aria-label="Cerrar menú lateral"
           >
             <X size={16} />
           </button>
@@ -3655,7 +3655,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                           <div className="flex items-center justify-between mt-2 text-white">
                             <span className="text-white text-[8px] font-black truncate flex items-center gap-1">
                               {apt.service?.toLowerCase().includes('barba') ? <BeardIcon size={10}/> : <Scissors size={10}/>}
-                          {apt.status === 'Cita Perdida' ? 'NO LLEG?' : getAgendaServiceLabel(apt.service)}
+                          {apt.status === 'Cita Perdida' ? 'NO LLEGÓ' : getAgendaServiceLabel(apt.service)}
                             </span>
                             <span className="text-[7px] opacity-70 font-black">{apt.time}</span>
                           </div>
@@ -3697,7 +3697,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
     <div className="p-4 md:p-10 space-y-6 md:space-y-12 h-full animate-in fade-in text-white no-print">
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 text-white">
         <div>
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Men? de Servicios</h3>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de servicios</h3>
           <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
         </div>
         <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoción' : 'Nuevo Servicio'}</button>
@@ -5721,7 +5721,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                 )}
                 {isNewClient && !selectedClient && (
                   <div className="mt-2 p-3 rounded-xl bg-orange-500 border border-orange-400 text-white font-black uppercase tracking-wider text-sm text-center shadow-[0_0_20px_rgba(255,159,67,0.65)] animate-pulse ring-2 ring-orange-300/60 leading-none">
-                    <span className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">!! Nuevo Cliente Detectado !!</span>
+                    <span className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">¡Nuevo cliente detectado!</span>
                   </div>
                 )}
                 {(selectedClient || isNewClient) && (
@@ -5761,7 +5761,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                 {form.type === 'walkin' ? (
                   <div className="w-full bg-indigo-600/10 border border-indigo-500/30 py-4 px-6 rounded-[1.2rem] flex items-center gap-2 text-white">
                     <Clock size={14} className="text-indigo-400" />
-                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (Auto) ? {form.time || '--:--'}</span>
+                    <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (auto): {form.time || '--:--'}</span>
                   </div>
                 ) : (
                   <input type="time" className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />

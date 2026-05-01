@@ -158,7 +158,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
         <div className="xl:col-span-3 bg-slate-900 border border-slate-800 rounded-[3rem] p-4 md:p-8 space-y-6 md:space-y-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[120px] pointer-events-none"></div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-            <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter text-white">Turnos del dia</h3>
+            <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter text-white">Turnos del día</h3>
             <button onClick={() => onNewWalkin(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
               <UserPlus size={18} /> Nuevo turno sin cita
             </button>
@@ -226,7 +226,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
                           <span className="text-lg font-black text-white italic leading-none">{appointment.time || '--:--'}</span>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
-                          {appointment.type === 'reserva' && !hasArrived && <button onClick={() => onUpdate(appointment.id, 'En Espera')} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><UserCheck size={16} /> Llego</button>}
+                          {appointment.type === 'reserva' && !hasArrived && <button onClick={() => onUpdate(appointment.id, 'En Espera')} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><UserCheck size={16} /> Llegó</button>}
                           {(hasArrived || isWalkin) && (
                             <button onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')} className={`w-full sm:w-auto px-4 md:px-8 py-3 md:py-5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>
                               {inService ? <CheckCircle2 size={16} strokeWidth={3} /> : <Zap size={16} fill="white" />}
@@ -354,7 +354,7 @@ export function POSView({ services, onSale }) {
         <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-slate-900 bg-black text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
             <div className="px-5 py-4 rounded-[2rem] bg-slate-900 border border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] italic text-emerald-400 leading-none">Catalogo de productos</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] italic text-emerald-400 leading-none">Catálogo de productos</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative text-white">
@@ -368,7 +368,7 @@ export function POSView({ services, onSale }) {
                 className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-indigo-500/30 bg-indigo-600/15 text-indigo-200 hover:border-indigo-400 hover:bg-indigo-600/25' : 'border-slate-800 bg-slate-950 text-slate-500 cursor-not-allowed opacity-70'}`}
               >
                 <ShoppingBag size={16} />
-                {cart.length > 0 ? `Carrito (${cart.length})` : 'Carrito vacio'}
+                {cart.length > 0 ? `Carrito (${cart.length})` : 'Carrito vacío'}
               </button>
             </div>
           </div>
@@ -391,7 +391,7 @@ export function POSView({ services, onSale }) {
           </div>
           <div className="text-left">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Carrito</p>
-            <p className="mt-1 text-sm font-black italic text-white">{cart.length} item{cart.length > 1 ? 's' : ''} | C$ {totalToCharge.toLocaleString('es-NI')}</p>
+            <p className="mt-1 text-sm font-black italic text-white">{cart.length} ítem{cart.length > 1 ? 's' : ''} | C$ {totalToCharge.toLocaleString('es-NI')}</p>
           </div>
         </button>
       ) : null}
@@ -439,7 +439,7 @@ export function POSView({ services, onSale }) {
                         {selectedPromotion
                           ? `Aplicada: ${selectedPromotion.name}`
                           : savedPromotions.length > 0
-                            ? 'Sin promocion aplicada'
+                            ? 'Sin promoción aplicada'
                             : 'No hay promociones guardadas'}
                       </p>
                     </div>
@@ -457,7 +457,7 @@ export function POSView({ services, onSale }) {
                       disabled={savedPromotions.length === 0}
                       className={`inline-flex items-center gap-2 rounded-[1.1rem] border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${savedPromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-900 text-slate-500 opacity-70'}`}
                     >
-                      Elegir promocion
+                      Elegir promoción
                       <ChevronDown size={16} className="text-current" />
                     </button>
 
@@ -474,7 +474,7 @@ export function POSView({ services, onSale }) {
 
                   {selectedPromotion && !applicablePromotionIds.has(String(selectedPromotion.id)) ? (
                     <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
-                      La promocion elegida no descuenta este ticket.
+                      La promoción elegida no descuenta este ticket.
                     </p>
                   ) : null}
                 </div>
@@ -497,7 +497,7 @@ export function POSView({ services, onSale }) {
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones</p>
                     <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                      Elige una promocion para este ticket
+                      Elige una promoción para este ticket
                     </p>
                   </div>
                   <button
@@ -518,7 +518,7 @@ export function POSView({ services, onSale }) {
                     }}
                     className={`w-full rounded-[1.2rem] border px-4 py-4 text-left transition-all ${selectedPromotionId ? 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700' : 'border-emerald-400/40 bg-emerald-500/10 text-white shadow-[0_0_20px_rgba(16,185,129,0.12)]'}`}
                   >
-                    <p className="text-[11px] font-black uppercase italic">Sin promocion</p>
+                    <p className="text-[11px] font-black uppercase italic">Sin promoción</p>
                     <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
                       Cobrar precio completo
                     </p>
@@ -554,7 +554,7 @@ export function POSView({ services, onSale }) {
 
                   {savedPromotions.length === 0 ? (
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-                      No hay promociones guardadas todavia.
+                      No hay promociones guardadas todavía.
                     </p>
                   ) : null}
                 </div>

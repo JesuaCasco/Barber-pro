@@ -196,7 +196,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
                   <input
                     type="text"
-                    placeholder="Buscar item..."
+                    placeholder="Buscar ítem..."
                     className="w-full bg-black border border-slate-800 rounded-xl pl-4 pr-10 py-2.5 text-[10px] font-black uppercase text-white outline-none focus:border-indigo-600 italic"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
@@ -308,7 +308,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                 <input
                   type="text"
-                  placeholder="BUSCAR ITEM..."
+                  placeholder="BUSCAR ÍTEM..."
                   className="w-full bg-black border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-[10px] font-black uppercase text-white outline-none focus:border-indigo-600 italic"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}

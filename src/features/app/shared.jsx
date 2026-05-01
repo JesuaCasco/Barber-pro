@@ -143,6 +143,47 @@ export const styleTag = `
     }
   }
 
+  @media (min-width: 1024px) and (max-height: 820px) {
+    .mobile-simplify-shell .mobile-sidebar-brand {
+      padding-top: 1rem !important;
+      padding-bottom: 0.85rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-email {
+      margin-top: 0.35rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-nav {
+      padding-bottom: 0.75rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-nav > button {
+      padding-top: 0.78rem !important;
+      padding-bottom: 0.78rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-tenant-panel {
+      margin-bottom: 0.75rem !important;
+      padding: 0.75rem 1rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-tenant-panel select {
+      padding-top: 0.65rem !important;
+      padding-bottom: 0.65rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-footer {
+      padding-top: 0.75rem !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+    }
+
+    .mobile-simplify-shell .mobile-sidebar-actions button {
+      padding-top: 0.65rem !important;
+      padding-bottom: 0.65rem !important;
+      margin-bottom: 0.5rem !important;
+    }
+  }
+
   @media (max-width: 1024px) {
     .mobile-simplify-shell {
       font-size: 14px;

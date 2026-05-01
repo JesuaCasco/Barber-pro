@@ -3199,7 +3199,7 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-        <nav className={`mobile-sidebar-nav min-h-0 flex-1 overflow-y-auto px-2 lg:px-4 pb-3 space-y-1 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
+        <nav className={`mobile-sidebar-nav min-h-0 flex-1 overflow-y-auto custom-scrollbar px-2 lg:px-4 pb-3 space-y-1 ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
           {navItems.map(item => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileSidebarOpen(false); }} className={`w-full flex items-center px-3 py-2.5 lg:py-4 rounded-2xl transition-all font-black uppercase text-[8px] lg:text-[10px] tracking-[0.16em] lg:tracking-widest ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : 'gap-2 lg:gap-3'} ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.3)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}>
               <item.icon size={16} />

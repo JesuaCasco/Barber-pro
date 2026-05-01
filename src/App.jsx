@@ -4998,7 +4998,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
   }, [stats.historicalSales]);
 
   return (
-    <div className="px-3 py-4 md:p-12 space-y-6 md:space-y-12 h-full animate-in fade-in pb-24 md:pb-32 text-white no-print">
+    <div className="reports-view px-3 py-4 md:p-12 space-y-6 md:space-y-12 h-full animate-in fade-in pb-24 md:pb-32 text-white no-print">
       <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-4 md:gap-5 text-white">
         <div><h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Análisis del Negocio</h3><p className="text-[9px] md:text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.16em] md:tracking-[0.2em] leading-none">Métricas avanzadas y rendimiento comercial real</p></div>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">

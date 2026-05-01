@@ -3507,6 +3507,10 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
   const [nowPos, setNowPos] = useState(0);
   const agendaBarbers = (barbers && barbers.length > 0) ? barbers : [];
+  const agendaTimeColumnWidth = 112;
+  const agendaBarberColumnWidth = 168;
+  const agendaMinWidth = Math.max(760, agendaTimeColumnWidth + (agendaBarbers.length * agendaBarberColumnWidth));
+  const agendaGridColumns = `${agendaTimeColumnWidth}px repeat(${agendaBarbers.length}, minmax(${agendaBarberColumnWidth}px, 1fr))`;
   const dayAppointments = useMemo(
     () => (appointments || [])
       .filter((appointment) => standardizeDate(appointment.date) === viewDate)
@@ -3538,7 +3542,10 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   return (
     <div className="p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
       <div className="custom-scrollbar overflow-x-auto overflow-y-hidden">
-        <div className="min-w-full lg:min-w-[1200px] flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white">
+        <div
+          className="min-w-full flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white"
+          style={{ minWidth: agendaMinWidth }}
+        >
           <div className="flex items-center justify-center sm:justify-start gap-3">
             <button onClick={() => changeDay(-1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronLeft size={20}/></button>
             <button onClick={() => setViewDate(today)} className="px-5 md:px-6 py-3 md:py-4 bg-indigo-600/10 hover:bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all rounded-xl border border-indigo-600/30">Hoy</button>
@@ -3603,12 +3610,12 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
 
       <div className="hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
         <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
-          <div className="min-w-[1200px] h-full flex flex-col relative">
+          <div className="h-full flex flex-col relative" style={{ minWidth: agendaMinWidth }}>
             <div 
               className="grid bg-slate-950/95 border-b border-slate-800 sticky top-0 z-30 backdrop-blur-md"
-              style={{ gridTemplateColumns: `140px repeat(${agendaBarbers.length}, 1fr)` }}
+              style={{ gridTemplateColumns: agendaGridColumns }}
             >
-              <div className="p-6 border-r border-slate-800 flex items-center justify-center bg-black"><Clock className="text-slate-600" size={24} /></div>
+              <div className="p-4 border-r border-slate-800 flex items-center justify-center bg-black"><Clock className="text-slate-600" size={22} /></div>
               {agendaBarbers.map(b => (
                 <div key={b.id} className="min-w-0 p-4 xl:p-6 border-r border-slate-800 last:border-0 flex items-center justify-center gap-3 xl:gap-4 text-white">
                   <div className={`w-11 h-11 rounded-xl bg-slate-950 border-2 ${b.color} flex items-center justify-center font-black italic text-xs text-white shadow-lg`}>{b.avatar}</div>
@@ -3622,7 +3629,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
 
             {isToday && nowPos >= 0 && (
               <div className="absolute left-0 w-full h-1 bg-rose-500 z-20 pointer-events-none flex items-center justify-start shadow-[0_0_20px_rgba(244,63,94,0.8)]" style={{ top: `calc(76px + ((${nowPos} / 100) * (21 * 100px)))` }}>
-                <div className="px-3 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-full ml-[140px] -translate-y-1/2 shadow-lg text-white">Ahora</div>
+                <div className="px-3 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-full -translate-y-1/2 shadow-lg text-white" style={{ marginLeft: agendaTimeColumnWidth }}>Ahora</div>
               </div>
             )}
 
@@ -3630,9 +3637,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
               <div 
                 key={h} 
                 className="grid min-h-[100px] group/row border-b border-slate-900 hover:bg-indigo-600/[0.03] transition-colors"
-                style={{ gridTemplateColumns: `140px repeat(${agendaBarbers.length}, 1fr)` }}
+                style={{ gridTemplateColumns: agendaGridColumns }}
               >
-                <div className="p-6 flex items-center justify-center font-black text-slate-500 text-sm border-r border-slate-900 bg-slate-900/10 italic group-hover/row:text-indigo-400 transition-colors">{h}</div>
+                <div className="p-4 flex items-center justify-center font-black text-slate-500 text-sm border-r border-slate-900 bg-slate-900/10 italic group-hover/row:text-indigo-400 transition-colors">{h}</div>
                 {agendaBarbers.map(b => {
                   const apt = appointments.find(a => {
                     const normalizedAptDate = standardizeDate(a.date);

@@ -184,6 +184,120 @@ export const styleTag = `
     }
   }
 
+  @media (min-width: 1024px) and (max-width: 1440px), (min-width: 1024px) and (max-height: 850px) {
+    .mobile-simplify-shell main > header {
+      padding: 0.75rem 1.5rem !important;
+      gap: 0.75rem !important;
+    }
+
+    .mobile-simplify-shell main > header h2 {
+      font-size: 1.35rem !important;
+      line-height: 1 !important;
+    }
+
+    .mobile-simplify-shell main > header button {
+      min-height: 2.6rem !important;
+    }
+
+    .mobile-simplify-shell .mobile-main-scroll > div {
+      padding: 1.25rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view {
+      padding: 1.25rem !important;
+      padding-bottom: 3rem !important;
+      row-gap: 1rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view > div,
+    .mobile-simplify-shell .dashboard-view .grid {
+      gap: 1rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view h3 {
+      font-size: 1.75rem !important;
+      line-height: 1 !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view h4 {
+      font-size: 2rem !important;
+      line-height: 1 !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view [class*="p-6"] {
+      padding: 1rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view [class*="md:p-8"] {
+      padding: 1.25rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view [class*="rounded-[3rem]"] {
+      border-radius: 2rem !important;
+    }
+
+    .mobile-simplify-shell .dashboard-view [class*="rounded-[2.5rem]"] {
+      border-radius: 1.65rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-view {
+      padding: 1rem 1.5rem !important;
+      gap: 1rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-toolbar {
+      padding: 1rem 1.25rem !important;
+      border-radius: 1.6rem !important;
+      gap: 1rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-toolbar button {
+      padding: 0.8rem 1rem !important;
+      border-radius: 1rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-toolbar h3 {
+      font-size: 1.8rem !important;
+      line-height: 1 !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell {
+      border-radius: 2rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell [class*="p-4"] {
+      padding: 0.8rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell [class*="xl:p-6"] {
+      padding: 0.9rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell [class*="w-11"] {
+      width: 2.25rem !important;
+      height: 2.25rem !important;
+      border-radius: 0.8rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell [class*="text-[11px]"] {
+      font-size: 0.62rem !important;
+    }
+
+    .mobile-simplify-shell .agenda-table-shell [class*="text-[8px]"] {
+      font-size: 0.48rem !important;
+    }
+
+    .mobile-simplify-shell .pos-view [class*="md:p-8"],
+    .mobile-simplify-shell .pos-view [class*="md:p-6"] {
+      padding: 1.25rem !important;
+    }
+
+    .mobile-simplify-shell .pos-view [class*="rounded-[2.6rem]"],
+    .mobile-simplify-shell .pos-view [class*="rounded-[2.5rem]"] {
+      border-radius: 1.75rem !important;
+    }
+  }
+
   @media (max-width: 1024px) {
     .mobile-simplify-shell {
       font-size: 14px;

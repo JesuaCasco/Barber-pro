@@ -3540,10 +3540,10 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   };
 
   return (
-    <div className="p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
-      <div className="custom-scrollbar overflow-x-auto overflow-y-hidden">
+    <div className="agenda-view p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
+      <div className="agenda-toolbar-scroll custom-scrollbar overflow-x-auto overflow-y-hidden">
         <div
-          className="min-w-full flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white"
+          className="agenda-toolbar min-w-full flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white"
           style={{ minWidth: agendaMinWidth }}
         >
           <div className="flex items-center justify-center sm:justify-start gap-3">
@@ -3608,7 +3608,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         })}
       </div>
 
-      <div className="hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
+      <div className="agenda-table-shell hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
         <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
           <div className="h-full flex flex-col relative" style={{ minWidth: agendaMinWidth }}>
             <div

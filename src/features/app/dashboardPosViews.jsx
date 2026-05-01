@@ -109,7 +109,7 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 md:space-y-10 animate-in fade-in pb-20 no-print">
+    <div className="dashboard-view p-4 md:p-8 space-y-6 md:space-y-10 animate-in fade-in pb-20 no-print">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Tablero de Control</h3>
@@ -349,7 +349,7 @@ export function POSView({ services, onSale }) {
   };
 
   return (
-    <div className="relative h-full flex flex-col text-white animate-in fade-in no-print">
+    <div className="pos-view relative h-full flex flex-col text-white animate-in fade-in no-print">
       <div className="flex-1 flex flex-col min-w-0 text-white">
         <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-slate-900 bg-black text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">

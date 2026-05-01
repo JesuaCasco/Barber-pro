@@ -3610,9 +3610,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
             >
               <div className="p-6 border-r border-slate-800 flex items-center justify-center bg-black"><Clock className="text-slate-600" size={24} /></div>
               {agendaBarbers.map(b => (
-                <div key={b.id} className="p-6 border-r border-slate-800 last:border-0 flex items-center justify-center gap-4 min-w-[180px] text-white">
+                <div key={b.id} className="min-w-0 p-4 xl:p-6 border-r border-slate-800 last:border-0 flex items-center justify-center gap-3 xl:gap-4 text-white">
                   <div className={`w-11 h-11 rounded-xl bg-slate-950 border-2 ${b.color} flex items-center justify-center font-black italic text-xs text-white shadow-lg`}>{b.avatar}</div>
-                  <div className="flex flex-col items-start leading-none truncate text-white">
+                  <div className="min-w-0 flex flex-col items-start leading-none text-white">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white italic truncate w-full">{b.name}</span>
                     <span className={`text-[8px] font-bold uppercase mt-1 tracking-widest ${b.color.replace('border', 'text')}`}>Disponible</span>
                   </div>

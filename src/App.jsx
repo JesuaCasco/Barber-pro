@@ -5335,53 +5335,40 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                     <h5 className="text-xl font-black italic uppercase text-white flex items-center gap-2"><BarChart3 className="text-indigo-500" /> Comparativa de Rendimiento Real</h5>
                     <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1 italic leading-none">Citas e ingresos por barbero dentro del rango seleccionado</p>
                   </div>
-                  <div className="w-full lg:w-auto flex flex-col lg:flex-row gap-3 lg:items-start">
-                    <div className="w-full lg:w-[380px] rounded-[2rem] border border-white/5 bg-black/25 p-3 shadow-inner">
-                      <div className="flex flex-col gap-3">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="min-h-[52px] flex-1 px-4 py-3 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 flex flex-col justify-center text-left">
-                          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300/80 leading-none">
-                            {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`}
-                          </span>
-                          <span className="mt-2 text-[11px] font-black text-white leading-tight break-words">
-                            {staffRangeLabel}
-                          </span>
-                          <span className="hidden text-[11px] font-black text-white leading-tight break-words">
-                            {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`} ? {staffRangeLabel}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowStaffRangeControls((prev) => !prev)}
-                            className={`min-h-[52px] px-5 rounded-2xl border text-[10px] font-black uppercase tracking-[0.18em] transition-all flex items-center justify-center gap-2 ${
-                              showStaffRangeControls
-                                ? 'bg-white/10 text-white border-white/15'
-                                : 'bg-slate-950/70 text-slate-300 border-slate-800 hover:text-white'
-                            }`}
-                          >
-                            <Filter size={14} />
-                            {showStaffRangeControls ? 'Ocultar filtros' : 'Filtros'}
-                          </button>
-                          <button
-                            onClick={downloadMonthlyServicesReport}
-                            disabled={monthlyFinished.length === 0}
-                            className="hidden min-h-[52px] px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white text-[10px] font-black uppercase italic tracking-widest leading-none transition-all shadow-lg shadow-emerald-950/30 items-center justify-center gap-2"
-                          >
-                            <Save size={14} /> Exportar Excel
-                          </button>
-                        </div>
-                      </div>
+                  <div className="w-full lg:w-auto flex items-start justify-end gap-3">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowStaffRangeControls((prev) => !prev)}
+                        title="Filtros"
+                        aria-label="Abrir filtros de rendimiento"
+                        className={`h-[52px] w-[52px] rounded-2xl border transition-all flex items-center justify-center ${
+                          showStaffRangeControls
+                            ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-950/40'
+                            : 'bg-slate-950/70 text-slate-300 border-slate-800 hover:text-white hover:border-slate-600'
+                        }`}
+                      >
+                        <Filter size={18} />
+                      </button>
 
                       {showStaffRangeControls && (
-                        <div className="rounded-[1.8rem] border border-white/5 bg-slate-950/60 p-3 space-y-3 animate-in fade-in duration-200">
+                        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(88vw,22rem)] rounded-[1.8rem] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-600/15 px-4 py-3">
+                            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-300/80 leading-none">
+                              {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`}
+                            </span>
+                            <span className="mt-2 block text-[12px] font-black text-white leading-tight">
+                              {staffRangeLabel}
+                            </span>
+                          </div>
+
                           <div className="grid grid-cols-3 gap-2">
                             {periodOptions.map((period) => (
                               <button
                                 key={period.id}
                                 type="button"
                                 onClick={() => setStaffRangePreset(period.id)}
-                                className={`min-h-[44px] rounded-2xl border text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
+                                className={`min-h-[42px] rounded-2xl border text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
                                   staffRangePreset === period.id
                                     ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg'
                                     : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-white'
@@ -5391,6 +5378,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                               </button>
                             ))}
                           </div>
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <input
                               type="date"
@@ -5399,7 +5387,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                                 setStaffRangePreset('custom');
                                 setStaffRangeStart(e.target.value);
                               }}
-                              className="min-h-[48px] rounded-2xl border border-slate-800 bg-slate-950/70 px-4 text-sm font-bold text-white outline-none focus:border-indigo-500"
+                              className="min-h-[46px] rounded-2xl border border-slate-800 bg-slate-950/70 px-4 text-sm font-bold text-white outline-none focus:border-indigo-500"
                             />
                             <input
                               type="date"
@@ -5408,21 +5396,21 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                                 setStaffRangePreset('custom');
                                 setStaffRangeEnd(e.target.value);
                               }}
-                              className="min-h-[48px] rounded-2xl border border-slate-800 bg-slate-950/70 px-4 text-sm font-bold text-white outline-none focus:border-indigo-500"
+                              className="min-h-[46px] rounded-2xl border border-slate-800 bg-slate-950/70 px-4 text-sm font-bold text-white outline-none focus:border-indigo-500"
                             />
                           </div>
                         </div>
                       )}
                     </div>
+
+                    <button
+                      onClick={downloadMonthlyServicesReport}
+                      disabled={monthlyFinished.length === 0}
+                      className="w-full sm:w-auto min-h-[52px] lg:min-w-[190px] px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white text-[10px] font-black uppercase italic tracking-widest leading-none transition-all shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2"
+                    >
+                      <Save size={14} /> Exportar Excel
+                    </button>
                   </div>
-                  <button
-                    onClick={downloadMonthlyServicesReport}
-                    disabled={monthlyFinished.length === 0}
-                    className="w-full lg:w-auto min-h-[52px] lg:min-w-[190px] px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white text-[10px] font-black uppercase italic tracking-widest leading-none transition-all shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2"
-                  >
-                    <Save size={14} /> Exportar Excel
-                  </button>
-                </div>
                 </div>
                 
                 <div className="relative z-10 mt-2 flex-1 overflow-x-hidden md:overflow-x-auto custom-scrollbar pb-3 px-1 md:px-0">

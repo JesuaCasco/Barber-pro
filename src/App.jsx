@@ -3611,8 +3611,8 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
       <div className="hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
         <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
           <div className="h-full flex flex-col relative" style={{ minWidth: agendaMinWidth }}>
-            <div 
-              className="grid bg-slate-950/95 border-b border-slate-800 sticky top-0 z-30 backdrop-blur-md"
+            <div
+              className="sticky top-0 z-50 grid border-b border-slate-800 bg-slate-950 shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
               style={{ gridTemplateColumns: agendaGridColumns }}
             >
               <div className="p-4 border-r border-slate-800 flex items-center justify-center bg-black"><Clock className="text-slate-600" size={22} /></div>

@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-const UPSTREAM_URL = 'https://yafvayoaqgoibxrbburd.supabase.co';
+const UPSTREAM_URL = globalThis.process?.env?.VITE_SUPABASE_URL || 'https://yafvayoaqgoibxrbburd.supabase.co';
+const PROXY_PREFIX_PATTERN = /^\/(?:api\/)?supabase/;
 
 const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD']);
 
@@ -16,14 +17,19 @@ const readRawBody = async (req) => {
 
 const buildUpstreamHeaders = (req, body) => {
   const headers = new Headers();
+  const skippedRequestHeaders = new Set([
+    'accept-encoding',
+    'connection',
+    'content-length',
+    'host',
+    'x-forwarded-host',
+  ]);
 
   Object.entries(req.headers || {}).forEach(([key, value]) => {
     if (value == null) return;
 
     const normalizedKey = key.toLowerCase();
-    if (normalizedKey === 'host' || normalizedKey === 'content-length' || normalizedKey === 'x-forwarded-host') {
-      return;
-    }
+    if (skippedRequestHeaders.has(normalizedKey)) return;
 
     if (Array.isArray(value)) {
       value.forEach((entry) => headers.append(key, entry));
@@ -41,15 +47,23 @@ const buildUpstreamHeaders = (req, body) => {
 };
 
 const sendResponseHeaders = (res, upstreamResponse) => {
+  const skippedResponseHeaders = new Set([
+    'connection',
+    'content-encoding',
+    'content-length',
+    'transfer-encoding',
+  ]);
+
   upstreamResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === 'content-length') return;
+    if (skippedResponseHeaders.has(key.toLowerCase())) return;
     res.setHeader(key, value);
   });
 };
 
 export default async function handler(req, res) {
   const requestUrl = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
-  const upstreamUrl = `${UPSTREAM_URL}${requestUrl.pathname.replace(/^\/api\/supabase/, '')}${requestUrl.search}`;
+  const upstreamPath = requestUrl.pathname.replace(PROXY_PREFIX_PATTERN, '');
+  const upstreamUrl = `${UPSTREAM_URL}${upstreamPath}${requestUrl.search}`;
   const method = (req.method || 'GET').toUpperCase();
   const body = METHODS_WITHOUT_BODY.has(method) ? undefined : await readRawBody(req);
 

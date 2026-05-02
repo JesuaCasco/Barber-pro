@@ -235,40 +235,42 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
               <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-2xl text-slate-400 hover:text-rose-500 transition-all text-white"><X size={22} /></button>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-1">
-              <div className="space-y-3">
-                <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-[1.8rem] flex items-center justify-between gap-4 group hover:border-indigo-500/30 transition-all">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-11 h-11 bg-indigo-600/10 rounded-2xl flex shrink-0 items-center justify-center text-indigo-400 border border-indigo-500/20">
-                      <Scissors size={20} />
+            <div className="flex-1 flex items-center overflow-y-auto custom-scrollbar pr-1">
+              <div className="w-full space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-[1.8rem] flex items-center justify-between gap-4 group hover:border-indigo-500/30 transition-all">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-11 h-11 bg-indigo-600/10 rounded-2xl flex shrink-0 items-center justify-center text-indigo-400 border border-indigo-500/20">
+                        <Scissors size={20} />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-[0.16em]">Servicio Favorito</span>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-[0.16em]">Servicio Favorito</span>
+                    <span className="text-base font-black text-white uppercase italic tracking-tighter text-right">{stats.favService}</span>
                   </div>
-                  <span className="text-base font-black text-white uppercase italic tracking-tighter text-right">{stats.favService}</span>
-                </div>
 
-                <div className="bg-slate-900/40 border border-amber-500/20 p-4 rounded-[1.8rem] flex items-center justify-between gap-4 group hover:border-amber-500/40 transition-all">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-11 h-11 bg-amber-500/10 rounded-2xl flex shrink-0 items-center justify-center text-amber-500 border border-amber-500/20">
-                      <UserCheck size={20} />
+                  <div className="bg-slate-900/40 border border-amber-500/20 p-4 rounded-[1.8rem] flex items-center justify-between gap-4 group hover:border-amber-500/40 transition-all">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-11 h-11 bg-amber-500/10 rounded-2xl flex shrink-0 items-center justify-center text-amber-500 border border-amber-500/20">
+                        <UserCheck size={20} />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-[0.16em]">Barbero Favorito</span>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-[0.16em]">Barbero Favorito</span>
+                    <span className="text-base font-black text-white uppercase italic tracking-tighter text-right">{stats.favBarber}</span>
                   </div>
-                  <span className="text-base font-black text-white uppercase italic tracking-tighter text-right">{stats.favBarber}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 space-y-3">
-                <div className="flex items-center gap-3 px-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                  <label className="text-[10px] font-black text-indigo-400 uppercase italic tracking-[0.3em] leading-none">NOTAS TÉCNICAS DEL CLIENTE</label>
                 </div>
 
-                <div className="bg-black/40 border border-white/5 p-5 rounded-[1.8rem] shadow-inner relative overflow-hidden group min-h-[92px]">
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-600"></div>
-                  <p className="italic text-white text-sm leading-relaxed text-slate-200">
-                    {client.notes || 'No hay notas técnicas registradas para este cliente. Utiliza el botón de editar para añadir preferencias de corte.'}
-                  </p>
+                <div className="pt-3 space-y-3">
+                  <div className="flex items-center gap-3 px-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                    <label className="text-[10px] font-black text-indigo-400 uppercase italic tracking-[0.3em] leading-none">NOTAS TÉCNICAS DEL CLIENTE</label>
+                  </div>
+
+                  <div className="bg-black/40 border border-white/5 p-5 rounded-[1.8rem] shadow-inner relative overflow-hidden group min-h-[92px]">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-600"></div>
+                    <p className="italic text-white text-sm leading-relaxed text-slate-200">
+                      {client.notes || 'No hay notas técnicas registradas para este cliente. Utiliza el botón de editar para añadir preferencias de corte.'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

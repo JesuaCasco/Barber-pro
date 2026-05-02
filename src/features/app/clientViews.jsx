@@ -201,7 +201,8 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white overflow-hidden no-print">
-      <div className="bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[92vh] flex flex-col text-white overflow-hidden">
+      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[92vh] flex flex-col text-white overflow-hidden">
+        <button onClick={onClose} className="absolute right-4 top-4 z-20 p-2.5 bg-slate-900 rounded-2xl text-slate-400 hover:text-rose-500 transition-all text-white"><X size={22} /></button>
         <div className="flex flex-col md:flex-row h-full text-white overflow-hidden rounded-[2rem] md:rounded-[3rem]">
           <div className="w-full md:w-[34%] bg-black p-5 md:p-9 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white overflow-y-auto custom-scrollbar rounded-t-[2rem] md:rounded-l-[3rem] md:rounded-tr-none">
             <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl mb-4 relative text-white">
@@ -233,7 +234,6 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
                 <Star size={24} className="text-amber-400 fill-amber-400" />
                 <h4 className="text-xl font-black uppercase italic text-white tracking-tighter leading-none">DATOS DE LEALTAD</h4>
               </div>
-              <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-2xl text-slate-400 hover:text-rose-500 transition-all text-white"><X size={22} /></button>
             </div>
 
             <div className="overflow-y-auto custom-scrollbar pr-1">

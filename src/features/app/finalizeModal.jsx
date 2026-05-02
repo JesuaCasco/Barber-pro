@@ -316,18 +316,18 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <div className="min-h-0 flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 custom-scrollbar content-start">
+            <div className="min-h-0 flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 custom-scrollbar content-start">
               {catalog.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => addToBill(item)}
-                  className="bg-slate-900/50 border border-slate-800 p-4 rounded-[1.5rem] hover:border-emerald-500 hover:bg-slate-900 transition-all text-left flex flex-col justify-between min-h-[112px] group"
+                  className="bg-slate-900/50 border border-slate-800 px-4 py-3 rounded-[1.35rem] hover:border-emerald-500 hover:bg-slate-900 transition-all text-left flex flex-col justify-between min-h-[88px] group"
                 >
                   <div>
                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{item.category}</p>
-                    <h5 className="text-base font-black uppercase italic text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">{item.name}</h5>
+                    <h5 className="text-sm font-black uppercase italic text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">{item.name}</h5>
                   </div>
-                  <div className="flex justify-between items-center mt-auto">
+                  <div className="flex justify-between items-center mt-3">
                     <span className="text-sm font-black text-emerald-500 italic leading-none">C$ {item.price}</span>
                     <div className="p-2 bg-emerald-600/10 rounded-lg text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100">
                       <Plus size={14} />
@@ -337,11 +337,12 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               ))}
             </div>
 
-            <div className="border-t border-slate-900 p-4 space-y-2 bg-black/30 shrink-0">
+            {(availablePromotions.length > 0 || selectedPromotion || loyaltyPromotion) && (
+            <div className="border-t border-slate-900 px-4 py-3 bg-black/30 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400">
+                  <p className="mt-1 text-[11px] font-bold text-slate-400">
                     {selectedPromotion
                       ? `Aplicada: ${selectedPromotion.name}`
                       : availablePromotions.length > 0
@@ -373,11 +374,12 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
 
               {loyaltyPromotion && billingClient ? (
-                <div className="rounded-[1.5rem] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-[11px] font-bold text-amber-100">
+                <div className="mt-3 rounded-[1.2rem] border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100">
                   {billingClient.name} está completando su visita #{projectedVisitCount}. Puedes aplicar el beneficio opcional de corte gratis en este cobro.
                 </div>
               ) : null}
             </div>
+            )}
           </div>
         </div>
 

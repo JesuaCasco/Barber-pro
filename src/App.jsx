@@ -3207,20 +3207,17 @@ export default function App() {
             </button>
           ))}
           {(currentBarbershop?.name || currentBranch?.name || (isSuperAdmin && availableBarbershops.length > 0)) && !sidebarCollapsed && (
-            <div className="mobile-sidebar-tenant-panel mt-2 rounded-2xl border border-white/10 bg-slate-900/45 px-3 py-3 space-y-2">
+            <div className="mobile-sidebar-tenant-panel mt-2 rounded-xl border border-white/5 bg-black/25 px-2.5 py-2 space-y-1.5">
               {isSuperAdmin && availableBarbershops.length > 0 ? (
                 <div className="min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Vista actual</p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-indigo-300">Barbería</p>
-                    </div>
-                    <Crown size={14} className="text-indigo-300" />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[8px] font-black tracking-[0.16em] uppercase text-slate-500">Vista</p>
+                    <Crown size={12} className="text-indigo-300" />
                   </div>
                   <select
                     value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
                     onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.14em] text-white outline-none transition-all focus:border-indigo-500"
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black px-2.5 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-white outline-none transition-all focus:border-indigo-500"
                   >
                     {availableBarbershops.map((shop) => (
                       <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
@@ -3231,13 +3228,13 @@ export default function App() {
                 </div>
               ) : currentBarbershop?.name ? (
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Barbería</p>
-                  <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">{currentBarbershop.name}</p>
+                  <p className="text-[8px] font-black tracking-[0.16em] uppercase text-slate-500">Barbería</p>
+                  <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-[0.1em] text-slate-200">{currentBarbershop.name}</p>
                 </div>
               ) : null}
-              <div className="min-w-0">
-                <p className="text-[9px] font-black tracking-[0.18em] uppercase text-slate-500">Sucursal</p>
-                <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">{currentBranch?.name || 'General'}</p>
+              <div className="flex min-w-0 items-center justify-between gap-2 border-t border-white/5 pt-1.5">
+                <p className="text-[8px] font-black tracking-[0.16em] uppercase text-slate-500">Sucursal</p>
+                <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-emerald-300">{currentBranch?.name || 'General'}</p>
               </div>
             </div>
           )}

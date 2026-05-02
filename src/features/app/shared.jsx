@@ -372,12 +372,12 @@ export const styleTag = `
 
     .mobile-simplify-shell .mobile-sidebar-tenant-panel {
       margin-top: 0.5rem !important;
-      padding: 0.65rem 0.75rem !important;
+      padding: 0.5rem 0.6rem !important;
     }
 
     .mobile-simplify-shell .mobile-sidebar-tenant-panel select {
-      padding-top: 0.55rem !important;
-      padding-bottom: 0.55rem !important;
+      padding-top: 0.45rem !important;
+      padding-bottom: 0.45rem !important;
     }
 
     .mobile-simplify-shell .mobile-sidebar-footer {

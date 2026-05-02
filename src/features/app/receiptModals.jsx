@@ -20,7 +20,7 @@ export function PaymentReceiptModal({ data, onClose, onConfirmPayment, confirmAc
       <div className="bg-white text-black w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[95vh]">
         <div className="p-10 overflow-y-auto custom-scrollbar" id="printable-receipt">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-black uppercase italic tracking-widest text-slate-900">BarberSoft</h2>
+            <h2 className="text-3xl font-black italic tracking-widest text-slate-900">BarberPro</h2>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-2">Comprobante Oficial de Pago de Nómina</p>
             <div className="h-0.5 w-16 bg-indigo-600 mx-auto mt-4"></div>
           </div>
@@ -146,7 +146,7 @@ export function PosSaleReceiptModal({ data, onClose, onCancelSale, confirmAction
       <div className="bg-white text-black w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[95vh]">
         <div className="p-10 overflow-y-auto custom-scrollbar" id="printable-receipt">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-black uppercase italic tracking-widest text-slate-900">{barbershopName || 'BarberSoft'}</h2>
+            <h2 className="text-3xl font-black italic tracking-widest text-slate-900">{barbershopName || 'BarberPro'}</h2>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-2">Ticket de Venta POS</p>
             <div className="h-0.5 w-16 bg-emerald-600 mx-auto mt-4"></div>
           </div>
@@ -279,7 +279,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
         <div className="p-4 md:p-10 overflow-y-auto custom-scrollbar" id="printable-staff-settlement">
           <div className="flex items-start justify-between gap-6 mb-8">
             <div>
-              <h2 className="text-3xl font-black uppercase italic tracking-widest text-slate-900">BarberSoft</h2>
+              <h2 className="text-3xl font-black italic tracking-widest text-slate-900">BarberPro</h2>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-2">Planilla Consolidada de Liquidación de Nómina</p>
             </div>
             <div className="text-right">

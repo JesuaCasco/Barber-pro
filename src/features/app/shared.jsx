@@ -696,7 +696,12 @@ export const styleTag = `
     }
     #printable-staff-settlement table {
       width: 100% !important;
+      min-width: 0 !important;
       border-collapse: collapse !important;
+      table-layout: fixed !important;
+    }
+    #printable-staff-settlement .overflow-x-auto {
+      overflow: visible !important;
     }
     #printable-staff-settlement .settlement-summary-cards {
       display: none !important;
@@ -704,12 +709,15 @@ export const styleTag = `
     #printable-staff-settlement th,
     #printable-staff-settlement td {
       border: 1px solid #cbd5e1 !important;
-      padding: 10px !important;
+      padding: 8px !important;
       vertical-align: top !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
     }
     #printable-staff-settlement .signature-cell {
-      min-width: 180px !important;
-      height: 70px !important;
+      min-width: 0 !important;
+      width: 16% !important;
+      height: 64px !important;
     }
   }
 `;

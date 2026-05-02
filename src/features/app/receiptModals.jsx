@@ -290,7 +290,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="settlement-summary-cards grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
               <p className="text-[10px] font-black uppercase text-slate-400">Total Base</p>
               <p className="text-2xl font-black italic text-slate-900 mt-2">C$ {summary.base.toLocaleString()}</p>

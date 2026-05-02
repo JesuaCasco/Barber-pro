@@ -698,6 +698,9 @@ export const styleTag = `
       width: 100% !important;
       border-collapse: collapse !important;
     }
+    #printable-staff-settlement .settlement-summary-cards {
+      display: none !important;
+    }
     #printable-staff-settlement th,
     #printable-staff-settlement td {
       border: 1px solid #cbd5e1 !important;

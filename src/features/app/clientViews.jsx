@@ -200,8 +200,8 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
   const TypeIcon = stats.type.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white overflow-hidden no-print">
-      <div className="client-detail-modal bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[2.35rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 max-h-[88dvh] flex flex-col text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md animate-in fade-in text-white overflow-hidden no-print">
+      <div className="client-detail-modal bg-slate-950 w-[min(92vw,58rem)] max-w-none rounded-[2rem] md:rounded-[2.35rem] shadow-[0_24px_70px_rgba(0,0,0,0.75)] border border-slate-800 animate-in zoom-in-95 flex flex-col text-white">
         <div className="flex flex-col md:flex-row text-white overflow-hidden">
           <div className="w-full md:w-[34%] bg-black p-5 md:p-8 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white md:overflow-visible overflow-y-auto custom-scrollbar">
             <div className="w-20 h-20 md:w-24 md:h-24 bg-indigo-600 rounded-[1.7rem] md:rounded-[2rem] flex items-center justify-center text-white shadow-2xl mb-4 relative text-white">

@@ -138,7 +138,8 @@ export const styleTag = `
 
   .client-detail-modal {
     height: auto !important;
-    max-height: min(88dvh, 44rem) !important;
+    max-height: min(82dvh, 38rem) !important;
+    width: min(92vw, 58rem) !important;
   }
 
   @media (min-width: 768px) and (min-height: 680px) {

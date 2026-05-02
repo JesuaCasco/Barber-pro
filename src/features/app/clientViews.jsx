@@ -227,7 +227,7 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
           </div>
 
           <div className="flex-1 p-5 md:p-8 flex flex-col bg-slate-950/50 text-white overflow-hidden text-white">
-            <div className="flex-1 flex min-h-0 flex-col justify-center text-white">
+            <div className="flex-1 flex min-h-0 flex-col justify-center text-white md:translate-y-8">
             <div className="flex justify-between items-start mb-5 text-white">
               <div className="flex items-center gap-3 text-white">
                 <Star size={24} className="text-amber-400 fill-amber-400" />

@@ -26,10 +26,74 @@ import {
 import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
 
 const ProductCard = memo(function ProductCard({ service, onAdd }) {
+  const categoryTheme = {
+    Producto: {
+      border: 'border-cyan-400/25 hover:border-cyan-300/70',
+      bg: 'from-cyan-500/18 via-slate-900 to-slate-950',
+      accent: 'text-cyan-300',
+      chip: 'bg-cyan-400/12 border-cyan-300/25 text-cyan-200',
+      button: 'bg-cyan-500 text-white shadow-cyan-500/25 group-hover:bg-cyan-400',
+    },
+    Cortes: {
+      border: 'border-indigo-400/25 hover:border-indigo-300/70',
+      bg: 'from-indigo-500/18 via-slate-900 to-slate-950',
+      accent: 'text-indigo-300',
+      chip: 'bg-indigo-400/12 border-indigo-300/25 text-indigo-200',
+      button: 'bg-indigo-600 text-white shadow-indigo-500/25 group-hover:bg-indigo-500',
+    },
+    Barba: {
+      border: 'border-amber-400/25 hover:border-amber-300/70',
+      bg: 'from-amber-500/18 via-slate-900 to-slate-950',
+      accent: 'text-amber-300',
+      chip: 'bg-amber-400/12 border-amber-300/25 text-amber-200',
+      button: 'bg-amber-500 text-white shadow-amber-500/25 group-hover:bg-amber-400',
+    },
+    Combo: {
+      border: 'border-fuchsia-400/25 hover:border-fuchsia-300/70',
+      bg: 'from-fuchsia-500/18 via-slate-900 to-slate-950',
+      accent: 'text-fuchsia-300',
+      chip: 'bg-fuchsia-400/12 border-fuchsia-300/25 text-fuchsia-200',
+      button: 'bg-fuchsia-600 text-white shadow-fuchsia-500/25 group-hover:bg-fuchsia-500',
+    },
+  };
+  const theme = categoryTheme[service.category] || categoryTheme.Producto;
+
   return (
-    <button onClick={() => onAdd(service)} className="bg-slate-900 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-800 hover:border-indigo-600 hover:bg-slate-800 transition-all text-left shadow-xl active:scale-95 group flex flex-col justify-between min-h-[138px] md:min-h-[180px] text-white">
-      <div><p className="text-[8px] font-black text-indigo-400 uppercase mb-2 tracking-widest leading-none italic">{service.category}</p><h5 className="text-[13px] md:text-sm font-black uppercase italic mb-4 text-white group-hover:text-indigo-400 transition-colors leading-tight">{service.name}</h5></div>
-      <div className="flex items-center justify-between mt-auto text-white"><p className="text-lg md:text-xl font-black text-emerald-400 italic leading-none">C$ {service.price}</p><div className="p-2 bg-indigo-600/20 rounded-xl text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg text-white"><Plus size={16} /></div></div>
+    <button
+      onClick={() => onAdd(service)}
+      className={`group relative min-h-[156px] md:min-h-[210px] overflow-hidden rounded-[1.5rem] md:rounded-[2.2rem] border ${theme.border} bg-gradient-to-br ${theme.bg} p-4 md:p-5 text-left text-white shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-95`}
+    >
+      <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-[2rem] border border-white/10 bg-white/[0.03] rotate-12 transition-transform duration-500 group-hover:rotate-45 group-hover:scale-110" />
+      <div className="relative z-10 flex h-full flex-col">
+        <div className="flex items-start justify-between gap-3">
+          <span className={`rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.2em] italic ${theme.chip}`}>
+            {service.category}
+          </span>
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-black/35 ${theme.accent} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}>
+            <ShoppingBag size={17} />
+          </div>
+        </div>
+
+        <div className="mt-5 flex-1">
+          <h5 className="line-clamp-2 text-base md:text-lg font-black uppercase italic leading-tight tracking-tight text-white transition-colors duration-300 group-hover:text-white">
+            {service.name}
+          </h5>
+          <p className="mt-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 transition-colors group-hover:text-slate-300">
+            Disponible para venta rápida
+          </p>
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-[0.22em] text-slate-500">Precio</p>
+            <p className="mt-1 text-2xl md:text-3xl font-black italic leading-none text-emerald-300">C$ {Number(service.price || 0).toLocaleString('es-NI')}</p>
+          </div>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg transition-all duration-300 ${theme.button} group-hover:scale-110`}>
+            <Plus size={20} strokeWidth={3} />
+          </div>
+        </div>
+      </div>
     </button>
   );
 });
@@ -353,7 +417,11 @@ export function POSView({ services, onSale }) {
       <div className="flex-1 flex flex-col min-w-0 text-white">
         <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-slate-900 bg-black text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
-            <div className="px-5 py-4 rounded-[2rem] bg-slate-900 border border-slate-800">
+            <div className="relative overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-gradient-to-r from-emerald-500/15 via-slate-900 to-indigo-500/15 px-5 py-4 shadow-xl">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+                <ShoppingBag size={18} />
+              </div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] italic text-emerald-400 leading-none">Catálogo de productos</p>
             </div>
             <div className="flex items-center gap-3">
@@ -374,6 +442,11 @@ export function POSView({ services, onSale }) {
           </div>
         </div>
         <div className="flex-1 p-3 md:p-8 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 content-start custom-scrollbar text-white">
+          {filtered.length === 0 && (
+            <div className="col-span-full rounded-[2rem] border border-dashed border-slate-700 bg-slate-950/70 p-10 text-center text-slate-500">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em]">No se encontraron productos</p>
+            </div>
+          )}
           {filtered.map((service) => (
             <ProductCard key={service.id} service={service} onAdd={addItem} />
           ))}

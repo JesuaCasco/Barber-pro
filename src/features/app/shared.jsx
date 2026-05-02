@@ -23,10 +23,14 @@ export const styleTag = `
     padding: clamp(0.5rem, 1.4vmin, 1rem) !important;
   }
 
+  .fixed.inset-0 > form:not([class*="max-w-"]),
+  .fixed.inset-0 > div:not([class*="max-w-"]) {
+    max-width: calc(100vw - 1rem);
+  }
+
   .fixed.inset-0 > [class*="max-h"],
   .fixed.inset-0 > form,
   .fixed.inset-0 > div {
-    max-width: min(100%, calc(100vw - 1rem));
     max-height: calc(100dvh - 1rem) !important;
   }
 

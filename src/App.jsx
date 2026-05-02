@@ -3882,15 +3882,42 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
 
 function ServicesView({ services, onAdd, onEdit, onDelete }) {
   const [activeCategory, setActiveCategory] = useState('Cortes');
-  const getIcon = (cat) => {
+  const getIcon = (cat, size = 32) => {
     switch(cat) {
-      case 'Cortes': return <Scissors size={32} />;
-      case 'Barba': return <BeardIcon size={32} />;
-      case 'Combo': return <Zap size={32} />;
-      case 'Producto': return <Package size={32} />;
-      case 'Promocion': return <Gift size={32} />;
-      default: return <Tags size={32} />;
+      case 'Cortes': return <Scissors size={size} />;
+      case 'Barba': return <BeardIcon size={size} />;
+      case 'Combo': return <Zap size={size} />;
+      case 'Producto': return <Package size={size} />;
+      case 'Promocion': return <Gift size={size} />;
+      default: return <Tags size={size} />;
     }
+  };
+  const categoryThemes = {
+    Cortes: {
+      active: 'border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_26px_rgba(34,211,238,0.48)]',
+      idle: 'border-cyan-400/25 text-cyan-300/70 hover:border-cyan-300/70 hover:bg-cyan-400/10 hover:text-cyan-100 hover:shadow-[0_0_22px_rgba(34,211,238,0.24)]',
+      dot: 'bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.75)]',
+    },
+    Barba: {
+      active: 'border-rose-300 bg-rose-500 text-white shadow-[0_0_26px_rgba(244,63,94,0.45)]',
+      idle: 'border-rose-400/25 text-rose-300/70 hover:border-rose-300/70 hover:bg-rose-500/10 hover:text-rose-100 hover:shadow-[0_0_22px_rgba(244,63,94,0.22)]',
+      dot: 'bg-rose-300 shadow-[0_0_14px_rgba(244,63,94,0.75)]',
+    },
+    Producto: {
+      active: 'border-emerald-300 bg-emerald-400 text-slate-950 shadow-[0_0_26px_rgba(16,185,129,0.45)]',
+      idle: 'border-emerald-400/25 text-emerald-300/70 hover:border-emerald-300/70 hover:bg-emerald-400/10 hover:text-emerald-100 hover:shadow-[0_0_22px_rgba(16,185,129,0.22)]',
+      dot: 'bg-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.75)]',
+    },
+    Combo: {
+      active: 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_26px_rgba(245,158,11,0.45)]',
+      idle: 'border-amber-400/25 text-amber-300/70 hover:border-amber-300/70 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_0_22px_rgba(245,158,11,0.22)]',
+      dot: 'bg-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.75)]',
+    },
+    Promocion: {
+      active: 'border-fuchsia-300 bg-fuchsia-500 text-white shadow-[0_0_26px_rgba(217,70,239,0.45)]',
+      idle: 'border-fuchsia-400/25 text-fuchsia-300/70 hover:border-fuchsia-300/70 hover:bg-fuchsia-500/10 hover:text-fuchsia-100 hover:shadow-[0_0_22px_rgba(217,70,239,0.22)]',
+      dot: 'bg-fuchsia-300 shadow-[0_0_14px_rgba(217,70,239,0.75)]',
+    },
   };
   const filteredServices = useMemo(() => (services || []).filter(s => s.category === activeCategory), [services, activeCategory]);
 
@@ -3903,8 +3930,26 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
         </div>
         <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoción' : 'Nuevo Servicio'}</button>
       </div>
-      <div className="grid w-full grid-cols-2 gap-3 p-3 bg-black border border-slate-800 rounded-[2.5rem] text-white sm:flex sm:flex-wrap sm:items-center sm:w-fit">
-        {CATEGORIES.map(cat => <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 md:px-8 py-4 rounded-[2rem] font-black uppercase italic text-[10px] tracking-widest transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 translate-y-[-2px]' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>{CATEGORY_LABELS[cat] || cat}</button>)}
+      <div className="grid w-full grid-cols-2 gap-2.5 p-3 bg-black/80 border border-slate-800 rounded-[2.5rem] text-white shadow-[inset_0_0_24px_rgba(15,23,42,0.85)] sm:flex sm:flex-wrap sm:items-center sm:w-fit">
+        {CATEGORIES.map((cat) => {
+          const theme = categoryThemes[cat] || categoryThemes.Cortes;
+          const isActive = activeCategory === cat;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`group relative overflow-hidden px-4 md:px-7 py-3.5 rounded-[2rem] border font-black uppercase italic text-[10px] tracking-widest transition-all active:scale-95 ${isActive ? `${theme.active} -translate-y-0.5` : theme.idle}`}
+            >
+              <span className={`absolute inset-x-4 top-0 h-px opacity-70 ${theme.dot}`} />
+              <span className="relative flex items-center justify-center gap-2">
+                <span className={`h-2 w-2 rounded-full transition-all ${theme.dot} ${isActive ? 'scale-125' : 'opacity-60 group-hover:opacity-100'}`} />
+                <span className="hidden sm:inline-flex">{getIcon(cat, 13)}</span>
+                {CATEGORY_LABELS[cat] || cat}
+              </span>
+            </button>
+          );
+        })}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-8">
         {filteredServices.map(s => (

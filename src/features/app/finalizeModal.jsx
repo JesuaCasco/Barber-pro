@@ -115,8 +115,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in text-white no-print">
-      <div className="relative bg-slate-950 w-full max-w-6xl rounded-[2.4rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[92vh] md:h-[88vh] flex flex-col text-white overflow-hidden">
-        <div className="p-5 md:px-7 md:py-5 border-b border-slate-900 flex justify-between items-center bg-black">
+      <div className="relative bg-slate-950 w-full max-w-[92rem] rounded-[2.4rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[92vh] md:h-[94vh] flex flex-col text-white overflow-hidden">
+        <div className="p-5 md:px-7 md:py-4 border-b border-slate-900 flex justify-between items-center bg-black">
           <div>
             <h3 className="text-xl md:text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
             <p className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-[0.16em] md:tracking-widest mt-2 leading-none">Finaliza el servicio y procesa el pago</p>
@@ -254,7 +254,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
         </div>
 
         <div className="hidden md:flex flex-1 flex-col md:flex-row overflow-hidden">
-          <div className="w-full md:w-[380px] border-r border-slate-900 flex flex-col bg-black/40">
+          <div className="w-full md:w-[360px] border-r border-slate-900 flex flex-col bg-black/40">
             <div className="p-5 border-b border-slate-900">
               <h4 className="text-[10px] font-black text-indigo-400 uppercase italic tracking-widest flex items-center gap-2">
                 <ShoppingBag size={14} /> Servicios Realizados
@@ -290,8 +290,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col bg-slate-950">
-            <div className="p-5 border-b border-slate-900 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-1 flex flex-col bg-slate-950 min-h-0">
+            <div className="p-4 border-b border-slate-900 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex gap-2 p-1 bg-black border border-slate-800 rounded-2xl overflow-x-auto no-scrollbar">
                 {['Todos', ...CATEGORIES.filter((category) => category !== 'Promocion')].map((category) => (
                   <button
@@ -316,16 +316,16 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <div className="flex-1 p-5 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar content-start">
+            <div className="min-h-0 flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 custom-scrollbar content-start">
               {catalog.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => addToBill(item)}
-                  className="bg-slate-900/50 border border-slate-800 p-5 rounded-[2rem] hover:border-emerald-500 hover:bg-slate-900 transition-all text-left flex flex-col justify-between h-32 group"
+                  className="bg-slate-900/50 border border-slate-800 p-4 rounded-[1.5rem] hover:border-emerald-500 hover:bg-slate-900 transition-all text-left flex flex-col justify-between min-h-[112px] group"
                 >
                   <div>
                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{item.category}</p>
-                    <h5 className="text-xl font-black uppercase italic text-white leading-tight group-hover:text-emerald-400 transition-colors">{item.name}</h5>
+                    <h5 className="text-base font-black uppercase italic text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">{item.name}</h5>
                   </div>
                   <div className="flex justify-between items-center mt-auto">
                     <span className="text-sm font-black text-emerald-500 italic leading-none">C$ {item.price}</span>
@@ -337,7 +337,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               ))}
             </div>
 
-            <div className="border-t border-slate-900 p-5 space-y-3 bg-black/30">
+            <div className="border-t border-slate-900 p-4 space-y-2 bg-black/30 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
@@ -381,8 +381,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         </div>
 
-        <div className="p-2.5 md:p-5 bg-black border-t border-slate-900 flex flex-col md:grid md:grid-cols-[260px_minmax(260px,1fr)_260px] items-stretch gap-2 md:gap-4">
-          <div className="w-full bg-slate-950/50 border border-slate-800 px-3 md:px-5 py-2.5 md:py-4 rounded-[1.2rem] md:rounded-[1.6rem] flex flex-col items-center justify-center shrink-0">
+        <div className="p-2.5 md:p-4 bg-black border-t border-slate-900 flex flex-col md:grid md:grid-cols-[240px_minmax(260px,1fr)_240px] items-stretch gap-2 md:gap-3 shrink-0">
+          <div className="w-full bg-slate-950/50 border border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-[1.2rem] md:rounded-[1.35rem] flex flex-col items-center justify-center shrink-0">
             <p className="text-[8px] md:text-[10px] font-black text-amber-500 uppercase italic tracking-[0.14em] md:tracking-[0.2em] mb-1.5 md:mb-3 leading-none">Califica la experiencia</p>
             <div className="flex gap-1.5 md:gap-4">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -422,9 +422,9 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <div className="hidden md:block w-full rounded-[1.6rem] border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+            <div className="hidden md:block w-full rounded-[1.35rem] border border-slate-800 bg-slate-950/70 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
-              <div className="mt-3 space-y-2.5">
+              <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Subtotal</span>
                   <span className="text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
@@ -441,10 +441,10 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                   </div>
                 ) : null}
               </div>
-              <div className="mt-3 border-t border-slate-800 pt-3">
+              <div className="mt-2 border-t border-slate-800 pt-2">
                 <div className="flex items-end justify-between gap-4">
                   <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Total final</span>
-                  <span className="whitespace-nowrap text-[32px] font-black italic tracking-tighter leading-none text-emerald-400">
+                  <span className="whitespace-nowrap text-[28px] font-black italic tracking-tighter leading-none text-emerald-400">
                     C$ {total.toLocaleString('es-NI')}
                   </span>
                 </div>
@@ -455,11 +455,11 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               <button
                 disabled={billItems.length === 0}
                 onClick={confirmFinalCharge}
-                className="w-full flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 md:py-4 rounded-[1.2rem] md:rounded-[1.6rem] font-black uppercase italic text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 md:gap-3 leading-tight"
+                className="w-full flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3.5 md:py-3 rounded-[1.2rem] md:rounded-[1.35rem] font-black uppercase italic text-[10px] tracking-[0.1em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 leading-tight"
               >
                 <CheckCircle2 size={18} strokeWidth={3} /> Confirmar cobro
               </button>
-              <button onClick={onClose} className="hidden md:block w-full rounded-[1.3rem] border border-slate-800 bg-slate-950/70 px-5 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Cerrar</button>
+              <button onClick={onClose} className="hidden md:block w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-5 py-2.5 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Cerrar</button>
             </div>
           </div>
         </div>

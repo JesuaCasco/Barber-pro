@@ -700,6 +700,16 @@ export const styleTag = `
       border-collapse: collapse !important;
       table-layout: fixed !important;
     }
+    #printable-staff-settlement thead {
+      display: table-header-group !important;
+    }
+    #printable-staff-settlement tfoot {
+      display: table-row-group !important;
+    }
+    #printable-staff-settlement tr {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
     #printable-staff-settlement .overflow-x-auto {
       overflow: visible !important;
     }
@@ -709,7 +719,7 @@ export const styleTag = `
     #printable-staff-settlement th,
     #printable-staff-settlement td {
       border: 1px solid #cbd5e1 !important;
-      padding: 8px !important;
+      padding: 7px !important;
       vertical-align: top !important;
       overflow-wrap: anywhere !important;
       word-break: normal !important;
@@ -717,7 +727,7 @@ export const styleTag = `
     #printable-staff-settlement .signature-cell {
       min-width: 0 !important;
       width: 16% !important;
-      height: 64px !important;
+      height: 58px !important;
     }
   }
 `;

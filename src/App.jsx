@@ -1761,11 +1761,11 @@ export default function App() {
     localDevStorage?.removeItem('bp_dev_revenue');
   }, [useBrowserCache, localDevStorage]);
   const [modals, setModals] = useState({ 
-    appointment: false, service: false, finalize: false, client: false, clientDetail: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
+    appointment: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
   });
   
   const [selectedData, setSelectedData] = useState({ 
-    appointment: null, service: null, finalize: null, client: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
+    appointment: null, service: null, finalize: null, client: null, appointmentActions: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
   });
 
   useEffect(() => {
@@ -2754,6 +2754,12 @@ export default function App() {
     setModals((prev) => ({ ...prev, transferAppointment: true }));
   };
 
+  const openAppointmentActions = (appointment) => {
+    if (!appointment) return;
+    setSelectedData((prev) => ({ ...prev, appointmentActions: appointment }));
+    setModals((prev) => ({ ...prev, appointmentActions: true }));
+  };
+
   const handleTransferAppointment = async (appointmentId, targetBarberId) => {
     const appointment = appointments.find((item) => String(item.id) === String(appointmentId));
     const targetBarber = barbers.find((item) => String(item.id) === String(targetBarberId));
@@ -3390,7 +3396,7 @@ export default function App() {
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
-          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onTransfer={openTransferAppointment} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
+          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
           {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} onTransferApt={openTransferAppointment} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
@@ -3454,6 +3460,7 @@ export default function App() {
       </main>
 
       {modals.appointment && <AppointmentModal onClose={() => setModals({...modals, appointment: false})} onSave={handleSaveAppointment} services={services} clients={clients} barbers={barbers} initial={selectedData.appointment || { date: viewDate, time: '09:00', barberId: defaultBarberId }} appointments={appointments} />}
+      {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} />}
       {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
@@ -5772,6 +5779,85 @@ function TransferAppointmentModal({ appointment, appointments, clients, barbers,
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpdate, onTransfer }) {
+  if (!appointment) return null;
+
+  const client = clients.find((item) => String(item.id) === String(appointment.clientId));
+  const barber = barbers.find((item) => String(item.id) === String(appointment.barberId));
+  const hasArrived = !!appointment.checkInAt;
+  const isWalkin = appointment.type === 'walkin';
+  const inService = appointment.status === 'En Corte';
+  const isClosed = appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida';
+
+  return (
+    <div className="fixed inset-0 z-[68] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
+      <div className="w-full max-w-xl rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95 overflow-hidden">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${barber?.bg || 'bg-slate-800'} text-sm font-black italic text-white`}>
+              {barber?.avatar || '?'}
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{client?.name || 'Cliente desconocido'}</h3>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                {appointment.time || '--:--'} · {normalizeFavoriteServiceName(appointment.service) || 'Servicio'} · {barber?.name || 'Sin barbero'}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="space-y-3 p-5">
+          <button
+            type="button"
+            disabled={isClosed}
+            onClick={() => onTransfer(appointment)}
+            className="flex w-full items-center justify-between rounded-2xl border border-indigo-500/25 bg-indigo-600/10 px-5 py-4 text-left transition-all hover:bg-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>
+              <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-white">Trasladar barbero</span>
+              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Mover este turno a otro profesional</span>
+            </span>
+            <Repeat size={18} className="text-indigo-300" />
+          </button>
+
+          {appointment.type === 'reserva' && !hasArrived && !isClosed && (
+            <button
+              type="button"
+              onClick={() => onUpdate(appointment.id, 'En Espera')}
+              className="flex w-full items-center justify-between rounded-2xl border border-indigo-500/25 bg-indigo-600 px-5 py-4 text-left transition-all hover:bg-indigo-500"
+            >
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Marcar llegada</span>
+              <UserCheck size={18} />
+            </button>
+          )}
+
+          {(hasArrived || isWalkin) && !isClosed && (
+            <button
+              type="button"
+              onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')}
+              className={`flex w-full items-center justify-between rounded-2xl px-5 py-4 text-left transition-all ${
+                inService ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'
+              }`}
+            >
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">{inService ? 'Finalizar servicio' : 'Iniciar servicio'}</span>
+              {inService ? <CheckCircle2 size={18} /> : <Zap size={18} />}
+            </button>
+          )}
+
+          {isClosed && (
+            <div className="rounded-2xl border border-slate-800 bg-black/40 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+              Este turno ya está cerrado.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   Clock,
   DollarSign,
   Plus,
+  Repeat,
   Search,
   ShoppingBag,
   Sparkles,
@@ -43,7 +44,7 @@ const CartLine = memo(function CartLine({ item, onRemove }) {
   );
 });
 
-export function DashboardView({ appointments, clients, onUpdate, barbers, onNewWalkin, posSales = [] }) {
+export function DashboardView({ appointments, clients, onUpdate, onTransfer, barbers, onNewWalkin, posSales = [] }) {
   const [activeBarber, setActiveBarber] = useState('Global');
   const today = getTodayString();
 
@@ -226,6 +227,11 @@ export function DashboardView({ appointments, clients, onUpdate, barbers, onNewW
                           <span className="text-lg font-black text-white italic leading-none">{appointment.time || '--:--'}</span>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
+                          {appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && (
+                            <button onClick={() => onTransfer?.(appointment)} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-4 md:px-5 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest border border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                              <Repeat size={15} /> Trasladar
+                            </button>
+                          )}
                           {appointment.type === 'reserva' && !hasArrived && <button onClick={() => onUpdate(appointment.id, 'En Espera')} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><UserCheck size={16} /> Llegó</button>}
                           {(hasArrived || isWalkin) && (
                             <button onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')} className={`w-full sm:w-auto px-4 md:px-8 py-3 md:py-5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>

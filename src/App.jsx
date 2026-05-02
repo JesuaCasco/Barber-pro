@@ -254,6 +254,34 @@ const resolveWalkinQueueTime = ({ appointments = [], barberId, date = getTodaySt
   return '09:00';
 };
 
+const appointmentTimeToMinutes = (time = '00:00') => {
+  if (!time || typeof time !== 'string') return 0;
+  const [hours, minutes] = time.split(':').map((value) => Number(value));
+  return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
+};
+
+const hasAppointmentBarberConflict = ({ appointments = [], appointment, targetBarberId }) => {
+  if (!appointment || !targetBarberId) return false;
+
+  const activeStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
+  const targetDate = standardizeDate(appointment.date);
+  const start = appointmentTimeToMinutes(appointment.time);
+  const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
+  const end = start + duration;
+
+  return (appointments || []).some((candidate) => {
+    if (String(candidate.id) === String(appointment.id)) return false;
+    if (standardizeDate(candidate.date) !== targetDate) return false;
+    if (String(candidate.barberId) !== String(targetBarberId)) return false;
+    if (!activeStatuses.has(candidate.status || 'Confirmada')) return false;
+
+    const candidateStart = appointmentTimeToMinutes(candidate.time);
+    const candidateDuration = Number(candidate.durationMinutes) > 0 ? Number(candidate.durationMinutes) : 30;
+    const candidateEnd = candidateStart + candidateDuration;
+    return start < candidateEnd && candidateStart < end;
+  });
+};
+
 function SystemView({
   currentUser,
   accessControl,
@@ -1733,11 +1761,11 @@ export default function App() {
     localDevStorage?.removeItem('bp_dev_revenue');
   }, [useBrowserCache, localDevStorage]);
   const [modals, setModals] = useState({ 
-    appointment: false, service: false, finalize: false, client: false, clientDetail: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
+    appointment: false, service: false, finalize: false, client: false, clientDetail: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
   });
   
   const [selectedData, setSelectedData] = useState({ 
-    appointment: null, service: null, finalize: null, client: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
+    appointment: null, service: null, finalize: null, client: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
   });
 
   useEffect(() => {
@@ -2714,6 +2742,57 @@ export default function App() {
     setModals((prev) => ({ ...prev, finalize: true }));
   };
 
+  const openTransferAppointment = (appointment) => {
+    if (!appointment) return;
+
+    if (appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida') {
+      notify('Esta cita ya está cerrada y no se puede trasladar.', 'info');
+      return;
+    }
+
+    setSelectedData((prev) => ({ ...prev, transferAppointment: appointment }));
+    setModals((prev) => ({ ...prev, transferAppointment: true }));
+  };
+
+  const handleTransferAppointment = async (appointmentId, targetBarberId) => {
+    const appointment = appointments.find((item) => String(item.id) === String(appointmentId));
+    const targetBarber = barbers.find((item) => String(item.id) === String(targetBarberId));
+    if (!appointment || !targetBarber) return;
+
+    if (String(appointment.barberId) === String(targetBarberId)) {
+      notify('La cita ya está asignada a ese barbero.', 'info');
+      return;
+    }
+
+    if (hasAppointmentBarberConflict({ appointments, appointment, targetBarberId })) {
+      notify('Ese barbero ya tiene una cita en ese horario.', 'warning');
+      return;
+    }
+
+    const updatedAppointment = {
+      ...appointment,
+      barberId: targetBarber.id,
+      barberName: targetBarber.name,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setAppointments((prev) => prev.map((item) => (
+      String(item.id) === String(appointmentId) ? updatedAppointment : item
+    )));
+    setSelectedData((prev) => ({ ...prev, transferAppointment: null }));
+    setModals((prev) => ({ ...prev, transferAppointment: false }));
+    notify(`Cita trasladada a ${targetBarber.name}.`, 'success');
+
+    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
+      try {
+        await upsertAppointments([updatedAppointment], services, currentBarbershopId, currentBranchId, barbers, clients);
+        await refreshClientsAfterAppointmentSync();
+      } catch (error) {
+        handleSyncError(error, 'No pude guardar el traslado de barbero en Supabase.');
+      }
+    }
+  };
+
   const handleConfirmPayment = async (barberId) => {
     const updatedAppointments = appointments
       .filter(a => String(a.barberId) === String(barberId) && a.status === 'Finalizada')
@@ -3311,8 +3390,8 @@ export default function App() {
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
-          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
-          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} />}
+          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onTransfer={openTransferAppointment} barbers={barbers} onNewWalkin={triggerWalkIn} posSales={posSales} />}
+          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} onTransferApt={openTransferAppointment} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
             <BarbersView
@@ -3375,6 +3454,7 @@ export default function App() {
       </main>
 
       {modals.appointment && <AppointmentModal onClose={() => setModals({...modals, appointment: false})} onSave={handleSaveAppointment} services={services} clients={clients} barbers={barbers} initial={selectedData.appointment || { date: viewDate, time: '09:00', barberId: defaultBarberId }} appointments={appointments} />}
+      {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
       {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} clients={clients} initial={selectedData.finalize} />}
@@ -3498,7 +3578,7 @@ export default function App() {
   );
 }
 
-function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onSlotClick, onAptClick }) {
+function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onSlotClick, onAptClick, onTransferApt }) {
   const today = getTodayString();
   const isToday = viewDate === today;
   const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
@@ -3580,7 +3660,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                   {barberAppointments.map((appointment) => {
                     const client = clients.find((item) => item.id === appointment.clientId);
                     return (
-                      <button key={appointment.id} onClick={() => onAptClick(appointment)} className="w-full rounded-[1.4rem] border border-white/5 bg-black/25 px-4 py-4 text-left">
+                      <div key={appointment.id} onClick={() => onAptClick(appointment)} className="w-full cursor-pointer rounded-[1.4rem] border border-white/5 bg-black/25 px-4 py-4 text-left">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || 'Cliente desconocido'}</p>
@@ -3591,7 +3671,19 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                             <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-300">{appointment.status || 'Confirmada'}</p>
                           </div>
                         </div>
-                      </button>
+                        {appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onTransferApt?.(appointment);
+                            }}
+                            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-600/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-indigo-200"
+                          >
+                            <Repeat size={12} /> Trasladar
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -3665,6 +3757,18 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                             </span>
                             <span className="text-[7px] opacity-70 font-black">{apt.time}</span>
                           </div>
+                          {apt.status !== 'Finalizada' && apt.status !== 'Cita Perdida' && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onTransferApt?.(apt);
+                              }}
+                              className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-black/20 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[0.16em] text-white/90 transition-all hover:bg-black/35"
+                            >
+                              <Repeat size={10} /> Trasladar
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="w-full h-full opacity-0 group-hover/cell:opacity-100 flex items-center justify-center transition-all duration-200">
@@ -5552,6 +5656,122 @@ function ClientModal({ onClose, onSave, clients, initial }) {
           <button type="submit" className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black uppercase italic text-xs text-white leading-none">GUARDAR EN BASE DE DATOS</button>
         </form>
       </div>
+    </div>
+  );
+}
+
+function TransferAppointmentModal({ appointment, appointments, clients, barbers, onClose, onSave }) {
+  const [targetBarberId, setTargetBarberId] = useState('');
+
+  const client = clients.find((item) => String(item.id) === String(appointment?.clientId));
+  const currentBarber = barbers.find((item) => String(item.id) === String(appointment?.barberId));
+  const availableTargets = useMemo(
+    () => (barbers || []).filter((barber) => String(barber.id) !== String(appointment?.barberId)),
+    [barbers, appointment?.barberId],
+  );
+  const effectiveTargetBarberId = targetBarberId || availableTargets[0]?.id || '';
+  const selectedTarget = availableTargets.find((barber) => String(barber.id) === String(effectiveTargetBarberId));
+  const hasConflict = selectedTarget
+    ? hasAppointmentBarberConflict({ appointments, appointment, targetBarberId: selectedTarget.id })
+    : false;
+
+  if (!appointment) return null;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!selectedTarget || hasConflict) return;
+    onSave(appointment.id, selectedTarget.id);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95 overflow-hidden">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+              <Repeat size={21} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Trasladar cita</h3>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                {client?.name || 'Cliente desconocido'} · {appointment.time || '--:--'} · {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <div className="rounded-[1.5rem] border border-white/5 bg-black/35 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Barbero actual</p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${currentBarber?.bg || 'bg-slate-800'} text-xs font-black italic text-white`}>
+                {currentBarber?.avatar || '?'}
+              </div>
+              <p className="font-black uppercase italic text-white">{currentBarber?.name || 'Sin asignar'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">Mover hacia</p>
+            {availableTargets.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-dashed border-slate-700 bg-black/40 p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                No hay otro barbero disponible para trasladar.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {availableTargets.map((barber) => {
+                  const blocked = hasAppointmentBarberConflict({ appointments, appointment, targetBarberId: barber.id });
+                  const selected = String(effectiveTargetBarberId) === String(barber.id);
+                  return (
+                    <button
+                      key={barber.id}
+                      type="button"
+                      onClick={() => setTargetBarberId(barber.id)}
+                      className={`flex items-center gap-3 rounded-[1.3rem] border p-3 text-left transition-all ${
+                        selected
+                          ? 'border-indigo-400 bg-indigo-600/15 shadow-[0_0_24px_rgba(79,70,229,0.18)]'
+                          : 'border-slate-800 bg-black hover:border-slate-600'
+                      }`}
+                    >
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${barber.bg} text-xs font-black italic text-white`}>
+                        {barber.avatar}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-black uppercase italic text-white">{barber.name}</p>
+                        <p className={`mt-1 text-[9px] font-black uppercase tracking-[0.18em] ${blocked ? 'text-rose-300' : 'text-emerald-300'}`}>
+                          {blocked ? 'Ocupado en ese horario' : 'Disponible'}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {hasConflict && (
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-[10px] font-black uppercase italic leading-relaxed text-rose-200">
+              El barbero seleccionado ya tiene una cita que se cruza con este horario.
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 border-t border-slate-800 bg-black/40 p-5">
+          <button type="button" onClick={onClose} className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:text-white">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!selectedTarget || hasConflict}
+            className="flex-1 rounded-2xl bg-indigo-600 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Confirmar traslado
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -5352,7 +5352,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                       </button>
 
                       {showStaffRangeControls && (
-                        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(88vw,22rem)] rounded-[1.8rem] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="adaptive-popover absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(88vw,22rem)] rounded-[1.8rem] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                           <div className="rounded-2xl border border-indigo-500/20 bg-indigo-600/15 px-4 py-3">
                             <span className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-300/80 leading-none">
                               {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`}

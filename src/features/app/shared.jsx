@@ -23,6 +23,11 @@ export const styleTag = `
     padding: clamp(0.5rem, 1.4vmin, 1rem) !important;
   }
 
+  .fixed.inset-0[class*="backdrop-blur"] {
+    background-color: rgba(0, 0, 0, 0.72) !important;
+    backdrop-filter: blur(10px);
+  }
+
   .fixed.inset-0 > form:not([class*="max-w-"]),
   .fixed.inset-0 > div:not([class*="max-w-"]) {
     max-width: calc(100vw - 1rem);

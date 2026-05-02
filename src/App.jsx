@@ -5670,47 +5670,47 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-6 animate-in fade-in text-white no-print">
-      <div className="bg-slate-950 w-full max-w-4xl rounded-[2.5rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[95vh] text-white">
-        <div className="px-8 py-5 bg-black border-b border-slate-800 flex justify-between items-center text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 md:p-8 animate-in fade-in text-white no-print">
+      <div className="appointment-modal bg-slate-950 w-full max-w-4xl rounded-[2.25rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[88vh] text-white">
+        <div className="px-6 py-4 bg-black border-b border-slate-800 flex justify-between items-center text-white">
           <div className="flex items-center gap-4 text-white">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-white">
-                {form.type === 'walkin' ? <Zap size={24}/> : <CalendarIcon size={24}/>}
+                <div className="w-11 h-11 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-white">
+                    {form.type === 'walkin' ? <Zap size={22}/> : <CalendarIcon size={22}/>}
             </div>
-            <h3 className="text-2xl font-black uppercase italic text-white leading-none">
+            <h3 className="text-xl md:text-2xl font-black uppercase italic text-white leading-none">
                 {form.type === 'walkin' ? 'NUEVO TURNO (SIN CITA)' : 'RESERVAR TURNO'}
             </h3>
           </div>
-          <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-xl text-slate-500 text-white"><X size={26} strokeWidth={3} /></button>
+          <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-xl text-slate-500 text-white"><X size={24} strokeWidth={3} /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1 text-white">
-          {modalError && <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-2xl flex items-center gap-3 text-rose-500 text-[11px] font-black uppercase italic leading-none">{modalError}</div>}
-          <div className="space-y-4 text-white">
+        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 text-white">
+          {modalError && <div className="bg-rose-500/10 border border-rose-500/30 p-3 rounded-2xl flex items-center gap-3 text-rose-500 text-[10px] font-black uppercase italic leading-none">{modalError}</div>}
+          <div className="space-y-3 text-white">
             <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">1. ELIGE BARBERO PROFESIONAL</label>
             {availableBarbers.length === 0 ? (
               <div className="rounded-[1.8rem] border border-dashed border-slate-700 bg-black/40 p-6 text-center text-slate-400">
                 <p className="text-[11px] font-black uppercase italic leading-none">No hay barberos activos en esta sucursal.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-white">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white">
                 {availableBarbers.map(b => (
                   <div key={b.id} onClick={() => setForm((prev) => {
                     const nextBarberId = b.id;
                     const nextTime = prev.type === 'walkin' ? getWalkinQueueTime(nextBarberId, prev.date) : prev.time;
                     return { ...prev, barberId: nextBarberId, time: nextTime };
-                  })} className={`p-4 rounded-[1.8rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-3 justify-center relative ${form.barberId === b.id ? `${b.color} bg-indigo-600/10 shadow-lg scale-[1.02]` : 'border-slate-800 bg-black'}`}>
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black italic shadow-xl text-white ${b.bg}`}>{b.avatar}</div>
-                    <p className="text-[10px] font-black uppercase italic text-white leading-tight">{b.name}</p>
+                  })} className={`p-3 rounded-[1.35rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-2 justify-center relative ${form.barberId === b.id ? `${b.color} bg-indigo-600/10 shadow-lg scale-[1.02]` : 'border-slate-800 bg-black'}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black italic shadow-xl text-[11px] text-white ${b.bg}`}>{b.avatar}</div>
+                    <p className="text-[9px] font-black uppercase italic text-white leading-tight truncate max-w-full">{b.name}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 text-white">
-            <div className="space-y-4 text-white" ref={wrapperRef}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 text-white">
+            <div className="space-y-3 text-white" ref={wrapperRef}>
               <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">2. DATOS DEL CLIENTE</label>
               <div className="space-y-3 text-white relative">
-                <input required className="w-full bg-black border border-slate-800 p-5 rounded-[1.2rem] text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none" placeholder="BUSCAR CLIENTE" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => setShowResults(true)} />
+                <input required className="w-full bg-black border border-slate-800 p-4 rounded-[1.2rem] text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none" placeholder="BUSCAR CLIENTE" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => setShowResults(true)} />
                 {showResults && filteredClients.length > 0 && (
                   <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-slate-900 border border-slate-700 rounded-[1.5rem] shadow-2xl z-50 overflow-hidden text-white">
                     {filteredClients.map(c => (<div key={c.id} onClick={() => handleSelectClient(c)} className="flex items-center gap-4 p-4 hover:bg-indigo-600 cursor-pointer border-b border-slate-800 text-white"><span className="text-xs font-black uppercase italic text-white">{c.name}</span></div>))}
@@ -5722,15 +5722,15 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                   </div>
                 )}
                 {(selectedClient || isNewClient) && (
-                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-5 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TELÉFONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
+                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-4 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TELÉFONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
                 )}
               </div>
             </div>
-            <div className="space-y-4 text-white" ref={serviceRef}>
+            <div className="space-y-3 text-white" ref={serviceRef}>
               <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">3. SERVICIO Y HORARIO</label>
               <div className="space-y-3 text-white">
                 <div className="relative text-white">
-                  <input className="w-full bg-black border border-slate-800 p-5 rounded-[1.2rem] text-sm font-black uppercase italic text-white outline-none focus:border-emerald-600 leading-none" placeholder="ELEGIR SERVICIO" value={serviceSearch} onChange={(e) => { setServiceSearch(e.target.value); setShowServiceList(true); }} onFocus={() => setShowServiceList(true)} />
+                  <input className="w-full bg-black border border-slate-800 p-4 rounded-[1.2rem] text-sm font-black uppercase italic text-white outline-none focus:border-emerald-600 leading-none" placeholder="ELEGIR SERVICIO" value={serviceSearch} onChange={(e) => { setServiceSearch(e.target.value); setShowServiceList(true); }} onFocus={() => setShowServiceList(true)} />
                 {showServiceList && (
                   <div className="absolute top-full mt-2 left-0 w-full bg-slate-900 border border-slate-700 rounded-[1.5rem] shadow-2xl z-50 overflow-hidden text-white">
                     <div className="max-h-52 overflow-y-auto inner-scrollbar p-2 text-white">
@@ -5747,7 +5747,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
               <div className="grid grid-cols-2 gap-4 text-white">
                 <input
                   type="date"
-                  className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic"
+                  className="w-full bg-black border border-slate-800 py-3.5 px-5 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic"
                   value={form.date}
                   onChange={e => setForm((prev) => {
                     const nextDate = e.target.value;
@@ -5756,20 +5756,20 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                   })}
                 />
                 {form.type === 'walkin' ? (
-                  <div className="w-full bg-indigo-600/10 border border-indigo-500/30 py-4 px-6 rounded-[1.2rem] flex items-center gap-2 text-white">
+                  <div className="w-full bg-indigo-600/10 border border-indigo-500/30 py-3.5 px-5 rounded-[1.2rem] flex items-center gap-2 text-white">
                     <Clock size={14} className="text-indigo-400" />
                     <span className="text-[11px] font-black text-indigo-400 uppercase italic leading-none">Cola (auto): {form.time || '--:--'}</span>
                   </div>
                 ) : (
-                  <input type="time" className="w-full bg-black border border-slate-800 py-4.5 px-6 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />
+                  <input type="time" className="w-full bg-black border border-slate-800 py-3.5 px-5 rounded-[1.2rem] text-[12px] font-black text-white outline-none italic" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />
                 )}
               </div>
               </div>
             </div>
           </div>
-          <div className="pt-10 border-t border-slate-900 flex justify-between items-center text-white">
-            <div className="flex flex-col text-white"><span className="text-[10px] font-black text-slate-500 uppercase italic mb-2 leading-none">MONTO ESTIMADO</span><h4 className="text-5xl font-black italic text-white leading-none"><span className="text-emerald-500 mr-2 text-white">C$</span>{(Number(form.price) || 0).toLocaleString()}</h4></div>
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-12 py-7 rounded-[1.8rem] font-black uppercase text-xs italic transition-all text-white leading-none">RESERVAR ESPACIO</button>
+          <div className="pt-5 border-t border-slate-900 flex justify-between items-center gap-4 text-white">
+            <div className="flex flex-col text-white"><span className="text-[9px] font-black text-slate-500 uppercase italic mb-1.5 leading-none">MONTO ESTIMADO</span><h4 className="text-3xl md:text-4xl font-black italic text-white leading-none"><span className="text-emerald-500 mr-2 text-white">C$</span>{(Number(form.price) || 0).toLocaleString()}</h4></div>
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] italic transition-all text-white leading-none">RESERVAR ESPACIO</button>
           </div>
         </form>
       </div>

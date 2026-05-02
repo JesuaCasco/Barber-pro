@@ -227,6 +227,7 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
           </div>
 
           <div className="flex-1 p-5 md:p-8 flex flex-col bg-slate-950/50 text-white overflow-hidden text-white">
+            <div className="flex-1 flex min-h-0 flex-col justify-center text-white">
             <div className="flex justify-between items-start mb-5 text-white">
               <div className="flex items-center gap-3 text-white">
                 <Star size={24} className="text-amber-400 fill-amber-400" />
@@ -235,7 +236,7 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
               <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-2xl text-slate-400 hover:text-rose-500 transition-all text-white"><X size={22} /></button>
             </div>
 
-            <div className="flex-1 flex items-center overflow-y-auto custom-scrollbar pr-1">
+            <div className="overflow-y-auto custom-scrollbar pr-1">
               <div className="w-full space-y-4">
                 <div className="space-y-3">
                   <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-[1.8rem] flex items-center justify-between gap-4 group hover:border-indigo-500/30 transition-all">
@@ -273,6 +274,7 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
                   </div>
                 </div>
               </div>
+            </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">

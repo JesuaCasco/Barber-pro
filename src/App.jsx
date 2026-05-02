@@ -6007,8 +6007,6 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
   const client = clients.find((item) => String(item.id) === String(appointment.clientId));
   const barber = barbers.find((item) => String(item.id) === String(appointment.barberId));
   const hasArrived = !!appointment.checkInAt;
-  const isWalkin = appointment.type === 'walkin';
-  const inService = appointment.status === 'En Corte';
   const isClosed = appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida' || appointment.status === 'Cancelada';
   const canMarkLost = appointment.type === 'reserva' && appointment.status === 'Confirmada';
 
@@ -6081,19 +6079,6 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
             >
               <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Marcar llegada</span>
               <UserCheck size={18} />
-            </button>
-          )}
-
-          {(hasArrived || isWalkin) && !isClosed && (
-            <button
-              type="button"
-              onClick={() => onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte')}
-              className={`flex w-full items-center justify-between rounded-2xl px-5 py-4 text-left transition-all ${
-                inService ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'
-              }`}
-            >
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">{inService ? 'Finalizar servicio' : 'Iniciar servicio'}</span>
-              {inService ? <CheckCircle2 size={18} /> : <Zap size={18} />}
             </button>
           )}
 

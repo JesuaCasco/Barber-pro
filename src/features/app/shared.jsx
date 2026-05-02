@@ -136,19 +136,24 @@ export const styleTag = `
     transform-origin: top right;
   }
 
-  .client-detail-modal {
-    height: auto !important;
-    max-height: min(82dvh, 38rem) !important;
-    width: min(92vw, 58rem) !important;
-  }
-
-  @media (min-width: 768px) and (min-height: 680px) {
-    .client-detail-modal {
-      overflow: visible !important;
+  @media (min-width: 768px) {
+    .fixed.inset-0 {
+      padding: clamp(1.25rem, 3vmin, 2.5rem) !important;
     }
 
-    .client-detail-modal .custom-scrollbar {
-      overflow-y: visible !important;
+    .fixed.inset-0 > [class*="h-[92vh]"],
+    .fixed.inset-0 > [class*="md:h-[90vh]"],
+    .fixed.inset-0 > [class*="max-h-[95vh]"],
+    .fixed.inset-0 > [class*="max-h-[92vh]"],
+    .fixed.inset-0 > [class*="max-h-[88vh]"] {
+      height: auto !important;
+      max-height: min(84dvh, 44rem) !important;
+    }
+
+    .fixed.inset-0 > [class*="max-w-7xl"],
+    .fixed.inset-0 > [class*="max-w-6xl"],
+    .fixed.inset-0 > [class*="max-w-[70rem]"] {
+      max-width: min(92vw, 68rem) !important;
     }
   }
 

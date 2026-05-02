@@ -6258,9 +6258,9 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
             <div className="space-y-3 text-white" ref={wrapperRef}>
               <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">2. DATOS DEL CLIENTE</label>
               <div className="space-y-3 text-white relative">
-                <input required className="w-full bg-black border border-slate-800 p-4 rounded-[1.2rem] text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none" placeholder="BUSCAR CLIENTE" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => setShowResults(true)} />
+                <input required className={`w-full bg-black border border-slate-800 p-4 text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none ${showResults && filteredClients.length > 0 ? 'rounded-t-[1.2rem] rounded-b-none' : 'rounded-[1.2rem]'}`} placeholder="BUSCAR CLIENTE" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => setShowResults(true)} />
                 {showResults && filteredClients.length > 0 && (
-                  <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-slate-900 border border-slate-700 rounded-[1.5rem] shadow-2xl z-50 overflow-hidden text-white">
+                  <div className="absolute top-full left-0 w-full bg-slate-900 border border-t-0 border-slate-700 rounded-b-[1.2rem] shadow-2xl z-50 overflow-hidden text-white">
                     {filteredClients.map(c => (<div key={c.id} onClick={() => handleSelectClient(c)} className="flex items-center gap-4 p-4 hover:bg-indigo-600 cursor-pointer border-b border-slate-800 text-white"><span className="text-xs font-black uppercase italic text-white">{c.name}</span></div>))}
                   </div>
                 )}

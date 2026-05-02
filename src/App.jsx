@@ -1332,7 +1332,7 @@ function SystemView({
               })}
             </div>
             <div className="hidden md:block rounded-[2.4rem] border border-white/5 bg-black/35 overflow-hidden">
-              <div className="grid grid-cols-[minmax(240px,1.2fr)_minmax(320px,1.4fr)_minmax(180px,0.8fr)_160px_180px] gap-4 px-6 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">
+              <div className="grid grid-cols-[minmax(170px,1.15fr)_minmax(230px,1.45fr)_minmax(120px,0.7fr)_115px_112px] gap-3 px-5 py-5 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
                 <span>Nombre de usuario</span>
                 <span>Correo</span>
                 <span>Rol</span>
@@ -1351,16 +1351,16 @@ function SystemView({
                   return (
                     <div
                       key={user.id}
-                      className="grid grid-cols-[minmax(240px,1.2fr)_minmax(320px,1.4fr)_minmax(180px,0.8fr)_160px_180px] gap-4 px-6 py-5 items-center"
+                      className="grid grid-cols-[minmax(170px,1.15fr)_minmax(230px,1.45fr)_minmax(120px,0.7fr)_115px_112px] gap-3 px-5 py-5 items-center"
                     >
                       <div className="min-w-0">
-                        <p className="text-base font-black uppercase italic tracking-tighter text-white break-all">
+                        <p className="text-sm font-black uppercase italic tracking-tighter text-white break-words">
                           {displayName}
                         </p>
                       </div>
 
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-300 break-all">
+                        <p className="text-xs font-bold text-slate-300 break-all leading-relaxed">
                           {user.email || 'Sin correo'}
                         </p>
                         {(() => {
@@ -1368,7 +1368,7 @@ function SystemView({
                             ? [user.barbershopName, user.branchName].filter(Boolean).join(' • ')
                             : (user.branchName || '');
                           return scopeLabel ? (
-                            <p className="mt-2 text-[11px] text-slate-500">
+                            <p className="mt-1 text-[10px] text-slate-500 truncate">
                               {scopeLabel}
                             </p>
                           ) : null;
@@ -1377,7 +1377,7 @@ function SystemView({
                           <button
                             type="button"
                             onClick={() => setResetPasswordTarget(user)}
-                            className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400 hover:text-indigo-300 transition-all"
+                            className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-indigo-400 hover:text-indigo-300 transition-all"
                           >
                             Restablecer contraseña
                           </button>
@@ -1385,28 +1385,28 @@ function SystemView({
                       </div>
 
                       <div>
-                        <span className={`inline-flex px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] ${roleMeta.badge}`}>
+                        <span className={`inline-flex max-w-full px-3 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.16em] ${roleMeta.badge}`}>
                           {roleMeta.label}
                         </span>
                       </div>
 
-                      <div className="text-sm font-bold text-slate-300">
+                      <div className="text-xs font-bold text-slate-300">
                         {formatUserCreatedAt(user.createdAt)}
                       </div>
 
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-end">
                         {canEditUser(user) ? (
                           <button
                             type="button"
                             onClick={() => setEditingUser(user)}
                             disabled={savingUserId === user.id}
-                            className="px-4 py-3 rounded-[1rem] bg-slate-950 border border-slate-800 hover:border-indigo-500 text-white font-black uppercase italic text-[10px] tracking-[0.18em] transition-all flex items-center gap-2 disabled:opacity-60"
+                            className="w-full px-3 py-2.5 rounded-[1rem] bg-slate-950 border border-slate-800 hover:border-indigo-500 text-white font-black uppercase italic text-[9px] tracking-[0.14em] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                           >
                             <Edit2 size={14} />
                             Editar
                           </button>
                         ) : (
-                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
+                          <span className="text-right text-[9px] font-black uppercase tracking-[0.14em] text-slate-600">
                             Sin edición
                           </span>
                         )}

@@ -62,7 +62,7 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
     [...appointments].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)).slice(0, 6)
   ), [appointments]);
 
-  const pendingApts = todayApts.filter((appointment) => appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida');
+  const pendingApts = todayApts.filter((appointment) => appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && appointment.status !== 'Cancelada');
   const waitCount = todayApts.filter((appointment) => appointment.status === 'En Espera' || (appointment.type === 'walkin' && appointment.status === 'Confirmada')).length;
   const plannedCount = todayApts.filter((appointment) => appointment.type === 'reserva' && appointment.status === 'Confirmada').length;
   const finishedCount = todayApts.filter((appointment) => appointment.status === 'Finalizada').length;

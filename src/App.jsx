@@ -260,18 +260,18 @@ const appointmentTimeToMinutes = (time = '00:00') => {
   return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
 };
 
-const hasAppointmentBarberConflict = ({ appointments = [], appointment, targetBarberId }) => {
+const hasAppointmentBarberConflict = ({ appointments = [], appointment, targetBarberId, targetDate, targetTime }) => {
   if (!appointment || !targetBarberId) return false;
 
   const activeStatuses = new Set(['Confirmada', 'En Espera', 'En Corte']);
-  const targetDate = standardizeDate(appointment.date);
-  const start = appointmentTimeToMinutes(appointment.time);
+  const normalizedTargetDate = standardizeDate(targetDate || appointment.date);
+  const start = appointmentTimeToMinutes(targetTime || appointment.time);
   const duration = Number(appointment.durationMinutes) > 0 ? Number(appointment.durationMinutes) : 30;
   const end = start + duration;
 
   return (appointments || []).some((candidate) => {
     if (String(candidate.id) === String(appointment.id)) return false;
-    if (standardizeDate(candidate.date) !== targetDate) return false;
+    if (standardizeDate(candidate.date) !== normalizedTargetDate) return false;
     if (String(candidate.barberId) !== String(targetBarberId)) return false;
     if (!activeStatuses.has(candidate.status || 'Confirmada')) return false;
 
@@ -1761,11 +1761,11 @@ export default function App() {
     localDevStorage?.removeItem('bp_dev_revenue');
   }, [useBrowserCache, localDevStorage]);
   const [modals, setModals] = useState({ 
-    appointment: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
+    appointment: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, rescheduleAppointment: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
   });
   
   const [selectedData, setSelectedData] = useState({ 
-    appointment: null, service: null, finalize: null, client: null, appointmentActions: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
+    appointment: null, service: null, finalize: null, client: null, appointmentActions: null, rescheduleAppointment: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
   });
 
   useEffect(() => {
@@ -2672,7 +2672,7 @@ export default function App() {
       updatedAppointment.finishedAt = new Date().toISOString();
     }
 
-    if (status === 'Cita Perdida' && !updatedAppointment.cancelledAt) {
+    if ((status === 'Cita Perdida' || status === 'Cancelada') && !updatedAppointment.cancelledAt) {
       updatedAppointment.cancelledAt = new Date().toISOString();
     }
 
@@ -2758,6 +2758,89 @@ export default function App() {
     if (!appointment) return;
     setSelectedData((prev) => ({ ...prev, appointmentActions: appointment }));
     setModals((prev) => ({ ...prev, appointmentActions: true }));
+  };
+
+  const openRescheduleAppointment = (appointment) => {
+    if (!appointment) return;
+
+    if (appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida' || appointment.status === 'Cancelada') {
+      notify('Esta cita ya está cerrada y no se puede mover.', 'info');
+      return;
+    }
+
+    setSelectedData((prev) => ({ ...prev, rescheduleAppointment: appointment }));
+    setModals((prev) => ({ ...prev, rescheduleAppointment: true }));
+  };
+
+  const handleRescheduleAppointment = async (appointmentId, targetDate, targetTime) => {
+    const appointment = appointments.find((item) => String(item.id) === String(appointmentId));
+    if (!appointment || !targetDate || !targetTime) return;
+
+    if (hasAppointmentBarberConflict({
+      appointments,
+      appointment,
+      targetBarberId: appointment.barberId,
+      targetDate,
+      targetTime,
+    })) {
+      notify('Ese horario ya está ocupado para este barbero.', 'warning');
+      return;
+    }
+
+    const updatedAppointment = {
+      ...appointment,
+      date: targetDate,
+      time: targetTime,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setAppointments((prev) => prev.map((item) => (
+      String(item.id) === String(appointmentId) ? updatedAppointment : item
+    )));
+    setSelectedData((prev) => ({ ...prev, rescheduleAppointment: null }));
+    setModals((prev) => ({ ...prev, rescheduleAppointment: false }));
+    notify(`Turno movido a las ${targetTime}.`, 'success');
+
+    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
+      try {
+        await upsertAppointments([updatedAppointment], services, currentBarbershopId, currentBranchId, barbers, clients);
+        await refreshClientsAfterAppointmentSync();
+      } catch (error) {
+        handleSyncError(error, 'No pude guardar el cambio de horario en Supabase.');
+      }
+    }
+  };
+
+  const handleCancelAppointment = async (appointment) => {
+    if (!appointment) return;
+    const confirmed = await confirmAction({
+      title: appointment.type === 'walkin' ? 'Cancelar servicio' : 'Cancelar cita',
+      message: 'Esta acción retirará el turno de la operación activa. ¿Deseas continuar?',
+      confirmLabel: 'Cancelar turno',
+      cancelLabel: 'Volver',
+      tone: 'danger',
+    });
+
+    if (confirmed) {
+      setModals((prev) => ({ ...prev, appointmentActions: false }));
+      await handleUpdateStatus(appointment.id, 'Cancelada');
+    }
+  };
+
+  const handleMarkAppointmentLost = async (appointment) => {
+    if (!appointment) return;
+    const confirmed = await confirmAction({
+      title: 'Marcar cita perdida',
+      message: 'Se usará el mismo estado que aplica el sistema cuando una reservación excede el tiempo de espera desde su hora agendada.',
+      confirmLabel: 'Marcar perdida',
+      cancelLabel: 'Volver',
+      tone: 'danger',
+    });
+
+    if (confirmed) {
+      setModals((prev) => ({ ...prev, appointmentActions: false }));
+      await handleUpdateStatus(appointment.id, 'Cita Perdida');
+    }
   };
 
   const handleTransferAppointment = async (appointmentId, targetBarberId) => {
@@ -3460,7 +3543,8 @@ export default function App() {
       </main>
 
       {modals.appointment && <AppointmentModal onClose={() => setModals({...modals, appointment: false})} onSave={handleSaveAppointment} services={services} clients={clients} barbers={barbers} initial={selectedData.appointment || { date: viewDate, time: '09:00', barberId: defaultBarberId }} appointments={appointments} />}
-      {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} />}
+      {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onMove={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openRescheduleAppointment(appointment); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} onCancel={handleCancelAppointment} onMarkLost={handleMarkAppointmentLost} />}
+      {modals.rescheduleAppointment && <RescheduleAppointmentModal appointment={selectedData.rescheduleAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, rescheduleAppointment: false})} onSave={handleRescheduleAppointment} />}
       {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
@@ -3598,6 +3682,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const dayAppointments = useMemo(
     () => (appointments || [])
       .filter((appointment) => standardizeDate(appointment.date) === viewDate)
+      .filter((appointment) => appointment.status !== 'Cancelada')
       .sort((left, right) => String(left.time || '').localeCompare(String(right.time || ''))),
     [appointments, viewDate],
   );
@@ -3742,7 +3827,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                     const [aptH, aptM] = (a.time || "00:00").split(':').map(Number);
                     const [slotH, slotM] = h.split(':').map(Number);
                     const isWithinSlot = aptH === slotH && aptM >= slotM && aptM < slotM + 30;
-                    return normalizedAptDate === viewDate && isWithinSlot && String(a.barberId) === String(b.id);
+                    return normalizedAptDate === viewDate && isWithinSlot && String(a.barberId) === String(b.id) && a.status !== 'Cancelada';
                   });
 
                   let statusStyles = "bg-indigo-600 hover:bg-indigo-500 border-indigo-400 shadow-[0_10px_20px_rgba(79,70,229,0.3)]";
@@ -5783,7 +5868,140 @@ function TransferAppointmentModal({ appointment, appointments, clients, barbers,
   );
 }
 
-function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpdate, onTransfer }) {
+function RescheduleAppointmentModal({ appointment, appointments, clients, barbers, onClose, onSave }) {
+  const [targetDate, setTargetDate] = useState(appointment?.date || getTodayString());
+  const [targetTime, setTargetTime] = useState(appointment?.time || '09:00');
+
+  const client = clients.find((item) => String(item.id) === String(appointment?.clientId));
+  const barber = barbers.find((item) => String(item.id) === String(appointment?.barberId));
+  const normalizedTargetDate = standardizeDate(targetDate);
+  const today = getTodayString();
+  const isSameDate = normalizedTargetDate === standardizeDate(appointment?.date);
+  const isSameTime = targetTime === appointment?.time;
+  const hasConflict = hasAppointmentBarberConflict({
+    appointments,
+    appointment,
+    targetBarberId: appointment?.barberId,
+    targetDate,
+    targetTime,
+  });
+
+  const freeSlots = HOURS.filter((time) => {
+    if (isSameDate && time === appointment?.time) return true;
+    return !hasAppointmentBarberConflict({
+      appointments,
+      appointment,
+      targetBarberId: appointment?.barberId,
+      targetDate,
+      targetTime: time,
+    });
+  });
+
+  if (!appointment) return null;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!targetDate || !targetTime || hasConflict || (isSameDate && isSameTime)) return;
+    onSave(appointment.id, targetDate, targetTime);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95 overflow-hidden">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+              <CalendarCheck size={21} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Mover turno</h3>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                {client?.name || 'Cliente desconocido'} · {barber?.name || 'Sin barbero'}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <label className="block space-y-2">
+            <span className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">Fecha</span>
+            <input
+              type="date"
+              min={today}
+              value={targetDate}
+              onChange={(event) => {
+                const nextDate = event.target.value;
+                setTargetDate(nextDate);
+                const firstFree = HOURS.find((time) => !hasAppointmentBarberConflict({
+                  appointments,
+                  appointment,
+                  targetBarberId: appointment.barberId,
+                  targetDate: nextDate,
+                  targetTime: time,
+                }));
+                setTargetTime(firstFree || appointment.time || '09:00');
+              }}
+              className="w-full rounded-2xl border border-slate-800 bg-black px-5 py-4 text-sm font-black italic text-white outline-none focus:border-indigo-500"
+            />
+          </label>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">Horarios libres</p>
+            {freeSlots.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {freeSlots.map((time) => {
+                  const selected = targetTime === time;
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setTargetTime(time)}
+                      className={`rounded-2xl border px-4 py-3 text-sm font-black italic transition-all ${
+                        selected
+                          ? 'border-indigo-400 bg-indigo-600 text-white'
+                          : 'border-slate-800 bg-black text-slate-300 hover:border-indigo-500/40'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-700 bg-black/40 p-5 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                No hay horarios libres para ese día.
+              </div>
+            )}
+          </div>
+
+          {hasConflict && (
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-[10px] font-black uppercase italic leading-relaxed text-rose-200">
+              Ese horario ya está ocupado para este barbero.
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 border-t border-slate-800 bg-black/40 p-5">
+          <button type="button" onClick={onClose} className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:text-white">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!targetDate || !targetTime || hasConflict || (isSameDate && isSameTime)}
+            className="flex-1 rounded-2xl bg-indigo-600 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Guardar nuevo horario
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpdate, onMove, onTransfer, onCancel, onMarkLost }) {
   if (!appointment) return null;
 
   const client = clients.find((item) => String(item.id) === String(appointment.clientId));
@@ -5791,7 +6009,8 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
   const hasArrived = !!appointment.checkInAt;
   const isWalkin = appointment.type === 'walkin';
   const inService = appointment.status === 'En Corte';
-  const isClosed = appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida';
+  const isClosed = appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida' || appointment.status === 'Cancelada';
+  const canMarkLost = appointment.type === 'reserva' && appointment.status === 'Confirmada';
 
   return (
     <div className="fixed inset-0 z-[68] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
@@ -5817,6 +6036,19 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
           <button
             type="button"
             disabled={isClosed}
+            onClick={() => onMove(appointment)}
+            className="flex w-full items-center justify-between rounded-2xl border border-indigo-500/25 bg-indigo-600/10 px-5 py-4 text-left transition-all hover:bg-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>
+              <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-white">Mover horario</span>
+              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Reubicar a un turno libre</span>
+            </span>
+            <CalendarCheck size={18} className="text-indigo-300" />
+          </button>
+
+          <button
+            type="button"
+            disabled={isClosed}
             onClick={() => onTransfer(appointment)}
             className="flex w-full items-center justify-between rounded-2xl border border-indigo-500/25 bg-indigo-600/10 px-5 py-4 text-left transition-all hover:bg-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -5826,6 +6058,20 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
             </span>
             <Repeat size={18} className="text-indigo-300" />
           </button>
+
+          {canMarkLost && (
+            <button
+              type="button"
+              onClick={() => onMarkLost(appointment)}
+              className="flex w-full items-center justify-between rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-left transition-all hover:bg-amber-500/20"
+            >
+              <span>
+                <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-white">Marcar cita perdida</span>
+                <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Usa el mismo estado del vencimiento automático</span>
+              </span>
+              <UserX size={18} className="text-amber-300" />
+            </button>
+          )}
 
           {appointment.type === 'reserva' && !hasArrived && !isClosed && (
             <button
@@ -5848,6 +6094,20 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
             >
               <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">{inService ? 'Finalizar servicio' : 'Iniciar servicio'}</span>
               {inService ? <CheckCircle2 size={18} /> : <Zap size={18} />}
+            </button>
+          )}
+
+          {!isClosed && (
+            <button
+              type="button"
+              onClick={() => onCancel(appointment)}
+              className="flex w-full items-center justify-between rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4 text-left transition-all hover:bg-rose-500/20"
+            >
+              <span>
+                <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-white">{appointment.type === 'walkin' ? 'Cancelar servicio' : 'Cancelar cita'}</span>
+                <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Quitar este turno de la operación activa</span>
+              </span>
+              <X size={18} className="text-rose-300" />
             </button>
           )}
 

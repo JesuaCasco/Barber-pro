@@ -201,9 +201,9 @@ export function ClientDetailModal({ client, clients, appointments, barbers, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in text-white overflow-hidden no-print">
-      <div className="bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[92vh] flex flex-col text-white">
-        <div className="flex flex-col md:flex-row h-full text-white overflow-hidden">
-          <div className="w-full md:w-[34%] bg-black p-5 md:p-9 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white overflow-y-auto custom-scrollbar">
+      <div className="bg-slate-950 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 h-[92vh] flex flex-col text-white overflow-hidden">
+        <div className="flex flex-col md:flex-row h-full text-white overflow-hidden rounded-[inherit]">
+          <div className="w-full md:w-[34%] bg-black p-5 md:p-9 border-b md:border-b-0 md:border-r border-slate-900 flex flex-col items-center text-center text-white overflow-y-auto custom-scrollbar md:rounded-l-[inherit]">
             <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl mb-4 relative text-white">
               <User size={52} /><div className={`absolute -bottom-2 -right-2 p-2.5 rounded-2xl border shadow-lg ${stats.type.bg} ${stats.type.border} text-white`}><TypeIcon size={22} className={stats.type.color} /></div>
             </div>

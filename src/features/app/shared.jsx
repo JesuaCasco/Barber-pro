@@ -136,6 +136,21 @@ export const styleTag = `
     transform-origin: top right;
   }
 
+  .client-detail-modal {
+    height: auto !important;
+    max-height: min(88dvh, 44rem) !important;
+  }
+
+  @media (min-width: 768px) and (min-height: 680px) {
+    .client-detail-modal {
+      overflow: visible !important;
+    }
+
+    .client-detail-modal .custom-scrollbar {
+      overflow-y: visible !important;
+    }
+  }
+
   @media (max-width: 1440px), (max-height: 850px) {
     html {
       font-size: 15px;

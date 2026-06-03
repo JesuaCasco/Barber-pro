@@ -272,9 +272,9 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col justify-center">
                           <div className="min-w-0">
-                            <h4 className="text-[11px] md:text-xs font-black uppercase italic text-white tracking-normal leading-tight group-hover:text-indigo-400 transition-colors whitespace-nowrap">
+                            <p className="text-[16px] font-black uppercase italic text-white tracking-normal leading-tight group-hover:text-indigo-400 transition-colors whitespace-nowrap">
                               {index + 1}-{client?.name || appointment.clientName || 'Cliente estándar'}
-                            </h4>
+                            </p>
                           </div>
                           <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
                             <span className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-full border ${getTypeColor(appointment)} text-white`}>{getTypeLabel(appointment)}</span>

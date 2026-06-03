@@ -147,6 +147,9 @@ const accessUiFallback = (
 );
 
 const STANDARD_CLIENT_NAME = 'Cliente estándar';
+const CASH_WITHDRAWALS_STORAGE_KEY = 'bp_cash_withdrawals_v1';
+const PAYROLL_SETTLEMENTS_STORAGE_KEY = 'bp_payroll_settlements_v1';
+const CASH_WITHDRAWAL_QUICK_AMOUNTS = [10, 20, 50, 100, 200, 300, 400, 500];
 
 const UiFeedbackContext = createContext({
   notify: () => {},
@@ -1582,6 +1585,26 @@ export default function App() {
     const saved = localDevStorage?.getItem('bp_dev_pos_sales') || null;
     return saved ? JSON.parse(saved) : [];
   });
+  const [cashWithdrawals, setCashWithdrawals] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = window.localStorage.getItem(CASH_WITHDRAWALS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('No se pudieron leer los retiros de caja locales:', error);
+      return [];
+    }
+  });
+  const [payrollSettlements, setPayrollSettlements] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = window.localStorage.getItem(PAYROLL_SETTLEMENTS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('No se pudo leer el historial local de pagos:', error);
+      return [];
+    }
+  });
   
   const [viewDate, setViewDate] = useState(getTodayString());
   const bootstrapCompletedRef = useRef(false);
@@ -1767,15 +1790,31 @@ export default function App() {
     localDevStorage?.setItem('bp_dev_pos_sales', JSON.stringify(posSales));
   }, [posSales, useBrowserCache, localDevStorage]);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(CASH_WITHDRAWALS_STORAGE_KEY, JSON.stringify(cashWithdrawals));
+    } catch (error) {
+      console.error('No se pudieron guardar los retiros de caja locales:', error);
+    }
+  }, [cashWithdrawals]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(PAYROLL_SETTLEMENTS_STORAGE_KEY, JSON.stringify(payrollSettlements));
+    } catch (error) {
+      console.error('No se pudo guardar el historial local de pagos:', error);
+    }
+  }, [payrollSettlements]);
+  useEffect(() => {
     if (!useBrowserCache) return;
     localDevStorage?.removeItem('bp_dev_revenue');
   }, [useBrowserCache, localDevStorage]);
   const [modals, setModals] = useState({ 
-    appointment: false, quickAppointment: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, rescheduleAppointment: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
+    appointment: false, quickAppointment: false, cashWithdrawal: false, payrollHistory: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, rescheduleAppointment: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
   });
   
   const [selectedData, setSelectedData] = useState({ 
-    appointment: null, quickAppointment: null, service: null, finalize: null, client: null, appointmentActions: null, rescheduleAppointment: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
+    appointment: null, quickAppointment: null, cashWithdrawal: null, payrollHistory: null, service: null, finalize: null, client: null, appointmentActions: null, rescheduleAppointment: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
   });
 
   useEffect(() => {
@@ -2968,13 +3007,43 @@ export default function App() {
   };
 
   const handleConfirmPayment = async (barberId) => {
+    const paidBarber = barbers.find((barber) => String(barber.id) === String(barberId));
+    const nomina = paidBarber
+      ? getBarberNominaData(paidBarber, appointments)
+      : null;
+    const pendingWithdrawals = cashWithdrawals.filter((withdrawal) => (
+      String(withdrawal.barberId) === String(barberId) && !withdrawal.settledAt
+    ));
+    const withdrawalsTotal = pendingWithdrawals.reduce((sum, withdrawal) => sum + (Number(withdrawal.amount) || 0), 0);
+    const grossTotal = Number(nomina?.total || 0);
+    const netTotal = Math.max(grossTotal - withdrawalsTotal, 0);
     const updatedAppointments = appointments
       .filter(a => String(a.barberId) === String(barberId) && a.status === 'Finalizada')
       .map(a => ({ ...a, isPaid: true }));
+    const settlementTime = new Date().toISOString();
 
     setAppointments(prev => prev.map(a => 
       String(a.barberId) === String(barberId) && a.status === 'Finalizada' ? { ...a, isPaid: true } : a
     ));
+    setCashWithdrawals((prev) => prev.map((withdrawal) => (
+      String(withdrawal.barberId) === String(barberId) && !withdrawal.settledAt
+        ? { ...withdrawal, settledAt: settlementTime }
+        : withdrawal
+    )));
+    if (paidBarber) {
+      setPayrollSettlements((prev) => [{
+        id: makeId(),
+        barberId: paidBarber.id,
+        barberName: paidBarber.name,
+        barberFullName: paidBarber.fullName || paidBarber.name,
+        grossTotal,
+        withdrawalsTotal,
+        total: netTotal,
+        pendingServices: Number(nomina?.pendingServices || 0),
+        paidAt: settlementTime,
+        type: 'individual',
+      }, ...prev]);
+    }
     setModals({ ...modals, paymentReceipt: false });
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current && updatedAppointments.length) {
@@ -2991,12 +3060,44 @@ export default function App() {
     const updatedAppointments = appointments
       .filter(a => normalizedIds.has(String(a.barberId)) && a.status === 'Finalizada' && !a.isPaid)
       .map(a => ({ ...a, isPaid: true }));
+    const settlementTime = new Date().toISOString();
+    const settlementRecords = (barbers || [])
+      .filter((barber) => normalizedIds.has(String(barber.id)))
+      .map((barber) => {
+        const nomina = getBarberNominaData(barber, appointments);
+        const pendingWithdrawals = cashWithdrawals.filter((withdrawal) => (
+          String(withdrawal.barberId) === String(barber.id) && !withdrawal.settledAt
+        ));
+        const withdrawalsTotal = pendingWithdrawals.reduce((sum, withdrawal) => sum + (Number(withdrawal.amount) || 0), 0);
+        const grossTotal = Number(nomina.total || 0);
+        return {
+          id: makeId(),
+          barberId: barber.id,
+          barberName: barber.name,
+          barberFullName: barber.fullName || barber.name,
+          grossTotal,
+          withdrawalsTotal,
+          total: Math.max(grossTotal - withdrawalsTotal, 0),
+          pendingServices: Number(nomina.pendingServices || 0),
+          paidAt: settlementTime,
+          type: 'staff',
+        };
+      })
+      .filter((record) => record.grossTotal > 0 || record.withdrawalsTotal > 0);
 
     setAppointments(prev => prev.map(a =>
       normalizedIds.has(String(a.barberId)) && a.status === 'Finalizada' && !a.isPaid
         ? { ...a, isPaid: true }
         : a
     ));
+    setCashWithdrawals((prev) => prev.map((withdrawal) => (
+      normalizedIds.has(String(withdrawal.barberId)) && !withdrawal.settledAt
+        ? { ...withdrawal, settledAt: settlementTime }
+        : withdrawal
+    )));
+    if (settlementRecords.length) {
+      setPayrollSettlements((prev) => [...settlementRecords, ...prev]);
+    }
     setModals(prev => ({ ...prev, staffSettlement: false }));
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current && updatedAppointments.length) {
@@ -3108,6 +3209,48 @@ export default function App() {
         handleSyncError(error, 'No pude guardar el turno rápido en Supabase.');
       }
     }
+  };
+
+  const openCashWithdrawal = (barberId = '') => {
+    setSelectedData((prev) => ({
+      ...prev,
+      cashWithdrawal: { barberId: barberId || defaultBarberId || '' },
+    }));
+    setModals((prev) => ({ ...prev, cashWithdrawal: true }));
+  };
+
+  const handleSaveCashWithdrawal = ({ barberId, amount, note }) => {
+    const barber = barbers.find((item) => String(item.id) === String(barberId));
+    const parsedAmount = Number(amount || 0);
+
+    if (!barber) {
+      notify('Selecciona un barbero para registrar el retiro.', 'warning');
+      return;
+    }
+
+    if (parsedAmount <= 0) {
+      notify('Ingresa un monto válido para el retiro.', 'warning');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const withdrawal = {
+      id: makeId(),
+      barberId: barber.id,
+      barberName: barber.name,
+      amount: parsedAmount,
+      note: String(note || '').trim(),
+      date: getTodayString(),
+      createdAt: now,
+      barbershopId: currentBarbershopId || null,
+      branchId: currentBranchId || null,
+      settledAt: null,
+    };
+
+    setCashWithdrawals((prev) => [...prev, withdrawal]);
+    setSelectedData((prev) => ({ ...prev, cashWithdrawal: null }));
+    setModals((prev) => ({ ...prev, cashWithdrawal: false }));
+    notify(`Retiro registrado: C$ ${parsedAmount.toLocaleString()} para ${barber.name}.`, 'success');
   };
 
   const handleSaveClient = async (clientData) => {
@@ -3624,7 +3767,7 @@ export default function App() {
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
-          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} posSales={posSales} />}
+          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={posSales} />}
           {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} onTransferApt={openTransferAppointment} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
@@ -3638,16 +3781,23 @@ export default function App() {
               onSave={handleSaveBarber}
               onDelete={handleDeleteBarber}
               onGoToNomina={() => setActiveTab('nomina')}
+              onCashWithdrawal={openCashWithdrawal}
             />
           )}
           {activeTab === 'nomina' && (
             <NominaView
               barbers={barbers}
               appointments={appointments}
+              cashWithdrawals={cashWithdrawals}
+              payrollSettlements={payrollSettlements}
               onClose={() => setActiveTab('barberos')}
               onPagar={(barber, nomina) => {
                 setSelectedData({ ...selectedData, paymentReceipt: { barber, nomina } });
                 setModals({ ...modals, paymentReceipt: true });
+              }}
+              onOpenHistory={(barber, settlements) => {
+                setSelectedData((prev) => ({ ...prev, payrollHistory: { barber, settlements } }));
+                setModals((prev) => ({ ...prev, payrollHistory: true }));
               }}
               onLiquidarTodo={(rows, summary) => {
                 setSelectedData({ ...selectedData, staffSettlement: { rows, summary } });
@@ -3689,6 +3839,8 @@ export default function App() {
 
       {modals.appointment && <AppointmentModal onClose={() => setModals({...modals, appointment: false})} onSave={handleSaveAppointment} services={services} clients={clients} barbers={barbers} initial={selectedData.appointment || { date: viewDate, time: '09:00', barberId: defaultBarberId }} appointments={appointments} />}
       {modals.quickAppointment && <QuickAppointmentModal onClose={() => setModals({...modals, quickAppointment: false})} onSave={handleSaveQuickAppointment} barbers={barbers} initial={selectedData.quickAppointment || { date: getTodayString(), time: getNextWalkinQueueTime(defaultBarberId), barberId: defaultBarberId }} appointments={appointments} />}
+      {modals.cashWithdrawal && <CashWithdrawalModal onClose={() => setModals({...modals, cashWithdrawal: false})} onSave={handleSaveCashWithdrawal} barbers={barbers} initial={selectedData.cashWithdrawal || { barberId: defaultBarberId }} />}
+      {modals.payrollHistory && <PayrollHistoryModal data={selectedData.payrollHistory} onClose={() => setModals({...modals, payrollHistory: false})} />}
       {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onMove={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openRescheduleAppointment(appointment); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} onCancel={handleCancelAppointment} onMarkLost={handleMarkAppointmentLost} />}
       {modals.rescheduleAppointment && <RescheduleAppointmentModal appointment={selectedData.rescheduleAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, rescheduleAppointment: false})} onSave={handleRescheduleAppointment} />}
       {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
@@ -4166,7 +4318,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
   );
 }
 
-function BarbersView({ barbers, appointments, branches, currentBarbershopId, currentBranchId, canChooseBranch, onSave, onDelete, onGoToNomina }) {
+function BarbersView({ barbers, appointments, branches, currentBarbershopId, currentBranchId, canChooseBranch, onSave, onDelete, onGoToNomina, onCashWithdrawal }) {
   const { notify } = useUiFeedback();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', fullName: '', cedula: '', salary: '', phone: '', paymentMode: 'salario', paymentFrequency: 'Quincenal', commission: '', level: 'Junior', color: BARBER_THEME_PALETTE[0].color, bg: BARBER_THEME_PALETTE[0].bg, branchId: currentBranchId || '' });
@@ -4417,6 +4569,12 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
           <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-1 italic leading-none">Administre el staff, salarios y liquidación de comisiones</p>
         </div>
         <div className="flex gap-4">
+          <button
+            onClick={() => onCashWithdrawal?.()}
+            className="bg-indigo-500/10 hover:bg-indigo-500/15 text-indigo-200 border border-indigo-400/25 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2"
+          >
+            <Wallet size={16} /> Adelanto
+          </button>
           <button 
             onClick={onGoToNomina}
             className="bg-[#6366f1] hover:bg-[#5356e3] text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] active:scale-95 transition-all flex items-center gap-2"
@@ -4706,13 +4864,27 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
   );
 }
 
-function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo }) {
+function NominaView({ barbers, appointments, cashWithdrawals = [], payrollSettlements = [], onClose, onPagar, onOpenHistory, onLiquidarTodo }) {
   const payrollRows = useMemo(() => {
-    return barbers.map((barber) => ({
-      barber,
-      nomina: getBarberNominaData(barber, appointments),
-    }));
-  }, [barbers, appointments]);
+    return barbers.map((barber) => {
+      const baseNomina = getBarberNominaData(barber, appointments);
+      const pendingWithdrawals = (cashWithdrawals || []).filter((withdrawal) => (
+        String(withdrawal.barberId) === String(barber.id) && !withdrawal.settledAt
+      ));
+      const withdrawalsTotal = pendingWithdrawals.reduce((sum, withdrawal) => sum + (Number(withdrawal.amount) || 0), 0);
+
+      return {
+        barber,
+        nomina: {
+          ...baseNomina,
+          grossTotal: baseNomina.total,
+          withdrawals: pendingWithdrawals,
+          withdrawalsTotal,
+          total: Math.max(baseNomina.total - withdrawalsTotal, 0),
+        },
+      };
+    });
+  }, [barbers, appointments, cashWithdrawals]);
 
   const summary = useMemo(() => {
     return payrollRows.reduce((acc, row) => ({
@@ -4720,16 +4892,42 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
       pendingServices: acc.pendingServices + row.nomina.pendingServices,
       base: acc.base + row.nomina.base,
       comission: acc.comission + row.nomina.comission,
+      withdrawalsTotal: acc.withdrawalsTotal + row.nomina.withdrawalsTotal,
       total: acc.total + row.nomina.total,
-    }), { staffCount: 0, pendingServices: 0, base: 0, comission: 0, total: 0 });
+    }), { staffCount: 0, pendingServices: 0, base: 0, comission: 0, withdrawalsTotal: 0, total: 0 });
   }, [payrollRows]);
+  const settlementsByBarberId = useMemo(() => {
+    const map = new Map();
+    (payrollSettlements || []).forEach((settlement) => {
+      const key = String(settlement.barberId || '');
+      if (!key) return;
+      map.set(key, [...(map.get(key) || []), settlement]);
+    });
+    map.forEach((items, key) => {
+      map.set(key, items.sort((left, right) => new Date(right.paidAt || 0) - new Date(left.paidAt || 0)));
+    });
+    return map;
+  }, [payrollSettlements]);
+  const barberPaymentFiles = useMemo(() => (
+    (barbers || []).map((barber) => {
+      const settlements = settlementsByBarberId.get(String(barber.id)) || [];
+      const totalPaid = settlements.reduce((sum, settlement) => sum + (Number(settlement.total) || 0), 0);
+      const lastPayment = settlements[0] || null;
+      return {
+        barber,
+        settlements,
+        totalPaid,
+        lastPayment,
+      };
+    })
+  ), [barbers, settlementsByBarberId]);
 
   const indicatorCards = [
     {
       id: 'total',
       label: 'Total a Pagar',
       value: `C$ ${summary.total.toLocaleString()}`,
-      helper: `Base C$ ${summary.base.toLocaleString()} + comisión C$ ${summary.comission.toLocaleString()}`,
+      helper: `Base C$ ${summary.base.toLocaleString()} + comisión C$ ${summary.comission.toLocaleString()} - adelantos C$ ${summary.withdrawalsTotal.toLocaleString()}`,
       icon: Wallet,
       shellClass: 'bg-gradient-to-br from-indigo-500/20 via-slate-900 to-slate-950 border-indigo-500/30 shadow-[0_0_35px_rgba(99,102,241,0.18)]',
       iconWrapClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-400/20',
@@ -4746,6 +4944,17 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
       iconWrapClass: 'bg-white/5 text-slate-200 border-white/10',
       valueClass: 'text-white',
       badgeClass: 'text-slate-300',
+    },
+    {
+      id: 'withdrawals',
+      label: 'Adelantos Pendientes',
+      value: `C$ ${summary.withdrawalsTotal.toLocaleString()}`,
+      helper: summary.withdrawalsTotal > 0 ? 'Dinero tomado por barberos pendiente de descuento' : 'Sin adelantos por descontar',
+      icon: Wallet,
+      shellClass: 'bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 border-amber-500/20 shadow-[0_0_35px_rgba(245,158,11,0.14)]',
+      iconWrapClass: 'bg-amber-500/15 text-amber-300 border-amber-400/20',
+      valueClass: summary.withdrawalsTotal > 0 ? 'text-amber-300' : 'text-white',
+      badgeClass: summary.withdrawalsTotal > 0 ? 'text-amber-300' : 'text-slate-300',
     },
     {
       id: 'services',
@@ -4784,7 +4993,7 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {indicatorCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -4807,13 +5016,14 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
 
       <div className="bg-slate-900 border border-slate-800 rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl">
         <div className="overflow-x-auto custom-scrollbar">
-        <table className="min-w-[980px] w-full text-left">
+        <table className="min-w-[1120px] w-full text-left">
           <thead className="bg-black/80 border-b border-slate-800 font-black uppercase text-[10px] text-slate-500 tracking-[0.2em] italic">
             <tr>
               <th className="px-10 py-7">Staff / Barbero</th>
               <th className="px-10 py-7 text-center">Modalidad</th>
-              <th className="px-10 py-7 text-center">Base</th>
-              <th className="px-10 py-7 text-center">Comisiones</th>
+              <th className="px-10 py-7 text-right min-w-[130px]">Base</th>
+              <th className="px-10 py-7 text-right min-w-[150px]">Comisiones</th>
+              <th className="px-10 py-7 text-right min-w-[150px]">Adelantos</th>
               <th className="px-10 py-7 text-right">Total a Pagar</th>
               <th className="px-10 py-7 text-right">Acción</th>
             </tr>
@@ -4834,22 +5044,41 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
                   <td className="px-10 py-6 text-center">
                     <span className="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">{getBarberPaymentModeLabel(b.paymentMode, data.commissionRate)}</span>
                   </td>
-                  <td className="px-10 py-6 text-center">
-                    <span className="text-xs font-black text-white italic">C$ {data.base.toLocaleString()}</span>
+                  <td className="px-10 py-6 text-right min-w-[130px]">
+                    <span className="whitespace-nowrap text-sm font-black text-white italic">C$ {data.base.toLocaleString()}</span>
                   </td>
-                  <td className="px-10 py-6 text-center">
-                    <span className="text-xs font-black text-emerald-400 italic">C$ {data.comission.toLocaleString()}</span>
+                  <td className="px-10 py-6 text-right min-w-[150px]">
+                    <span className="whitespace-nowrap text-sm font-black text-emerald-400 italic">C$ {data.comission.toLocaleString()}</span>
+                  </td>
+                  <td className="px-10 py-6 text-right min-w-[150px]">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="whitespace-nowrap text-sm font-black text-amber-300 italic">- C$ {data.withdrawalsTotal.toLocaleString()}</span>
+                      {data.withdrawals.length > 0 && (
+                        <span className="whitespace-nowrap text-[8px] font-black uppercase tracking-widest text-slate-500">
+                          {data.withdrawals.length} adelanto{data.withdrawals.length === 1 ? '' : 's'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-10 py-6 text-right">
                     <span className="text-lg font-black text-white italic tracking-tighter">C$ {data.total.toLocaleString()}</span>
                   </td>
                   <td className="px-10 py-6 text-right">
-                    <button 
-                      onClick={() => onPagar(b, data)}
-                      className="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase italic transition-all border border-emerald-500/20 shadow-lg"
-                    >
-                      Pagar
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenHistory?.(b, settlementsByBarberId.get(String(b.id)) || [])}
+                        className="bg-indigo-500/10 hover:bg-indigo-500 text-indigo-300 hover:text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase italic transition-all border border-indigo-500/20 shadow-lg"
+                      >
+                        Historial
+                      </button>
+                      <button
+                        onClick={() => onPagar(b, data)}
+                        className="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase italic transition-all border border-emerald-500/20 shadow-lg"
+                      >
+                        Pagar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -4857,6 +5086,69 @@ function NominaView({ barbers, appointments, onClose, onPagar, onLiquidarTodo })
           </tbody>
         </table>
         </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 md:p-6 shadow-2xl">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h4 className="text-xl font-black uppercase italic tracking-tight text-white">Historial de pagos</h4>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Expediente por barbero</p>
+          </div>
+        </div>
+
+        {barberPaymentFiles.length === 0 ? (
+          <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-700 bg-black/30 p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+            Aún no hay barberos para consultar.
+          </div>
+        ) : (
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {barberPaymentFiles.map(({ barber, settlements, totalPaid, lastPayment }) => {
+              const paidDate = lastPayment?.paidAt ? new Date(lastPayment.paidAt) : null;
+              const hasPayments = settlements.length > 0;
+              const dateLabel = paidDate && !Number.isNaN(paidDate.getTime())
+                ? paidDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'Sin pagos';
+              return (
+                <button
+                  key={barber.id}
+                  type="button"
+                  onClick={() => onOpenHistory?.(barber, settlements)}
+                  className={`group relative min-h-[138px] overflow-hidden rounded-[1.8rem] border p-4 text-left transition-all hover:-translate-y-0.5 active:scale-[0.99] ${hasPayments ? 'border-emerald-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/20 hover:border-emerald-300/50' : 'border-slate-800 bg-black/35 hover:border-indigo-400/40 hover:bg-indigo-500/10'}`}
+                >
+                  <div className={`absolute inset-x-4 top-0 h-px opacity-70 ${barber.bg || 'bg-indigo-600'}`} />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${barber.bg || 'bg-indigo-600'} text-[11px] font-black italic text-white shadow-lg`}>
+                        {barber.avatar || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-black uppercase italic leading-tight text-white">{barber.fullName || barber.name}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${hasPayments ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-500'}`}>
+                            {settlements.length} pago{settlements.length === 1 ? '' : 's'}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                            {dateLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Histórico</p>
+                      <p className={`mt-1 whitespace-nowrap text-xl font-black italic ${hasPayments ? 'text-emerald-300' : 'text-slate-500'}`}>C$ {totalPaid.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                      {hasPayments ? 'Ver detalle de pagos' : 'Abrir expediente'}
+                    </span>
+                    <ArrowRight size={14} className={`transition-transform group-hover:translate-x-1 ${hasPayments ? 'text-emerald-300' : 'text-indigo-300'}`} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end pt-4 md:pt-8">
@@ -6318,6 +6610,237 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
           {isClosed && (
             <div className="rounded-2xl border border-slate-800 bg-black/40 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
               Este turno ya está cerrado.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashWithdrawalModal({ onClose, onSave, barbers, initial }) {
+  const availableBarbers = useMemo(() => ((barbers && barbers.length > 0) ? barbers : []), [barbers]);
+  const [form, setForm] = useState({
+    barberId: initial?.barberId || availableBarbers[0]?.id || '',
+    amount: CASH_WITHDRAWAL_QUICK_AMOUNTS[0],
+    customAmount: '',
+    note: '',
+  });
+  const [modalError, setModalError] = useState('');
+  const selectedAmount = Number(form.customAmount || form.amount || 0);
+  const selectedBarber = useMemo(
+    () => availableBarbers.find((barber) => String(barber.id) === String(form.barberId)) || availableBarbers[0] || null,
+    [availableBarbers, form.barberId],
+  );
+  const selectedBarberBg = selectedBarber?.bg || 'bg-indigo-600';
+  const selectedBarberBorder = selectedBarber?.color || 'border-indigo-500';
+
+  const handleQuickAmount = (amount) => {
+    setForm((prev) => ({ ...prev, amount, customAmount: '' }));
+    setModalError('');
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!form.barberId) {
+      setModalError('Selecciona el barbero que tomó dinero de caja.');
+      return;
+    }
+    if (selectedAmount <= 0) {
+      setModalError('Ingresa un monto válido para registrar el retiro.');
+      return;
+    }
+
+    onSave({
+      barberId: form.barberId,
+      amount: selectedAmount,
+      note: form.note,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
+      <form onSubmit={handleSubmit} className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95">
+        <div className="shrink-0 flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selectedBarberBg} text-white border border-white/10`}>
+              <Wallet size={22} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">Adelanto de barbero</h3>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Dinero tomado hoy, se descuenta al liquidar</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-5 space-y-4">
+          {modalError && (
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-[10px] font-black uppercase tracking-widest text-rose-300">
+              {modalError}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">1. Barbero</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              {availableBarbers.map((barber) => {
+                const active = String(form.barberId) === String(barber.id);
+                return (
+                  <button
+                    type="button"
+                    key={barber.id}
+                    onClick={() => setForm((prev) => ({ ...prev, barberId: barber.id }))}
+                    className={`rounded-[1.15rem] border-2 p-3 text-center transition-all active:scale-95 ${active ? `${barber.color} ${barber.bg} text-white shadow-lg` : 'border-slate-800 bg-black/70 hover:border-indigo-400/50'}`}
+                  >
+                    <div className={`mx-auto flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-white/20' : (barber.bg || 'bg-slate-800')} text-[10px] font-black italic text-white`}>
+                      {barber.avatar || '?'}
+                    </div>
+                    <p className="mt-3 truncate text-[10px] font-black uppercase italic tracking-widest text-white">{barber.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">2. Monto</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {CASH_WITHDRAWAL_QUICK_AMOUNTS.map((amount) => {
+                const active = !form.customAmount && Number(form.amount) === Number(amount);
+                return (
+                  <button
+                    type="button"
+                    key={amount}
+                    onClick={() => handleQuickAmount(amount)}
+                    className={`rounded-2xl border px-3 py-3 text-sm font-black italic transition-all active:scale-95 ${active ? `${selectedBarberBorder} ${selectedBarberBg} text-white shadow-lg` : 'border-slate-800 bg-black/70 text-white hover:border-white/30 hover:bg-white/5'}`}
+                  >
+                    C$ {amount}
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={form.customAmount}
+              onChange={(event) => setForm((prev) => ({ ...prev, customAmount: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-800 bg-black px-4 py-3.5 text-sm font-black uppercase italic text-white outline-none transition-all focus:border-indigo-400"
+              placeholder="OTRO MONTO"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">3. Nota opcional</p>
+            <input
+              value={form.note}
+              onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-800 bg-black px-4 py-3.5 text-sm font-bold text-white outline-none transition-all focus:border-indigo-400"
+              placeholder="Ej. comida, adelanto, transporte"
+            />
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t border-slate-800 bg-black px-5 py-3.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Adelanto a descontar</p>
+            <p className="mt-1 text-3xl font-black italic text-white">C$ {selectedAmount.toLocaleString()}</p>
+          </div>
+          <button
+            type="submit"
+            disabled={!form.barberId || selectedAmount <= 0}
+            className={`rounded-2xl ${selectedBarberBg} px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            Registrar adelanto
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function PayrollHistoryModal({ data, onClose }) {
+  if (!data?.barber) return null;
+
+  const { barber, settlements = [] } = data;
+  const totalPaid = settlements.reduce((sum, settlement) => sum + (Number(settlement.total) || 0), 0);
+  const totalAdvances = settlements.reduce((sum, settlement) => sum + (Number(settlement.withdrawalsTotal) || 0), 0);
+
+  return (
+    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in text-white no-print">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95">
+        <div className="shrink-0 flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${barber.bg || 'bg-indigo-600'} text-sm font-black italic text-white`}>
+              {barber.avatar || '?'}
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">Historial de pagos</h3>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{barber.fullName || barber.name}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 border-b border-slate-800 bg-slate-900/40 p-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800 bg-black/35 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Pagos registrados</p>
+            <p className="mt-2 text-2xl font-black italic text-white">{settlements.length}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Total pagado</p>
+            <p className="mt-2 text-2xl font-black italic text-emerald-300">C$ {totalPaid.toLocaleString()}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">Adelantos descontados</p>
+            <p className="mt-2 text-2xl font-black italic text-amber-300">C$ {totalAdvances.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-5">
+          {settlements.length === 0 ? (
+            <div className="rounded-[1.5rem] border border-dashed border-slate-700 bg-black/35 p-8 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Este barbero todavía no tiene pagos confirmados.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {settlements.map((settlement) => {
+                const paidDate = settlement.paidAt ? new Date(settlement.paidAt) : null;
+                const hasDate = paidDate && !Number.isNaN(paidDate.getTime());
+                return (
+                  <div key={settlement.id} className="rounded-[1.5rem] border border-slate-800 bg-black/35 p-4 md:p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-black uppercase italic text-white">
+                          {hasDate ? paidDate.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : 'Fecha sin registrar'}
+                        </p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                          {hasDate ? paidDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} · {settlement.type === 'staff' ? 'Liquidación de planilla' : 'Pago individual'} · {settlement.pendingServices || 0} servicios
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-right">
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Bruto</p>
+                          <p className="mt-1 whitespace-nowrap text-sm font-black italic text-white">C$ {Number(settlement.grossTotal || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Adelantos</p>
+                          <p className="mt-1 whitespace-nowrap text-sm font-black italic text-amber-300">- C$ {Number(settlement.withdrawalsTotal || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Pagado</p>
+                          <p className="mt-1 whitespace-nowrap text-base font-black italic text-emerald-300">C$ {Number(settlement.total || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

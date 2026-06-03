@@ -12,6 +12,7 @@ import {
   Sparkles,
   UserCheck,
   UserPlus,
+  Wallet,
   X,
   Zap,
 } from 'lucide-react';
@@ -107,7 +108,7 @@ const CartLine = memo(function CartLine({ item, onRemove }) {
   );
 });
 
-export function DashboardView({ appointments, clients, onUpdate, onOpenAppointment, barbers, onNewWalkin, onQuickAppointment, posSales = [] }) {
+export function DashboardView({ appointments, clients, onUpdate, onOpenAppointment, barbers, onNewWalkin, onQuickAppointment, onCashWithdrawal, posSales = [] }) {
   const [activeBarber, setActiveBarber] = useState('Global');
   const today = getTodayString();
 
@@ -181,11 +182,20 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
             <Sparkles size={12} className="text-indigo-400" /> Resumen Operativo - {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        <div className="flex w-full md:w-auto items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
+        <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto md:items-center">
+        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
           <div className="px-3 border-r border-slate-800">
             <p className="text-[9px] font-black text-slate-500 uppercase leading-none mb-1">Barberos</p>
             <p className="text-[11px] font-black uppercase text-emerald-400 italic leading-none">{busyBarbers} Ocupados / {totalBarbers || 0}</p>
           </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onCashWithdrawal?.(activeBarber !== 'Global' ? activeBarber : '')}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-indigo-400/25 bg-indigo-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-200 transition-all hover:border-indigo-300 hover:bg-indigo-500/15 active:scale-95"
+        >
+          <Wallet size={15} /> Adelanto
+        </button>
         </div>
       </div>
 

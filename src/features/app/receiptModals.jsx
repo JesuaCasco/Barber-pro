@@ -53,6 +53,12 @@ export function PaymentReceiptModal({ data, onClose, onConfirmPayment, confirmAc
               <span className="text-[10px] font-black uppercase">Comisiones Generadas:</span>
               <span className="font-bold">C$ {nomina.comission.toLocaleString()}</span>
             </div>
+            {Number(nomina.withdrawalsTotal || 0) > 0 && (
+              <div className="flex justify-between text-amber-700 border-b border-slate-200 pb-3">
+                <span className="text-[10px] font-black uppercase">Adelantos:</span>
+                <span className="font-bold">- C$ {nomina.withdrawalsTotal.toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex justify-between pt-2">
               <span className="text-xs font-black uppercase text-slate-900">Total Neto Pagado:</span>
               <span className="text-2xl font-black text-indigo-600 italic tracking-tighter">C$ {nomina.total.toLocaleString()}</span>
@@ -290,7 +296,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
             </div>
           </div>
 
-          <div className="settlement-summary-cards grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="settlement-summary-cards grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
               <p className="text-[10px] font-black uppercase text-slate-400">Total Base</p>
               <p className="text-2xl font-black italic text-slate-900 mt-2">C$ {summary.base.toLocaleString()}</p>
@@ -303,6 +309,10 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
               <p className="text-[10px] font-black uppercase text-slate-400">Servicios Pendientes</p>
               <p className="text-2xl font-black italic text-slate-900 mt-2">{summary.pendingServices}</p>
             </div>
+            <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5">
+              <p className="text-[10px] font-black uppercase text-amber-700">Adelantos</p>
+              <p className="text-2xl font-black italic text-amber-700 mt-2">C$ {(summary.withdrawalsTotal || 0).toLocaleString()}</p>
+            </div>
             <div className="rounded-[1.5rem] border border-slate-200 bg-slate-900 p-5">
               <p className="text-[10px] font-black uppercase text-slate-400">Total a Liquidar</p>
               <p className="text-2xl font-black italic text-white mt-2">C$ {summary.total.toLocaleString()}</p>
@@ -310,13 +320,14 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
           </div>
 
           <div className="rounded-[1.5rem] md:rounded-[2rem] border border-slate-200 overflow-x-auto custom-scrollbar">
-            <table className="min-w-[1100px] w-full">
+            <table className="min-w-[1220px] w-full">
               <thead className="bg-slate-100">
                 <tr className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
                   <th className="px-5 py-4 text-left">Barbero</th>
                   <th className="px-5 py-4 text-left">Desglose</th>
                   <th className="px-5 py-4 text-center">Base</th>
                   <th className="px-5 py-4 text-center">Comisiones</th>
+                  <th className="px-5 py-4 text-center">Adelantos</th>
                   <th className="px-5 py-4 text-center">Total</th>
                   <th className="px-5 py-4 text-center">Firma Física</th>
                 </tr>
@@ -342,6 +353,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
                     </td>
                     <td className="px-5 py-4 text-center text-sm font-black italic">C$ {nomina.base.toLocaleString()}</td>
                     <td className="px-5 py-4 text-center text-sm font-black italic text-emerald-600">C$ {nomina.comission.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-center text-sm font-black italic text-amber-700">- C$ {(nomina.withdrawalsTotal || 0).toLocaleString()}</td>
                     <td className="px-5 py-4 text-center text-base font-black italic">C$ {nomina.total.toLocaleString()}</td>
                     <td className="px-5 py-4 signature-cell">
                       <div className="h-full min-h-[70px] flex flex-col justify-end">
@@ -358,6 +370,7 @@ export function StaffSettlementModal({ data, onClose, onConfirmSettlement, confi
                   <td colSpan="2" className="px-5 py-4 text-right text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Totales</td>
                   <td className="px-5 py-4 text-center text-sm font-black italic">C$ {summary.base.toLocaleString()}</td>
                   <td className="px-5 py-4 text-center text-sm font-black italic text-emerald-600">C$ {summary.comission.toLocaleString()}</td>
+                  <td className="px-5 py-4 text-center text-sm font-black italic text-amber-700">- C$ {(summary.withdrawalsTotal || 0).toLocaleString()}</td>
                   <td className="px-5 py-4 text-center text-base font-black italic">C$ {summary.total.toLocaleString()}</td>
                   <td className="px-5 py-4"></td>
                 </tr>

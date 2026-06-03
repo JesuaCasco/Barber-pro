@@ -107,7 +107,7 @@ const CartLine = memo(function CartLine({ item, onRemove }) {
   );
 });
 
-export function DashboardView({ appointments, clients, onUpdate, onOpenAppointment, barbers, onNewWalkin, posSales = [] }) {
+export function DashboardView({ appointments, clients, onUpdate, onOpenAppointment, barbers, onNewWalkin, onQuickAppointment, posSales = [] }) {
   const [activeBarber, setActiveBarber] = useState('Global');
   const today = getTodayString();
 
@@ -223,9 +223,14 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[120px] pointer-events-none"></div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
             <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter text-white">Turnos del día</h3>
-            <button onClick={() => onNewWalkin(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
-              <UserPlus size={18} /> Nuevo turno sin cita
-            </button>
+            <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+              <button onClick={() => onQuickAppointment?.(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
+                <Zap size={18} /> Agendar rápido
+              </button>
+              <button onClick={() => onNewWalkin(activeBarber !== 'Global' ? activeBarber : (barbers[0]?.id || ''))} className="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
+                <UserPlus size={18} /> Turno completo
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 p-3 md:p-4 bg-black/40 border border-white/5 rounded-[2.5rem] w-full max-w-5xl mx-auto shadow-inner">
@@ -259,45 +264,42 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                   const isWalkin = appointment.type === 'walkin';
 
                   return (
-                    <div key={appointment.id} onClick={() => onOpenAppointment?.(appointment)} className={`bg-slate-950 border ${inService ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)] scale-[1.01] z-10' : (appointment.status === 'En Espera' ? 'border-indigo-500/50' : 'border-slate-800')} rounded-[2.5rem] p-4 md:p-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 md:gap-6 transition-all group relative overflow-hidden cursor-pointer hover:border-indigo-500/40`}>
-                      <div className="flex items-center gap-4 md:gap-6 min-w-0">
+                    <div key={appointment.id} onClick={() => onOpenAppointment?.(appointment)} className={`bg-slate-950 border ${inService ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)] scale-[1.01] z-10' : (appointment.status === 'En Espera' ? 'border-indigo-500/50' : 'border-slate-800')} rounded-[2rem] px-4 py-4 md:px-6 md:py-4 grid grid-cols-1 md:grid-cols-[minmax(340px,1fr)_minmax(128px,auto)_74px_150px] items-center gap-4 md:gap-5 transition-all group relative overflow-hidden cursor-pointer hover:border-indigo-500/40`}>
+                      <div className="flex min-w-0 flex-1 items-center gap-4">
                         <div className="relative">
-                          <div className={`w-16 h-16 rounded-[1.5rem] ${barber?.bg || 'bg-slate-800'} flex items-center justify-center font-black italic text-xl text-white shadow-2xl relative z-10 border-2 border-white/10 group-hover:scale-110 transition-transform`}>{barber?.avatar || '?'}</div>
+                          <div className={`w-14 h-14 rounded-[1.25rem] ${barber?.bg || 'bg-slate-800'} flex items-center justify-center font-black italic text-base text-white shadow-2xl relative z-10 border-2 border-white/10 group-hover:scale-105 transition-transform`}>{barber?.avatar || '?'}</div>
                           {inService && <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-4 border-slate-950 animate-ping z-20"></div>}
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-3">
-                            <h4 className="text-lg md:text-xl font-black uppercase italic text-white tracking-tighter leading-none group-hover:text-indigo-400 transition-colors truncate">
-                              {index + 1}-{client?.name || 'Cliente desconocido'}
+                        <div className="flex min-w-0 flex-1 flex-col justify-center">
+                          <div className="min-w-0">
+                            <h4 className="text-[11px] md:text-xs font-black uppercase italic text-white tracking-normal leading-tight group-hover:text-indigo-400 transition-colors whitespace-nowrap">
+                              {index + 1}-{client?.name || appointment.clientName || 'Cliente estándar'}
                             </h4>
-                            {inService && <span className="animate-pulse flex items-center gap-1 text-[8px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 italic">EN PROCESO</span>}
                           </div>
-                          <div className="flex items-center gap-2 mt-2 min-w-0">
-                            <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${getTypeColor(appointment)} text-white`}>{getTypeLabel(appointment)}</span>
-                            <span className="text-[10px] text-slate-600 font-black uppercase italic tracking-widest leading-none truncate">- {barber?.name}</span>
+                          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                            <span className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-full border ${getTypeColor(appointment)} text-white`}>{getTypeLabel(appointment)}</span>
+                            <span className="min-w-0 text-[9px] text-slate-500 font-black uppercase italic tracking-widest leading-tight break-words">- {barber?.name || 'Sin barbero'}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6 w-full md:w-auto md:justify-end">
-                        <div className="flex flex-wrap gap-2 md:justify-end">
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
                           {appointment.type === 'reserva' && !hasArrived && <DelayTimer reservationTime={appointment.time} />}
                           {hasArrived && <WaitTimer checkInAt={appointment.checkInAt} startedAt={appointment.startedAt} />}
                           {inService && appointment.startedAt && <ServiceTimer startedAt={appointment.startedAt} />}
-                        </div>
-                        <div className="flex items-end justify-between md:justify-end md:flex-col md:items-end gap-1 md:min-w-[80px]">
-                          <span className="text-[9px] font-black text-slate-600 uppercase italic tracking-[0.2em] leading-none">Hora inicio</span>
-                          <span className="text-lg font-black text-white italic leading-none">{appointment.time || '--:--'}</span>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
+                      </div>
+                      <div className="flex items-end justify-between gap-1 md:min-w-[74px] md:flex-col md:items-end md:justify-center">
+                          <span className="text-[8px] font-black text-slate-600 uppercase italic tracking-[0.18em] leading-none">Hora inicio</span>
+                          <span className="text-base font-black text-white italic leading-none">{appointment.time || '--:--'}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
                           {appointment.type === 'reserva' && !hasArrived && <button onClick={(event) => { event.stopPropagation(); onUpdate(appointment.id, 'En Espera'); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-5 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><UserCheck size={16} /> Llegó</button>}
                           {(hasArrived || isWalkin) && (
-                            <button onClick={(event) => { event.stopPropagation(); onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte'); }} className={`w-full sm:w-auto px-4 md:px-8 py-3 md:py-5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>
+                            <button onClick={(event) => { event.stopPropagation(); onUpdate(appointment.id, inService ? 'Finalizada' : 'En Corte'); }} className={`w-full sm:w-auto px-4 md:px-7 py-3.5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.18em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${inService ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'}`}>
                               {inService ? <CheckCircle2 size={16} strokeWidth={3} /> : <Zap size={16} fill="white" />}
                               {inService ? 'Finalizar' : 'Iniciar'}
                             </button>
                           )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -318,7 +320,7 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                 <div key={activity.id} className="bg-black/50 border border-white/5 p-4 rounded-2xl flex items-center gap-4 group text-white">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black italic border border-white/10 ${activity.status === 'Finalizada' ? 'bg-emerald-500/20 text-emerald-400' : (activity.status === 'En Corte' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400')}`}>{activityClient?.name?.[0] || '?'}</div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{activityClient?.name || 'Desconocido'}</p>
+                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{activityClient?.name || activity.clientName || 'Cliente estándar'}</p>
                     <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 leading-none">{activity.status} - {activity.service || 'Servicio'}</p>
                   </div>
                   <span className="text-[8px] font-black text-slate-600 uppercase italic whitespace-nowrap">{new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

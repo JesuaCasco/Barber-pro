@@ -202,7 +202,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid min-h-[188px] grid-cols-2 content-start gap-2.5">
                   {catalog.map((item) => (
                     <button
                       key={item.id}
@@ -316,7 +316,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <div className="min-h-0 flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 custom-scrollbar content-start">
+            <div className="min-h-[196px] flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 custom-scrollbar content-start">
               {catalog.map((item) => (
                 <button
                   key={item.id}

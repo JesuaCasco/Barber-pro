@@ -3061,7 +3061,7 @@ export default function App() {
           paidBy: session?.user?.id || null,
           type: 'individual',
           barbershopId: currentBarbershopId || null,
-          branchId: currentBranchId || null,
+          branchId: currentBranchId || paidBarber.branchId || null,
           advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
           appointmentIds: updatedAppointments.map((appointment) => appointment.id),
         }
@@ -3144,7 +3144,7 @@ export default function App() {
           paidBy: session?.user?.id || null,
           type: 'staff',
           barbershopId: currentBarbershopId || null,
-          branchId: currentBranchId || null,
+          branchId: currentBranchId || barber.branchId || null,
           advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
           appointmentIds: barberAppointmentIds,
         };
@@ -3320,7 +3320,7 @@ export default function App() {
       date: getTodayString(),
       createdAt: now,
       barbershopId: currentBarbershopId || null,
-      branchId: currentBranchId || null,
+      branchId: currentBranchId || barber.branchId || null,
       settledAt: null,
     };
 

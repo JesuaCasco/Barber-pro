@@ -811,6 +811,16 @@ export const formatPhoneNumber = (value = '') => {
   return `${digits.slice(0, 4)}-${digits.slice(4)}`;
 };
 
+export const formatCedulaNumber = (value = '') => {
+  const normalized = `${value ?? ''}`.toUpperCase().replace(/[^0-9A-Z]+/g, '');
+  const digits = normalized.replace(/\D+/g, '').slice(0, 13);
+  const letter = normalized.replace(/[^A-Z]+/g, '').slice(0, 1);
+
+  if (digits.length <= 3) return `${digits}${letter && digits.length === 13 ? letter : ''}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 9)}-${digits.slice(9)}${letter}`;
+};
+
 export const mergeEntitiesById = (...collections) => {
   const merged = new Map();
 
@@ -1013,7 +1023,7 @@ export const ensureBarberTheme = (barber, index) => {
     shadow: theme.shadow,
     avatar: barber.avatar || barber.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?',
     fullName: barber.fullName || barber.name || '',
-    cedula: barber.cedula || '',
+    cedula: formatCedulaNumber(barber.cedula || ''),
     salary: Number(barber.salary || 0),
     commission: Number(barber.commission || 0),
     paymentMode: barber.paymentMode || 'salario',

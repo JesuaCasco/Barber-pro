@@ -106,6 +106,7 @@ import {
   findClientByPhone,
   barberHasBasePay,
   barberHasCommissionPay,
+  formatCedulaNumber,
   formatPhoneNumber,
   formatLocalDateYmd,
   getBarberNominaData,
@@ -4479,7 +4480,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
     setForm({
       name: barber.name || '',
       fullName: barber.fullName || barber.name || '',
-      cedula: barber.cedula || '',
+      cedula: formatCedulaNumber(barber.cedula || ''),
       salary: formatSalary(barberHasBasePay(barber.paymentMode) ? barber.salary : ''),
       phone: barber.phone || '',
       paymentMode: barber.paymentMode || 'salario',
@@ -4538,7 +4539,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
       id: editing,
       ...form,
       fullName: form.fullName.trim(),
-      cedula: form.cedula.trim(),
+      cedula: formatCedulaNumber(form.cedula),
       phone: formatPhoneNumber(form.phone),
       paymentMode: form.paymentMode,
       paymentFrequency: form.paymentFrequency,
@@ -4835,14 +4836,14 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-white">
                 <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Comercial</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Comercial <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
                     <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Completo</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Completo <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
                     <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos Pérez López" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
@@ -4859,11 +4860,11 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Cédula</label>
                   <div className="relative group text-white">
                     <IdCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: e.target.value })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: formatCedulaNumber(e.target.value) })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Modalidad de Pago</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Modalidad de Pago <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-400 transition-colors" size={16}/>
                     <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
@@ -4875,7 +4876,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   </div>
                   {barberHasBasePay(form.paymentMode) && (
                   <div className="space-y-2 text-white">
-                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sueldo base (C$)</label>
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sueldo base (C$) <span className="text-rose-400">*</span></label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">C$</div>
                       <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
@@ -4884,7 +4885,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   )}
                   {barberHasCommissionPay(form.paymentMode) && (
                   <div className="space-y-2 text-white">
-                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisión (%)</label>
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisión (%) <span className="text-rose-400">*</span></label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">%</div>
                       <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
@@ -4893,7 +4894,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   )}
                 {canChooseBranch && (
                   <div className="space-y-2 text-white md:col-span-2">
-                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sucursal de trabajo</label>
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sucursal de trabajo <span className="text-rose-400">*</span></label>
                     <div className="relative group text-white">
                       <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16} />
                       <select

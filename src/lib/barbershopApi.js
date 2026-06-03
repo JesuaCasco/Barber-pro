@@ -1,4 +1,4 @@
-import { isPromotionService } from '../features/app/shared';
+import { formatCedulaNumber, isPromotionService } from '../features/app/shared';
 import { hasSupabaseConfig, supabase, supabasePublishableKey, supabaseUrl } from './supabase';
 
 const STATUS_TO_DB = {
@@ -191,7 +191,7 @@ const toUiBarber = (row) => ({
   id: row.id,
   name: row.name,
   fullName: row.full_name || row.name,
-  cedula: row.cedula || '',
+  cedula: formatCedulaNumber(row.cedula || ''),
   avatar: row.avatar || '',
   color: row.color || '',
   bg: row.bg || '',
@@ -382,7 +382,7 @@ const toDbBarber = (barber, barbershopId, branchId = null) => {
     id: barber.id,
     name: barber.name,
     full_name: barber.fullName || barber.name || '',
-    cedula: barber.cedula || '',
+    cedula: formatCedulaNumber(barber.cedula || ''),
     phone: barber.phone || null,
     email: barber.email || null,
     payment_mode: barber.paymentMode || 'salario',

@@ -265,6 +265,9 @@ const toUiAppointment = (row) => ({
   reminderSentAt: row.reminder_sent_at,
   clientConfirmedAt: row.client_confirmed_at,
   isPaid: Boolean(row.is_paid),
+  paidAt: row.paid_at || null,
+  paidBy: row.paid_by || null,
+  settlementId: row.settlement_id || null,
   rating: row.rating,
   notes: row.notes || '',
   createdBy: row.created_by,
@@ -470,6 +473,9 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
     reminder_sent_at: appointment.reminderSentAt || null,
     client_confirmed_at: appointment.clientConfirmedAt || null,
     is_paid: Boolean(appointment.isPaid),
+    paid_at: appointment.paidAt || null,
+    paid_by: appointment.paidBy || null,
+    settlement_id: appointment.settlementId || null,
     rating: appointment.rating ?? null,
     notes: appointment.notes || null,
     created_by: appointment.createdBy || null,
@@ -491,6 +497,71 @@ const toDbPosSale = (sale, barbershopId, branchId = null, createdBy = null) =>
     discount_label: sale.discountLabel || null,
     notes: sale.notes || null,
     created_by: createdBy || sale.createdBy || null,
+  }, barbershopId, branchId);
+
+const toUiCashAdvance = (row) => ({
+  id: row.id,
+  barberId: row.barber_id,
+  barberName: row.barber_name || '',
+  amount: Number(row.amount || 0),
+  note: row.note || '',
+  date: row.advance_date,
+  createdAt: row.created_at,
+  createdBy: row.created_by || null,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  settledAt: row.settled_at || null,
+  settlementId: row.settlement_id || null,
+});
+
+const toDbCashAdvance = (advance, barbershopId, branchId = null, createdBy = null) =>
+  withScopeIds({
+    id: advance.id,
+    barber_id: advance.barberId,
+    barber_name: advance.barberName || '',
+    amount: Number(advance.amount || 0),
+    note: advance.note || null,
+    advance_date: advance.date || formatDateOnly(new Date()),
+    created_by: createdBy || advance.createdBy || null,
+    created_at: advance.createdAt || new Date().toISOString(),
+    settled_at: advance.settledAt || null,
+    settlement_id: advance.settlementId || null,
+  }, barbershopId, branchId);
+
+const toUiPayrollSettlement = (row, appointmentMap = new Map()) => ({
+  id: row.id,
+  barberId: row.barber_id,
+  barberName: row.barber_name || '',
+  barberFullName: row.barber_full_name || row.barber_name || '',
+  grossTotal: Number(row.gross_total || 0),
+  withdrawalsTotal: Number(row.withdrawals_total || 0),
+  total: Number(row.net_total || 0),
+  pendingServices: Number(row.pending_services || 0),
+  type: row.settlement_type || 'individual',
+  notes: row.notes || '',
+  paidBy: row.paid_by || null,
+  paidAt: row.paid_at,
+  createdAt: row.created_at,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  appointmentIds: appointmentMap.get(row.id) || [],
+});
+
+const toDbPayrollSettlement = (settlement, barbershopId, branchId = null, paidBy = null) =>
+  withScopeIds({
+    id: settlement.id,
+    barber_id: settlement.barberId,
+    barber_name: settlement.barberName || '',
+    barber_full_name: settlement.barberFullName || settlement.barberName || null,
+    gross_total: Number(settlement.grossTotal || 0),
+    withdrawals_total: Number(settlement.withdrawalsTotal || 0),
+    net_total: Number(settlement.total || 0),
+    pending_services: Number(settlement.pendingServices || 0),
+    settlement_type: settlement.type || 'individual',
+    notes: settlement.notes || null,
+    paid_by: paidBy || settlement.paidBy || null,
+    paid_at: settlement.paidAt || new Date().toISOString(),
+    created_at: settlement.createdAt || settlement.paidAt || new Date().toISOString(),
   }, barbershopId, branchId);
 
 const getComboRows = (services = []) =>
@@ -552,6 +623,9 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     { data: barbersData, error: barbersError },
     { data: appointmentsData, error: appointmentsError },
     posSalesResult,
+    cashAdvancesResult,
+    payrollSettlementsResult,
+    settlementAppointmentsResult,
   ] = await Promise.all([
     applyTenantScope(
       supabase
@@ -600,6 +674,27 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
         .order('created_at', { ascending: true }),
       scope,
     ).then((result) => result, (error) => ({ data: [], error })),
+    applyTenantScope(
+      supabase
+        .from('barber_cash_advances')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      scope,
+    ).then((result) => result, (error) => ({ data: [], error })),
+    applyTenantScope(
+      supabase
+        .from('payroll_settlements')
+        .select('*')
+        .order('paid_at', { ascending: false }),
+      scope,
+    ).then((result) => result, (error) => ({ data: [], error })),
+    applyTenantScope(
+      supabase
+        .from('payroll_settlement_appointments')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      scope,
+    ).then((result) => result, (error) => ({ data: [], error })),
   ]);
 
   if (servicesError) throw normalizeError(servicesError, 'No se pudieron cargar los servicios.');
@@ -618,6 +713,32 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     console.warn('No se pudieron cargar las ventas de POS para el snapshot principal:', normalizedError);
   } else {
     posSalesData = posSalesResult?.data || [];
+  }
+
+  let cashAdvancesData = [];
+  let payrollSettlementsData = [];
+  let settlementAppointmentsData = [];
+  const payrollLoadWarnings = [];
+  if (cashAdvancesResult?.error) {
+    const normalizedError = normalizeError(cashAdvancesResult.error, 'No se pudieron cargar los adelantos de barbero.');
+    payrollLoadWarnings.push(normalizedError.message);
+    console.warn('No se pudieron cargar los adelantos de barbero:', normalizedError);
+  } else {
+    cashAdvancesData = cashAdvancesResult?.data || [];
+  }
+  if (payrollSettlementsResult?.error) {
+    const normalizedError = normalizeError(payrollSettlementsResult.error, 'No se pudo cargar el historial de pagos.');
+    payrollLoadWarnings.push(normalizedError.message);
+    console.warn('No se pudo cargar el historial de pagos:', normalizedError);
+  } else {
+    payrollSettlementsData = payrollSettlementsResult?.data || [];
+  }
+  if (settlementAppointmentsResult?.error) {
+    const normalizedError = normalizeError(settlementAppointmentsResult.error, 'No se pudieron cargar los turnos ligados al historial de pagos.');
+    payrollLoadWarnings.push(normalizedError.message);
+    console.warn('No se pudieron cargar los turnos ligados al historial de pagos:', normalizedError);
+  } else {
+    settlementAppointmentsData = settlementAppointmentsResult?.data || [];
   }
 
   const scopedServiceIds = new Set((servicesData || []).map((row) => row.id));
@@ -639,13 +760,23 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     }),
   );
   const posSales = (posSalesData || []).map(toUiPosSale);
+  const settlementAppointmentMap = new Map();
+  for (const row of settlementAppointmentsData || []) {
+    const current = settlementAppointmentMap.get(row.settlement_id) || [];
+    settlementAppointmentMap.set(row.settlement_id, [...current, row.appointment_id]);
+  }
+  const cashWithdrawals = (cashAdvancesData || []).map(toUiCashAdvance);
+  const payrollSettlements = (payrollSettlementsData || []).map((row) => toUiPayrollSettlement(row, settlementAppointmentMap));
   return {
     services,
     clients,
     barbers,
     appointments,
     posSales,
+    cashWithdrawals,
+    payrollSettlements,
     posSalesLoadError,
+    payrollLoadWarnings,
   };
 }
 
@@ -1341,4 +1472,100 @@ export async function deletePosSaleRecord(saleId) {
   assertSupabase();
   const { error } = await supabase.from('pos_sales').delete().eq('id', saleId);
   if (error) throw normalizeError(error, 'No se pudo cancelar la venta de POS.');
+}
+
+export async function createCashAdvance(advance, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  if (!advance) return null;
+
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = advance.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = advance.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) {
+    throw normalizeError(null, 'No se pudo resolver la barbería para registrar el adelanto.');
+  }
+
+  if (!resolvedBranchId) {
+    throw normalizeError(null, 'No se pudo resolver la sucursal para registrar el adelanto.');
+  }
+
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const payload = toDbCashAdvance(advance, resolvedBarbershopId, resolvedBranchId, currentUserId);
+  const { data, error } = await supabase
+    .from('barber_cash_advances')
+    .insert(payload)
+    .select('*')
+    .single();
+
+  if (error) throw normalizeError(error, 'No se pudo registrar el adelanto.');
+  return toUiCashAdvance(data);
+}
+
+export async function createPayrollSettlements(settlements = [], currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const normalizedSettlements = (settlements || []).filter(Boolean);
+  if (!normalizedSettlements.length) return [];
+
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const createdRows = [];
+
+  for (const settlement of normalizedSettlements) {
+    const resolvedBarbershopId = settlement.barbershopId || scope.currentBarbershopId || null;
+    const resolvedBranchId = settlement.branchId ?? scope.currentBranchId ?? null;
+
+    if (!resolvedBarbershopId) {
+      throw normalizeError(null, 'No se pudo resolver la barbería para guardar el pago.');
+    }
+
+    if (!resolvedBranchId) {
+      throw normalizeError(null, 'No se pudo resolver la sucursal para guardar el pago.');
+    }
+
+    await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+    const payload = toDbPayrollSettlement(settlement, resolvedBarbershopId, resolvedBranchId, currentUserId);
+    const { data, error } = await supabase
+      .from('payroll_settlements')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) throw normalizeError(error, 'No se pudo guardar el historial de pago.');
+
+    const advanceIds = (settlement.advanceIds || []).filter(Boolean);
+    if (advanceIds.length) {
+      const { error: advancesError } = await supabase
+        .from('barber_cash_advances')
+        .update({
+          settled_at: settlement.paidAt || new Date().toISOString(),
+          settlement_id: settlement.id,
+        })
+        .in('id', advanceIds);
+
+      if (advancesError) throw normalizeError(advancesError, 'No se pudieron marcar los adelantos como descontados.');
+    }
+
+    const appointmentRows = (settlement.appointmentIds || [])
+      .filter(Boolean)
+      .map((appointmentId) => withScopeIds({
+        settlement_id: settlement.id,
+        appointment_id: appointmentId,
+      }, resolvedBarbershopId, resolvedBranchId));
+
+    if (appointmentRows.length) {
+      const { error: appointmentRowsError } = await supabase
+        .from('payroll_settlement_appointments')
+        .upsert(appointmentRows, { onConflict: 'settlement_id,appointment_id' });
+
+      if (appointmentRowsError) {
+        throw normalizeError(appointmentRowsError, 'No se pudieron ligar los turnos al pago.');
+      }
+    }
+
+    createdRows.push(toUiPayrollSettlement(data));
+  }
+
+  return createdRows;
 }

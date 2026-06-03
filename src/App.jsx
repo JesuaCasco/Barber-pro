@@ -1,7 +1,9 @@
 ﻿import React, { Suspense, createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
+  createCashAdvance,
   createManagedUser,
   createPosSale,
+  createPayrollSettlements,
   assignProfileBarbershop,
   deleteBarberRecord,
   deleteClientRecord,
@@ -1586,7 +1588,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [cashWithdrawals, setCashWithdrawals] = useState(() => {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined' || hasSupabaseConfig) return [];
     try {
       const saved = window.localStorage.getItem(CASH_WITHDRAWALS_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
@@ -1596,7 +1598,7 @@ export default function App() {
     }
   });
   const [payrollSettlements, setPayrollSettlements] = useState(() => {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined' || hasSupabaseConfig) return [];
     try {
       const saved = window.localStorage.getItem(PAYROLL_SETTLEMENTS_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
@@ -1705,6 +1707,8 @@ export default function App() {
     setClients([]);
     setBarbers([]);
     setPosSales([]);
+    setCashWithdrawals([]);
+    setPayrollSettlements([]);
     setOperationalWarnings([]);
     setClientDirectoryData({ clients: [], appointments: [], barbers: [] });
     setClientDirectoryLoaded(false);
@@ -1741,6 +1745,8 @@ export default function App() {
     );
     setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
     setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
+    setCashWithdrawals(Array.isArray(cached.cashWithdrawals) ? cached.cashWithdrawals : []);
+    setPayrollSettlements(Array.isArray(cached.payrollSettlements) ? cached.payrollSettlements : []);
     setOperationalWarnings(Array.isArray(cached.operationalWarnings) ? cached.operationalWarnings : []);
     setClientDirectoryData(cached.clientDirectoryData || { clients: [], appointments: [], barbers: [] });
     setClientDirectoryLoaded(Boolean(cached.clientDirectoryLoaded));
@@ -1790,7 +1796,7 @@ export default function App() {
     localDevStorage?.setItem('bp_dev_pos_sales', JSON.stringify(posSales));
   }, [posSales, useBrowserCache, localDevStorage]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || hasSupabaseConfig) return;
     try {
       window.localStorage.setItem(CASH_WITHDRAWALS_STORAGE_KEY, JSON.stringify(cashWithdrawals));
     } catch (error) {
@@ -1798,7 +1804,7 @@ export default function App() {
     }
   }, [cashWithdrawals]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || hasSupabaseConfig) return;
     try {
       window.localStorage.setItem(PAYROLL_SETTLEMENTS_STORAGE_KEY, JSON.stringify(payrollSettlements));
     } catch (error) {
@@ -1962,9 +1968,17 @@ export default function App() {
           setBarbers(snapshot.barbers.map((barber, index) => ensureBarberTheme(barber, index)));
           setAppointments(snapshot.appointments);
           setPosSales(snapshot.posSales || []);
-          setOperationalWarnings(snapshot.posSalesLoadError ? [snapshot.posSalesLoadError] : []);
+          setCashWithdrawals(snapshot.cashWithdrawals || []);
+          setPayrollSettlements(snapshot.payrollSettlements || []);
+          setOperationalWarnings([
+            ...(snapshot.posSalesLoadError ? [snapshot.posSalesLoadError] : []),
+            ...(snapshot.payrollLoadWarnings || []),
+          ]);
           if (snapshot.posSalesLoadError) {
             notify(`Advertencia de POS\n\n${snapshot.posSalesLoadError}`, 'warning');
+          }
+          if (snapshot.payrollLoadWarnings?.length) {
+            notify(`Advertencia de nómina\n\n${snapshot.payrollLoadWarnings.join('\n\n')}`, 'warning');
           }
         }
       } catch (error) {
@@ -2009,6 +2023,8 @@ export default function App() {
       barbers,
       appointments,
       posSales,
+      cashWithdrawals,
+      payrollSettlements,
       operationalWarnings,
       clientDirectoryData,
       clientDirectoryLoaded,
@@ -2031,6 +2047,8 @@ export default function App() {
     barbers,
     appointments,
     posSales,
+    cashWithdrawals,
+    payrollSettlements,
     operationalWarnings,
     clientDirectoryData,
     clientDirectoryLoaded,
@@ -3017,38 +3035,66 @@ export default function App() {
     const withdrawalsTotal = pendingWithdrawals.reduce((sum, withdrawal) => sum + (Number(withdrawal.amount) || 0), 0);
     const grossTotal = Number(nomina?.total || 0);
     const netTotal = Math.max(grossTotal - withdrawalsTotal, 0);
+    const settlementTime = new Date().toISOString();
+    const settlementId = makeId();
     const updatedAppointments = appointments
       .filter(a => String(a.barberId) === String(barberId) && a.status === 'Finalizada')
-      .map(a => ({ ...a, isPaid: true }));
-    const settlementTime = new Date().toISOString();
+      .map(a => ({
+        ...a,
+        isPaid: true,
+        paidAt: settlementTime,
+        paidBy: session?.user?.id || null,
+        settlementId,
+      }));
+    const settlementRecord = paidBarber
+      ? {
+          id: settlementId,
+          barberId: paidBarber.id,
+          barberName: paidBarber.name,
+          barberFullName: paidBarber.fullName || paidBarber.name,
+          grossTotal,
+          withdrawalsTotal,
+          total: netTotal,
+          pendingServices: Number(nomina?.pendingServices || 0),
+          paidAt: settlementTime,
+          paidBy: session?.user?.id || null,
+          type: 'individual',
+          barbershopId: currentBarbershopId || null,
+          branchId: currentBranchId || null,
+          advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
+          appointmentIds: updatedAppointments.map((appointment) => appointment.id),
+        }
+      : null;
 
     setAppointments(prev => prev.map(a => 
-      String(a.barberId) === String(barberId) && a.status === 'Finalizada' ? { ...a, isPaid: true } : a
+      String(a.barberId) === String(barberId) && a.status === 'Finalizada'
+        ? {
+            ...a,
+            isPaid: true,
+            paidAt: settlementTime,
+            paidBy: session?.user?.id || null,
+            settlementId,
+          }
+        : a
     ));
     setCashWithdrawals((prev) => prev.map((withdrawal) => (
       String(withdrawal.barberId) === String(barberId) && !withdrawal.settledAt
-        ? { ...withdrawal, settledAt: settlementTime }
+        ? { ...withdrawal, settledAt: settlementTime, settlementId }
         : withdrawal
     )));
-    if (paidBarber) {
-      setPayrollSettlements((prev) => [{
-        id: makeId(),
-        barberId: paidBarber.id,
-        barberName: paidBarber.name,
-        barberFullName: paidBarber.fullName || paidBarber.name,
-        grossTotal,
-        withdrawalsTotal,
-        total: netTotal,
-        pendingServices: Number(nomina?.pendingServices || 0),
-        paidAt: settlementTime,
-        type: 'individual',
-      }, ...prev]);
+    if (settlementRecord) {
+      setPayrollSettlements((prev) => [settlementRecord, ...prev]);
     }
     setModals({ ...modals, paymentReceipt: false });
 
-    if (hasSupabaseConfig && bootstrapCompletedRef.current && updatedAppointments.length) {
+    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
       try {
-        await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
+        if (settlementRecord) {
+          await createPayrollSettlements([settlementRecord], session?.user?.id, superAdminScopeOverride);
+        }
+        if (updatedAppointments.length) {
+          await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
+        }
       } catch (error) {
         handleSyncError(error, 'No pude liquidar el pago en Supabase.');
       }
@@ -3057,10 +3103,21 @@ export default function App() {
 
   const handleConfirmStaffSettlement = async (barberIds = []) => {
     const normalizedIds = new Set((barberIds || []).map(id => String(id)));
+    const settlementTime = new Date().toISOString();
+    const settlementIdsByBarber = new Map(
+      (barbers || [])
+        .filter((barber) => normalizedIds.has(String(barber.id)))
+        .map((barber) => [String(barber.id), makeId()]),
+    );
     const updatedAppointments = appointments
       .filter(a => normalizedIds.has(String(a.barberId)) && a.status === 'Finalizada' && !a.isPaid)
-      .map(a => ({ ...a, isPaid: true }));
-    const settlementTime = new Date().toISOString();
+      .map(a => ({
+        ...a,
+        isPaid: true,
+        paidAt: settlementTime,
+        paidBy: session?.user?.id || null,
+        settlementId: settlementIdsByBarber.get(String(a.barberId)) || null,
+      }));
     const settlementRecords = (barbers || [])
       .filter((barber) => normalizedIds.has(String(barber.id)))
       .map((barber) => {
@@ -3068,10 +3125,13 @@ export default function App() {
         const pendingWithdrawals = cashWithdrawals.filter((withdrawal) => (
           String(withdrawal.barberId) === String(barber.id) && !withdrawal.settledAt
         ));
+        const barberAppointmentIds = updatedAppointments
+          .filter((appointment) => String(appointment.barberId) === String(barber.id))
+          .map((appointment) => appointment.id);
         const withdrawalsTotal = pendingWithdrawals.reduce((sum, withdrawal) => sum + (Number(withdrawal.amount) || 0), 0);
         const grossTotal = Number(nomina.total || 0);
         return {
-          id: makeId(),
+          id: settlementIdsByBarber.get(String(barber.id)) || makeId(),
           barberId: barber.id,
           barberName: barber.name,
           barberFullName: barber.fullName || barber.name,
@@ -3080,19 +3140,30 @@ export default function App() {
           total: Math.max(grossTotal - withdrawalsTotal, 0),
           pendingServices: Number(nomina.pendingServices || 0),
           paidAt: settlementTime,
+          paidBy: session?.user?.id || null,
           type: 'staff',
+          barbershopId: currentBarbershopId || null,
+          branchId: currentBranchId || null,
+          advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
+          appointmentIds: barberAppointmentIds,
         };
       })
       .filter((record) => record.grossTotal > 0 || record.withdrawalsTotal > 0);
 
     setAppointments(prev => prev.map(a =>
       normalizedIds.has(String(a.barberId)) && a.status === 'Finalizada' && !a.isPaid
-        ? { ...a, isPaid: true }
+        ? {
+            ...a,
+            isPaid: true,
+            paidAt: settlementTime,
+            paidBy: session?.user?.id || null,
+            settlementId: settlementIdsByBarber.get(String(a.barberId)) || null,
+          }
         : a
     ));
     setCashWithdrawals((prev) => prev.map((withdrawal) => (
       normalizedIds.has(String(withdrawal.barberId)) && !withdrawal.settledAt
-        ? { ...withdrawal, settledAt: settlementTime }
+        ? { ...withdrawal, settledAt: settlementTime, settlementId: settlementIdsByBarber.get(String(withdrawal.barberId)) || null }
         : withdrawal
     )));
     if (settlementRecords.length) {
@@ -3100,9 +3171,14 @@ export default function App() {
     }
     setModals(prev => ({ ...prev, staffSettlement: false }));
 
-    if (hasSupabaseConfig && bootstrapCompletedRef.current && updatedAppointments.length) {
+    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
       try {
-        await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
+        if (settlementRecords.length) {
+          await createPayrollSettlements(settlementRecords, session?.user?.id, superAdminScopeOverride);
+        }
+        if (updatedAppointments.length) {
+          await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
+        }
       } catch (error) {
         handleSyncError(error, 'No pude liquidar la planilla en Supabase.');
       }
@@ -3219,7 +3295,7 @@ export default function App() {
     setModals((prev) => ({ ...prev, cashWithdrawal: true }));
   };
 
-  const handleSaveCashWithdrawal = ({ barberId, amount, note }) => {
+  const handleSaveCashWithdrawal = async ({ barberId, amount, note }) => {
     const barber = barbers.find((item) => String(item.id) === String(barberId));
     const parsedAmount = Number(amount || 0);
 
@@ -3247,10 +3323,18 @@ export default function App() {
       settledAt: null,
     };
 
-    setCashWithdrawals((prev) => [...prev, withdrawal]);
-    setSelectedData((prev) => ({ ...prev, cashWithdrawal: null }));
-    setModals((prev) => ({ ...prev, cashWithdrawal: false }));
-    notify(`Retiro registrado: C$ ${parsedAmount.toLocaleString()} para ${barber.name}.`, 'success');
+    try {
+      const savedWithdrawal = hasSupabaseConfig && bootstrapCompletedRef.current && session?.user?.id
+        ? await createCashAdvance(withdrawal, session.user.id, superAdminScopeOverride)
+        : withdrawal;
+
+      setCashWithdrawals((prev) => [...prev, savedWithdrawal]);
+      setSelectedData((prev) => ({ ...prev, cashWithdrawal: null }));
+      setModals((prev) => ({ ...prev, cashWithdrawal: false }));
+      notify(`Adelanto registrado: C$ ${parsedAmount.toLocaleString()} para ${barber.name}.`, 'success');
+    } catch (error) {
+      handleSyncError(error, 'No pude guardar el adelanto en Supabase.');
+    }
   };
 
   const handleSaveClient = async (clientData) => {

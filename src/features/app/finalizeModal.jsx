@@ -40,11 +40,12 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
     () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
     [clients, initial],
   );
+  const isStandardClient = String(billingClient?.name || '').trim().toLowerCase() === 'cliente estándar';
   const completedVisits = Number(billingClient?.completedVisits || 0);
   const projectedVisitCount = completedVisits + (initial?.status === 'Finalizada' ? 0 : 1);
 
   const loyaltyPromotion = useMemo(() => {
-    if (!billingClient || projectedVisitCount <= 0 || projectedVisitCount % LOYALTY_REWARD_VISITS !== 0) return null;
+    if (isStandardClient || !billingClient || projectedVisitCount <= 0 || projectedVisitCount % LOYALTY_REWARD_VISITS !== 0) return null;
 
     const eligibleCuts = billItems.filter((item) => item?.category === 'Cortes');
     if (!eligibleCuts.length) return null;
@@ -62,7 +63,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
       isOptional: true,
       isLoyaltyReward: true,
     };
-  }, [billingClient, billItems, projectedVisitCount]);
+  }, [billingClient, billItems, isStandardClient, projectedVisitCount]);
 
   const catalog = useMemo(
     () => (services || []).filter((service) => (
@@ -115,7 +116,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in text-white no-print">
-      <div className="relative bg-slate-950 w-full max-w-[92rem] rounded-[2.4rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[92vh] md:h-[94vh] flex flex-col text-white overflow-hidden">
+      <div className="relative bg-slate-950 w-full max-w-[96rem] rounded-[2.4rem] shadow-2xl border border-slate-800 animate-in zoom-in h-[94vh] md:h-[96vh] flex flex-col text-white overflow-hidden">
         <div className="p-5 md:px-7 md:py-4 border-b border-slate-900 flex justify-between items-center bg-black">
           <div>
             <h3 className="text-xl md:text-2xl font-black uppercase italic text-white leading-none">Pantalla de Cobro y Cierre</h3>
@@ -253,8 +254,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         </div>
 
-        <div className="hidden md:flex flex-1 flex-col md:flex-row overflow-hidden">
-          <div className="w-full md:w-[360px] border-r border-slate-900 flex flex-col bg-black/40">
+        <div className="hidden md:flex flex-1 min-h-0 flex-col md:flex-row overflow-hidden">
+          <div className="w-full md:w-[380px] border-r border-slate-900 flex flex-col bg-black/40">
             <div className="p-5 border-b border-slate-900">
               <h4 className="text-[10px] font-black text-indigo-400 uppercase italic tracking-widest flex items-center gap-2">
                 <ShoppingBag size={14} /> Servicios Realizados
@@ -316,7 +317,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
             </div>
 
-            <div className="min-h-[196px] flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 custom-scrollbar content-start">
+            <div className="min-h-[160px] flex-[1_1_auto] p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 custom-scrollbar content-start">
               {catalog.map((item) => (
                 <button
                   key={item.id}
@@ -337,26 +338,27 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               ))}
             </div>
 
-            {(availablePromotions.length > 0 || selectedPromotion || loyaltyPromotion) && (
-            <div className="border-t border-slate-900 px-4 py-3 bg-black/30 shrink-0">
+            <div className="border-t border-slate-900 px-5 py-3 bg-black/30 shrink-0">
               <div className="flex items-center justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Promoción opcional</p>
-                  <p className="mt-1 text-[11px] font-bold text-slate-400">
+                  <p className="mt-1.5 truncate text-[10px] font-bold text-slate-400 leading-none">
                     {selectedPromotion
                       ? `Aplicada: ${selectedPromotion.name}`
                       : availablePromotions.length > 0
                         ? 'Selecciona una promoción guardada'
-                        : 'No hay promociones aplicables ahora'}
+                        : billItems.length === 0
+                          ? 'Agrega un servicio para ver promociones disponibles'
+                          : 'No hay promociones aplicables ahora'}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setPromotionPickerOpen(true)}
                     disabled={availablePromotions.length === 0}
-                    className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${availablePromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500 opacity-70'}`}
+                    className={`inline-flex min-w-[118px] items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${availablePromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500 opacity-70'}`}
                   >
                     Elegir
                     <ChevronDown size={14} className="text-current" />
@@ -365,7 +367,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                     <button
                       type="button"
                       onClick={() => setSelectedPromotionId('')}
-                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300"
+                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-rose-300"
                     >
                       Quitar
                     </button>
@@ -374,12 +376,11 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
               </div>
 
               {loyaltyPromotion && billingClient ? (
-                <div className="mt-3 rounded-[1.2rem] border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100">
+                <div className="mt-2 rounded-[1rem] border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-100">
                   {billingClient.name} está completando su visita #{projectedVisitCount}. Puedes aplicar el beneficio opcional de corte gratis en este cobro.
                 </div>
               ) : null}
             </div>
-            )}
           </div>
         </div>
 

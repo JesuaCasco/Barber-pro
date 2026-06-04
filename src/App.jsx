@@ -4014,6 +4014,7 @@ export default function App() {
               appointments={appointments}
               clients={clients}
               barbers={barbers}
+              services={services}
               branches={availableBranches}
               currentBranchId={currentBranchId}
               posSales={posSales}
@@ -5399,7 +5400,7 @@ const formatRangeLabel = (start, end) => {
   return `${startLabel} a ${endLabel}`;
 };
 
-function ReportsView({ appointments, clients, barbers, branches = [], currentBranchId = null, posSales = [] }) {
+function ReportsView({ appointments, clients, barbers, services = [], branches = [], currentBranchId = null, posSales = [] }) {
   const [reportTab, setReportTab] = useState('ventas'); 
   const [salesPeriod, setSalesPeriod] = useState('week'); 
   const [productRangePreset, setProductRangePreset] = useState('month');
@@ -5523,13 +5524,57 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
     }),
     [effectiveProductRange.end, effectiveProductRange.start, scopedPosSales],
   );
+  const productCatalogByName = useMemo(() => {
+    const map = new Map();
+    (services || [])
+      .filter((service) => service.category === 'Producto')
+      .forEach((service) => {
+        map.set(normalizeFavoriteServiceName(service.name || '').toLowerCase(), service);
+      });
+    return map;
+  }, [services]);
+  const productReportAppointments = useMemo(
+    () => finished.filter((appointment) => {
+      const normalizedDate = standardizeDate(appointment.date);
+      return normalizedDate >= effectiveProductRange.start && normalizedDate <= effectiveProductRange.end;
+    }),
+    [effectiveProductRange.end, effectiveProductRange.start, finished],
+  );
+  const appointmentProductItems = useMemo(() => {
+    const rows = [];
+
+    productReportAppointments.forEach((appointment) => {
+      const itemNames = String(appointment.service || '')
+        .split(' + ')
+        .map((name) => normalizeFavoriteServiceName(name).trim())
+        .filter(Boolean);
+
+      itemNames.forEach((name) => {
+        const product = productCatalogByName.get(name.toLowerCase());
+        if (!product) return;
+
+        rows.push({
+          appointmentId: appointment.id,
+          id: product.id || name,
+          name: product.name || name,
+          price: Number(product.price || 0),
+          qty: 1,
+        });
+      });
+    });
+
+    return rows;
+  }, [productCatalogByName, productReportAppointments]);
   const totalProductUnits = useMemo(
-    () => productReportPosSales.reduce((acc, sale) => (
-      acc + (sale.items || []).reduce((saleUnits, item) => (
-        item.category === 'Producto' ? saleUnits + (Number(item.qty) || 0) : saleUnits
+    () => (
+      productReportPosSales.reduce((acc, sale) => (
+        acc + (sale.items || []).reduce((saleUnits, item) => (
+          item.category === 'Producto' ? saleUnits + (Number(item.qty) || 0) : saleUnits
+        ), 0)
       ), 0)
-    ), 0),
-    [productReportPosSales],
+      + appointmentProductItems.reduce((acc, item) => acc + (Number(item.qty) || 0), 0)
+    ),
+    [appointmentProductItems, productReportPosSales],
   );
   const productSalesSummary = useMemo(() => {
     const summaryMap = new Map();
@@ -5566,6 +5611,22 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
       });
     });
 
+    appointmentProductItems.forEach((item) => {
+      const key = String(item.id || item.name || '');
+      const current = summaryMap.get(key) || {
+        id: item.id || key,
+        name: item.name || 'Producto',
+        units: 0,
+        revenue: 0,
+        tickets: new Set(),
+      };
+
+      current.units += Number(item.qty) || 0;
+      current.revenue += (Number(item.price) || 0) * (Number(item.qty) || 0);
+      if (item.appointmentId) current.tickets.add(`apt-${item.appointmentId}`);
+      summaryMap.set(key, current);
+    });
+
     return Array.from(summaryMap.values())
       .map((entry) => ({
         ...entry,
@@ -5577,7 +5638,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
         || right.units - left.units
         || left.name.localeCompare(right.name)
       ));
-  }, [productReportPosSales]);
+  }, [appointmentProductItems, productReportPosSales]);
   const productReportRevenue = useMemo(
     () => Number(
       productSalesSummary.reduce((acc, product) => acc + (Number(product.revenue) || 0), 0).toFixed(2),

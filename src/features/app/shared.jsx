@@ -811,6 +811,23 @@ export const formatPhoneNumber = (value = '') => {
   return `${digits.slice(0, 4)}-${digits.slice(4)}`;
 };
 
+export const formatExcelText = (value = '') =>
+  `${value ?? ''}`
+    .replaceAll('Ã¡', 'a')
+    .replaceAll('Ã©', 'e')
+    .replaceAll('Ã­', 'i')
+    .replaceAll('Ã³', 'o')
+    .replaceAll('Ãº', 'u')
+    .replaceAll('Ã±', 'n')
+    .replaceAll('Ã', 'A')
+    .replaceAll('Ã‰', 'E')
+    .replaceAll('Ã', 'I')
+    .replaceAll('Ã“', 'O')
+    .replaceAll('Ãš', 'U')
+    .replaceAll('Ã‘', 'N')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
 export const formatCedulaNumber = (value = '') => {
   const normalized = `${value ?? ''}`.toUpperCase().replace(/[^0-9A-Z]+/g, '');
   const digits = normalized.replace(/\D+/g, '').slice(0, 13);

@@ -20,6 +20,7 @@ import {
 
 import {
   formatPhoneNumber,
+  formatExcelText,
   getClientInsights,
   getPhoneDigits,
   getTodayString,
@@ -67,7 +68,8 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
   const downloadClientsReport = () => {
     if (!tableData.length) return;
 
-    const escapeCsv = (value) => `"${`${value ?? ''}`.replace(/"/g, '""')}"`;
+    const separator = ';';
+    const escapeCsv = (value) => `"${formatExcelText(value).replace(/"/g, '""')}"`;
     const rows = tableData.map((client) => ([
       client.name,
       client.phone,
@@ -75,9 +77,9 @@ export function ClientsTableView({ clients, appointments, barbers, onRowClick, o
       client.visits,
       client.favBarber,
       client.lastVisit,
-    ].map(escapeCsv).join(',')));
+    ].map(escapeCsv).join(separator)));
 
-    const csv = `\uFEFFsep=,\r\n${['Cliente', 'Celular', 'Tipo', 'Visitas', 'Barbero favorito', 'Última visita'].map(escapeCsv).join(',')}\r\n${rows.join('\r\n')}`;
+    const csv = `\uFEFFsep=${separator}\r\n${['Cliente', 'Celular', 'Tipo', 'Visitas', 'Barbero favorito', 'Ultima visita'].map(escapeCsv).join(separator)}\r\n${rows.join('\r\n')}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);

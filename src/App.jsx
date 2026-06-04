@@ -107,6 +107,7 @@ import {
   barberHasBasePay,
   barberHasCommissionPay,
   formatCedulaNumber,
+  formatExcelText,
   formatPhoneNumber,
   formatLocalDateYmd,
   getBarberNominaData,
@@ -5896,7 +5897,8 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
   const downloadMonthlyServicesReport = () => {
     if (!monthlyFinished.length) return;
 
-    const escapeCsv = (value) => `"${`${value ?? ''}`.replace(/"/g, '""')}"`;
+    const separator = ';';
+    const escapeCsv = (value) => `"${formatExcelText(value).replace(/"/g, '""')}"`;
     const rows = monthlyFinished
       .slice()
       .sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date))
@@ -5909,10 +5911,10 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
           client?.name || 'Cliente sin registro',
           Number(apt.price || 0),
           serviceDate ? serviceDate.toLocaleDateString('es-ES') : standardizeDate(apt.date),
-        ].map(escapeCsv).join(',');
+        ].map(escapeCsv).join(separator);
       });
 
-    const csv = `\uFEFFsep=,\r\n${['Barbero', 'Cliente', 'Costo del servicio', 'Fecha de servicio'].map(escapeCsv).join(',')}\r\n${rows.join('\r\n')}`;
+    const csv = `\uFEFFsep=${separator}\r\n${['Barbero', 'Cliente', 'Costo del servicio', 'Fecha de servicio'].map(escapeCsv).join(separator)}\r\n${rows.join('\r\n')}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -5926,30 +5928,31 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
   const downloadProductSalesReport = () => {
     if (!productSalesSummary.length) return;
 
-    const escapeCsv = (value) => `"${`${value ?? ''}`.replace(/"/g, '""')}"`;
+    const separator = ';';
+    const escapeCsv = (value) => `"${formatExcelText(value).replace(/"/g, '""')}"`;
     const rows = productSalesSummary.map((product) => [
       product.name,
       product.units,
       product.ticketsCount,
       product.revenue,
-    ].map(escapeCsv).join(','));
+    ].map(escapeCsv).join(separator));
 
     const totalsRow = [
       'TOTAL',
       totalProductUnits,
-      productReportPosSales.length,
+      productReportPosSales.length + appointmentProductItems.length,
       productReportRevenue,
-    ].map(escapeCsv).join(',');
+    ].map(escapeCsv).join(separator);
 
-    const csv = `\uFEFFsep=,\r\n${[
+    const csv = `\uFEFFsep=${separator}\r\n${[
       ['Reporte', 'Ventas de productos'],
       ['Rango', productRangeLabel],
-      ['Tickets POS', productReportPosSales.length],
+      ['Cobros registrados', productReportPosSales.length + appointmentProductItems.length],
       ['Unidades vendidas', totalProductUnits],
       ['Ingreso total', productReportRevenue],
       [],
       ['Producto', 'Unidades', 'Tickets', 'Ingreso'],
-    ].map((row) => row.map(escapeCsv).join(',')).join('\r\n')}\r\n${rows.join('\r\n')}\r\n${totalsRow}`;
+    ].map((row) => row.map(escapeCsv).join(separator)).join('\r\n')}\r\n${rows.join('\r\n')}\r\n${totalsRow}`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');

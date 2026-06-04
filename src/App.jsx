@@ -1650,6 +1650,7 @@ export default function App() {
   const lastSessionUserIdRef = useRef(null);
   const currentUserRoles = useMemo(() => accessControl.currentUserRoles || [], [accessControl.currentUserRoles]);
   const isSuperAdmin = currentUserRoles.includes('super_admin');
+  const sessionUserId = session?.user?.id || '';
   const availableBarbershops = useMemo(() => accessControl.barbershops || [], [accessControl.barbershops]);
   const availableBranches = useMemo(() => accessControl.branches || [], [accessControl.branches]);
   const effectiveOperationalBarbershopId = isSuperAdmin
@@ -1803,11 +1804,11 @@ export default function App() {
   }, [confirmState]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !session?.user?.id) return undefined;
+    if (typeof window === 'undefined' || !sessionUserId) return undefined;
 
-    window.localStorage.setItem(getScopedActiveTabStorageKey(session.user.id), activeTab);
+    window.localStorage.setItem(getScopedActiveTabStorageKey(sessionUserId), activeTab);
     return undefined;
-  }, [activeTab, getScopedActiveTabStorageKey, session?.user?.id]);
+  }, [activeTab, getScopedActiveTabStorageKey, sessionUserId]);
 
   useEffect(() => {
     if (!useBrowserCache) return;
@@ -1927,7 +1928,9 @@ export default function App() {
         restoreRuntimeCache(nextUserId);
       }
       lastSessionUserIdRef.current = nextUserId;
-      setSession(nextSession ?? null);
+      if (userChanged || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        setSession(nextSession ?? null);
+      }
       setAuthError('');
     });
 
@@ -1939,18 +1942,18 @@ export default function App() {
   }, [restoreRuntimeCache]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !session?.user?.id || accessLoading || activeTabHydratedRef.current) {
+    if (typeof window === 'undefined' || !sessionUserId || accessLoading || activeTabHydratedRef.current) {
       return undefined;
     }
 
-    const cachedTab = window.localStorage.getItem(getScopedActiveTabStorageKey(session.user.id));
+    const cachedTab = window.localStorage.getItem(getScopedActiveTabStorageKey(sessionUserId));
     if (cachedTab) {
       setActiveTab(cachedTab);
     }
 
     activeTabHydratedRef.current = true;
     return undefined;
-  }, [accessLoading, getScopedActiveTabStorageKey, session?.user?.id]);
+  }, [accessLoading, getScopedActiveTabStorageKey, sessionUserId]);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -1974,7 +1977,7 @@ export default function App() {
       let deferredUntilScopeIsReady = false;
       try {
         if (hasSupabaseConfig) {
-          if (!session) {
+          if (!sessionUserId) {
             if (!ignore) {
               clearScopedOperationalState();
               setLoading(false);
@@ -1994,7 +1997,7 @@ export default function App() {
             return;
           }
           if (!ignore && !bootstrapCompletedRef.current) setLoading(true);
-          const snapshot = await fetchBarbershopSnapshot(session.user.id, superAdminScopeOverride);
+          const snapshot = await fetchBarbershopSnapshot(sessionUserId, superAdminScopeOverride);
           if (ignore) return;
 
           setServices(snapshot.services);
@@ -2045,13 +2048,13 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session, accessLoaded, isSuperAdmin, availableBarbershops.length, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
+  }, [sessionUserId, accessLoaded, isSuperAdmin, availableBarbershops.length, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !session?.user?.id || typeof window === 'undefined') return undefined;
+    if (!hasSupabaseConfig || !sessionUserId || typeof window === 'undefined') return undefined;
 
     const runtimeCache = {
-      userId: session.user.id,
+      userId: sessionUserId,
       services,
       clients,
       barbers,
@@ -2075,7 +2078,7 @@ export default function App() {
 
     return undefined;
   }, [
-    session,
+    sessionUserId,
     services,
     clients,
     barbers,
@@ -2091,7 +2094,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !session?.user?.id) {
+    if (!hasSupabaseConfig || !sessionUserId) {
       setAccessControl({ roles: [], users: [], currentUserRoles: [], currentBarbershopId: null, currentBranchId: null, barbershops: [], branches: [] });
       setAccessLoaded(!hasSupabaseConfig);
       return undefined;
@@ -2103,7 +2106,7 @@ export default function App() {
       setAccessLoading(true);
       setAccessLoaded(false);
       try {
-        const snapshot = await fetchAccessControlSnapshot(session.user.id);
+        const snapshot = await fetchAccessControlSnapshot(sessionUserId);
         if (!ignore) {
           setAccessControl(snapshot);
           setAccessLoaded(true);
@@ -2134,22 +2137,22 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session, notify]);
+  }, [sessionUserId, notify]);
 
   useEffect(() => {
     setClientDirectoryLoaded(false);
     setClientDirectoryData({ clients: [], appointments: [], barbers: [] });
     setClientDirectoryWarnings([]);
-  }, [session?.user?.id, effectiveOperationalBarbershopId, superAdminScopeOverride]);
+  }, [sessionUserId, effectiveOperationalBarbershopId, superAdminScopeOverride]);
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !session?.user?.id || activeTab !== 'clientes' || clientDirectoryLoaded) return undefined;
+    if (!hasSupabaseConfig || !sessionUserId || activeTab !== 'clientes' || clientDirectoryLoaded) return undefined;
 
     let ignore = false;
 
     const loadClientDirectoryData = async () => {
       try {
-        const snapshot = await fetchClientDirectorySnapshot(session.user.id, superAdminScopeOverride);
+        const snapshot = await fetchClientDirectorySnapshot(sessionUserId, superAdminScopeOverride);
         if (!ignore) {
           setClientDirectoryData({
             clients: snapshot.clients.map(client => ({ ...client, phone: formatPhoneNumber(client.phone || '') })),
@@ -2183,7 +2186,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [session, activeTab, clientDirectoryLoaded, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
+  }, [sessionUserId, activeTab, clientDirectoryLoaded, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   const handleSignIn = async (email, password) => {
     if (!supabase) return;
@@ -2506,9 +2509,9 @@ export default function App() {
     notify(`${fallbackMessage}${details}`, 'error');
   }, [notify]);
   const refreshClientsAfterAppointmentSync = useCallback(async () => {
-    if (!hasSupabaseConfig || !session?.user?.id) return;
+    if (!hasSupabaseConfig || !sessionUserId) return;
 
-    const nextClients = await fetchScopedClients(session.user.id, superAdminScopeOverride);
+    const nextClients = await fetchScopedClients(sessionUserId, superAdminScopeOverride);
     setClients(nextClients);
 
     if (clientDirectoryLoaded) {
@@ -2517,7 +2520,7 @@ export default function App() {
         clients: mergeEntitiesById(nextClients, prev.clients),
       }));
     }
-  }, [clientDirectoryLoaded, session, superAdminScopeOverride]);
+  }, [clientDirectoryLoaded, sessionUserId, superAdminScopeOverride]);
 
   const ensureStandardClient = useCallback(async () => {
     const existingClient = (clients || []).find((client) => (

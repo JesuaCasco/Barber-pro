@@ -242,6 +242,8 @@ const toUiPosSale = (row) => ({
 
 const toUiAppointment = (row) => ({
   id: row.id,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
   clientId: row.client_id,
   barberId: row.barber_id,
   rawBarberId: row.raw_barber_id || row.barber_id,
@@ -480,7 +482,7 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
     notes: appointment.notes || null,
     created_by: appointment.createdBy || null,
     updated_by: appointment.updatedBy || null,
-  }, barbershopId, branchId);
+  }, barbershopId, appointment.branchId ?? branchId);
 };
 
 const toDbPosSale = (sale, barbershopId, branchId = null, createdBy = null) =>

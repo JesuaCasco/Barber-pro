@@ -290,6 +290,39 @@ const hasAppointmentBarberConflict = ({ appointments = [], appointment, targetBa
   });
 };
 
+const toHHmmFromMinutes = (minutes) => {
+  const safeMinutes = Math.min(23 * 60 + 59, Math.max(0, Number(minutes) || 0));
+  const h = Math.floor(safeMinutes / 60);
+  const m = safeMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+const resolveUniqueAppointmentMinute = ({ appointments = [], barberId, date = getTodayString(), preferredTime = getCurrentTimeHHmm(), excludeId = null }) => {
+  const occupied = new Set((appointments || [])
+    .filter((appointment) => (
+      String(appointment.id) !== String(excludeId || '')
+      && String(appointment.barberId) === String(barberId)
+      && standardizeDate(appointment.date) === standardizeDate(date)
+    ))
+    .map((appointment) => String(appointment.time || '').slice(0, 5)));
+  let cursor = appointmentTimeToMinutes(preferredTime);
+
+  for (let attempt = 0; attempt < 24 * 60; attempt += 1) {
+    const candidate = toHHmmFromMinutes(cursor + attempt);
+    if (!occupied.has(candidate)) return candidate;
+  }
+
+  return toHHmmFromMinutes(cursor);
+};
+
+const isSupabaseAppointmentTimeDuplicate = (error) => {
+  const message = String(error?.message || error || '').toLowerCase();
+  return (
+    message.includes('appointments_barber_id_appointment_date_appointment_time_key')
+    || message.includes('duplicate key value')
+  );
+};
+
 function SystemView({
   currentUser,
   accessControl,
@@ -3257,33 +3290,117 @@ export default function App() {
       return;
     }
 
-    const clientsForAppointmentSync = clients.some((client) => String(client.id) === String(standardClient.id))
-      ? clients
-      : [...clients, standardClient];
     const newApt = {
       id: makeId(),
       ...aptData,
       clientId: standardClient.id,
       clientName: STANDARD_CLIENT_NAME,
       barberName: selectedBarber?.name || '',
+      barbershopId: currentBarbershopId || null,
+      branchId: currentBranchId || selectedBarber?.branchId || null,
       type: 'walkin',
       durationMinutes: Number(aptData.durationMinutes) > 0 ? Number(aptData.durationMinutes) : 30,
       status: 'Confirmada',
       createdAt: now,
       checkInAt: now,
+      startedAt: now,
       isPaid: false,
+      isQuickDirectSale: true,
     };
 
-    setAppointments((prev) => [...prev, newApt]);
-    setSelectedData((prev) => ({ ...prev, quickAppointment: null }));
-    setModals((prev) => ({ ...prev, quickAppointment: false }));
-    notify('Turno rápido agregado al tablero.', 'success');
+    setSelectedData((prev) => ({ ...prev, quickAppointment: null, finalize: newApt }));
+    setModals((prev) => ({ ...prev, quickAppointment: false, finalize: true }));
+    notify('Cobro rápido listo para procesar.', 'success');
+  };
+
+  const handleConfirmQuickDirectSale = async (extra) => {
+    const draft = selectedData.finalize;
+    if (!draft) return;
+
+    const now = new Date().toISOString();
+    const resolvedDate = standardizeDate(draft.date) || getTodayString();
+    const resolvedTime = resolveUniqueAppointmentMinute({
+      appointments,
+      barberId: draft.barberId,
+      date: resolvedDate,
+      preferredTime: draft.time || getCurrentTimeHHmm(),
+      excludeId: draft.id,
+    });
+    const appointment = {
+      ...draft,
+      date: resolvedDate,
+      time: resolvedTime,
+      service: extra?.serviceName || draft.service,
+      price: extra?.price ?? draft.price,
+      rating: extra?.rating ?? draft.rating,
+      grossAmount: Number(extra?.grossAmount ?? extra?.price ?? draft.grossAmount ?? draft.price ?? 0),
+      discountAmount: Number(extra?.discountAmount || 0),
+      promotionName: extra?.promotionName || '',
+      status: 'Finalizada',
+      finishedAt: draft.finishedAt || now,
+      isPaid: false,
+      isQuickDirectSale: false,
+    };
+
+    const clientsForAppointmentSync = clients.some((client) => String(client.id) === String(appointment.clientId))
+      ? clients
+      : [...clients, {
+          id: appointment.clientId,
+          name: STANDARD_CLIENT_NAME,
+          phone: '',
+          notes: '',
+          points: 0,
+          createdAt: now,
+          completedVisits: 0,
+          totalSpent: 0,
+          lastVisitAt: null,
+          favoriteBarberId: null,
+          favoriteBarberName: '',
+          favoriteServiceName: '',
+          statsUpdatedAt: null,
+        }];
+
+    setAppointments((prev) => [...prev, appointment]);
+    setModals((prev) => ({ ...prev, finalize: false }));
+    setSelectedData((prev) => ({ ...prev, finalize: null }));
+    notify('Cobro rápido asignado al barbero.', 'success');
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current) {
       try {
-        await upsertAppointments([newApt], services, currentBarbershopId, currentBranchId, barbers, clientsForAppointmentSync);
+        await upsertAppointments([appointment], services, currentBarbershopId, appointment.branchId || currentBranchId || null, barbers, clientsForAppointmentSync);
+        await refreshClientsAfterAppointmentSync();
       } catch (error) {
-        handleSyncError(error, 'No pude guardar el turno rápido en Supabase.');
+        if (!isSupabaseAppointmentTimeDuplicate(error)) {
+          handleSyncError(error, 'No pude guardar el cobro rápido en Supabase.');
+          return;
+        }
+
+        let savedRetry = null;
+        let lastRetryError = error;
+        const baseMinute = appointmentTimeToMinutes(appointment.time);
+
+        for (let attempt = 1; attempt <= 30; attempt += 1) {
+          const retryAppointment = {
+            ...appointment,
+            time: toHHmmFromMinutes(baseMinute + attempt),
+          };
+
+          try {
+            await upsertAppointments([retryAppointment], services, currentBarbershopId, retryAppointment.branchId || currentBranchId || null, barbers, clientsForAppointmentSync);
+            savedRetry = retryAppointment;
+            break;
+          } catch (retryError) {
+            lastRetryError = retryError;
+            if (!isSupabaseAppointmentTimeDuplicate(retryError)) break;
+          }
+        }
+
+        if (savedRetry) {
+          setAppointments((prev) => prev.map((item) => String(item.id) === String(appointment.id) ? savedRetry : item));
+          await refreshClientsAfterAppointmentSync();
+        } else {
+          handleSyncError(lastRetryError, 'No pude guardar el cobro rápido en Supabase.');
+        }
       }
     }
   };
@@ -3931,7 +4048,7 @@ export default function App() {
       {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
-      {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} clients={clients} initial={selectedData.finalize} />}
+      {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => selectedData.finalize?.isQuickDirectSale ? handleConfirmQuickDirectSale(ex) : handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} clients={clients} initial={selectedData.finalize} />}
       {modals.service && <ServiceEditorModal services={services} onClose={() => setModals({...modals, service: false})} onSave={handleSaveService} initial={selectedData.service} />}
       {modals.paymentReceipt && <PaymentReceiptModal data={selectedData.paymentReceipt} onClose={() => setModals({...modals, paymentReceipt: false})} onConfirmPayment={handleConfirmPayment} confirmAction={confirmAction} />}
       {modals.posSaleReceipt && <PosSaleReceiptModal data={selectedData.posSaleReceipt} onClose={() => setModals({...modals, posSaleReceipt: false})} onCancelSale={handleCancelPosSale} confirmAction={confirmAction} />}
@@ -6118,7 +6235,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 </div>
               </div>
               
-              <div className="xl:col-span-2 bg-slate-900 border border-slate-800 p-10 rounded-[3.5rem] shadow-2xl relative text-white flex flex-col">
+              <div className="xl:col-span-2 bg-slate-900 border border-slate-800 p-10 rounded-[3.5rem] shadow-2xl relative text-white flex flex-col min-h-[560px]">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-start gap-8 mb-10 text-white">
                   <div className="max-w-xl">
                     <h5 className="text-xl font-black italic uppercase text-white flex items-center gap-2"><BarChart3 className="text-indigo-500" /> Comparativa de Rendimiento Real</h5>
@@ -6204,11 +6321,11 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                 
                 <div className="relative z-10 mt-2 flex-1 overflow-x-hidden md:overflow-x-auto custom-scrollbar pb-3 px-1 md:px-0">
                   <div
-                    className="relative h-[280px] min-w-0 md:h-[300px] md:min-w-[340px]"
+                    className="relative h-[315px] min-w-0 md:h-[345px] md:min-w-[340px]"
                     style={{ width: '100%' }}
                   >
                     {/* CUADRÍCULA ESTRUCTURADA DE FONDO */}
-                    <div className="absolute inset-0 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-8 md:ml-10 mb-16 md:mb-20">
+                    <div className="absolute inset-x-0 top-8 bottom-0 md:top-10 flex flex-col justify-between opacity-[0.1] pointer-events-none border-l border-slate-700 ml-8 md:ml-10 mb-16 md:mb-20">
                       {[100, 80, 60, 40, 20, 0].map((val) => (
                         <div key={val} className="w-full flex items-center relative">
                           <span className="absolute -left-8 md:-left-10 text-[8px] font-black text-slate-500 w-7 md:w-8 text-right italic leading-none">{val}%</span>
@@ -6217,7 +6334,7 @@ function ReportsView({ appointments, clients, barbers, branches = [], currentBra
                       ))}
                     </div>
 
-                    <div className="relative flex h-full items-end justify-between gap-2 md:gap-4 pl-10 pr-6 md:pl-12 md:pr-6 pt-7 md:pt-0">
+                    <div className="relative flex h-full items-end justify-between gap-2 md:gap-4 pl-10 pr-6 md:pl-12 md:pr-6 pt-10 md:pt-12">
                       {monthlyStaffMetrics.map((b) => {
                         const chartHeightCap = 84;
                         const countHeight = (b.count / maxMonthlyApts) * chartHeightCap;
@@ -7050,22 +7167,22 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Servicio por definir</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Al finalizar se abre cobro para elegir servicios y productos</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Se abre cobro inmediato para elegir servicios y productos</p>
             </div>
           </div>
         </div>
 
         <div className="border-t border-slate-800 bg-black px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cobro</p>
-            <p className="mt-1 text-3xl font-black italic text-white">Por definir</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Siguiente paso</p>
+            <p className="mt-1 text-3xl font-black italic text-white">Cobrar ahora</p>
           </div>
           <button
             type="submit"
             disabled={!form.barberId}
             className="rounded-2xl bg-emerald-600 px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Agregar turno
+            Abrir cobro
           </button>
         </div>
       </form>

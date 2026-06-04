@@ -7118,21 +7118,6 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
             </div>
           )}
 
-          <div className="rounded-[1.5rem] border border-emerald-500/25 bg-emerald-500/10 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600/20 text-emerald-300">
-                <User size={18} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">Cliente estándar</p>
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">No se registra en clientes</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-black/35 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-300">
-              <Clock size={14} /> {form.time || '--:--'}
-            </div>
-          </div>
-
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase italic tracking-[0.2em] text-slate-500">1. Barbero</p>
             {availableBarbers.length === 0 ? (
@@ -7161,15 +7146,6 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
             )}
           </div>
 
-          <div className="rounded-[1.5rem] border border-indigo-500/25 bg-indigo-500/10 p-5 flex items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-300">
-              <ShoppingBag size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Servicio por definir</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Se abre cobro inmediato para elegir servicios y productos</p>
-            </div>
-          </div>
         </div>
 
         <div className="border-t border-slate-800 bg-black px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

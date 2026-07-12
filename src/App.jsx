@@ -4581,15 +4581,15 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
   };
 
   return (
-    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-[#24181f]/75 p-3 backdrop-blur-md no-print">
-      <div className="flex h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-[1.8rem] border border-[#ee9fbc] bg-white shadow-[0_30px_90px_rgba(52,31,42,0.35)]">
-        <div className="flex items-center justify-between gap-4 border-b border-[#f2c1d4] bg-[#fff7fb] px-6 py-5">
+    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md no-print">
+      <div className="flex h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-6 py-5">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Configuración de catálogo</p>
-            <h3 className="mt-1 text-2xl font-black uppercase italic tracking-tighter text-[#302530]">{title}</h3>
-            <p className="mt-2 text-[11px] font-bold text-[#856a75]">{subtitle}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Configuración de catálogo</p>
+            <h3 className="mt-1 text-2xl font-black uppercase italic tracking-tighter text-white">{title}</h3>
+            <p className="mt-2 text-[11px] font-bold text-slate-400">{subtitle}</p>
           </div>
-          <button type="button" onClick={onClose} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#ee9fbc] bg-white text-[#9b6076] hover:bg-[#fff7fb]">
+          <button type="button" onClick={onClose} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-300 hover:border-cyan-300 hover:text-cyan-200">
             <X size={20} />
           </button>
         </div>
@@ -4605,10 +4605,10 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
                   addItem();
                 }
               }}
-              className="w-full rounded-2xl border border-[#ee9fbc] bg-[#fff7fb] px-5 py-4 text-sm font-black uppercase text-[#302530] outline-none focus:border-[#d94f83]"
+              className="w-full rounded-2xl border border-slate-700 bg-black px-5 py-4 text-sm font-black uppercase text-white outline-none focus:border-cyan-300"
               placeholder="Nueva categoría"
             />
-            <button type="button" onClick={addItem} className="rounded-2xl bg-[#d94f83] px-7 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(217,79,131,0.22)]">
+            <button type="button" onClick={addItem} className="rounded-2xl bg-cyan-400 px-7 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-slate-950 shadow-[0_14px_30px_rgba(34,211,238,0.22)] hover:bg-cyan-300">
               Agregar
             </button>
           </div>
@@ -4617,16 +4617,16 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
             {items.map((item) => {
               const isProtected = protectedSet.has(item);
               return (
-                <div key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-[#f2c1d4] bg-white px-4 py-4">
+                <div key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black uppercase italic text-[#302530]">{item}</p>
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-[#856a75]">{isProtected ? 'Sistema' : 'Editable'}</p>
+                    <p className="truncate text-sm font-black uppercase italic text-white">{item}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">{isProtected ? 'Sistema' : 'Editable'}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeItem(item)}
                     disabled={isProtected}
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isProtected ? 'border-[#e8d8df] text-[#c9aebb]' : 'border-[#ee9fbc] text-[#d94f83] hover:bg-[#fff7fb]'}`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isProtected ? 'border-slate-800 text-slate-600' : 'border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10'}`}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -4636,11 +4636,11 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[#f2c1d4] bg-white px-6 py-4 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} className="rounded-2xl border border-[#ee9fbc] bg-white px-7 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">
+        <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-950 px-6 py-4 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className="rounded-2xl border border-slate-700 bg-slate-900 px-7 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300 hover:border-slate-500">
             Cancelar
           </button>
-          <button type="button" onClick={() => onSave?.(items)} className="rounded-2xl bg-[#6fb89b] px-8 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(111,184,155,0.22)]">
+          <button type="button" onClick={() => onSave?.(items)} className="rounded-2xl bg-emerald-400 px-8 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-slate-950 shadow-[0_14px_30px_rgba(16,185,129,0.22)] hover:bg-emerald-300">
             Guardar catálogo
           </button>
         </div>
@@ -4865,9 +4865,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       value: activeItems.length,
       helper: `${sellableProducts.length} para venta directa`,
       icon: Package,
-      tone: 'text-[#d94f83]',
-      bg: 'bg-[#fff7fb]',
-      border: 'border-[#ee9fbc]',
+      tone: 'text-cyan-300',
+      bg: 'bg-slate-950',
+      border: 'border-cyan-400/30',
     },
     {
       id: 'stock',
@@ -4875,9 +4875,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       value: stockProducts.length,
       helper: `${totalStockUnits.toLocaleString('es-NI')} unidades registradas`,
       icon: Layers,
-      tone: 'text-[#4f8674]',
-      bg: 'bg-[#edf7f2]',
-      border: 'border-[#b7d8c7]',
+      tone: 'text-emerald-300',
+      bg: 'bg-emerald-400/10',
+      border: 'border-emerald-400/30',
     },
     {
       id: 'cost',
@@ -4885,9 +4885,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       value: `C$ ${inventoryCostValue.toLocaleString('es-NI')}`,
       helper: `${internalProducts.length} insumos para servicios`,
       icon: Repeat,
-      tone: 'text-[#856a75]',
-      bg: 'bg-white',
-      border: 'border-[#f2c1d4]',
+      tone: 'text-slate-400',
+      bg: 'bg-slate-950',
+      border: 'border-slate-800',
     },
   ];
 
@@ -4940,17 +4940,17 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
   const getMargin = (item) => Number(item.salePrice || 0) - Number(item.costPrice || 0);
 
   return (
-    <div className="p-4 md:p-10 space-y-6 md:space-y-8 h-full animate-in fade-in text-[#302530] no-print">
+    <div className="p-4 md:p-10 space-y-6 md:space-y-8 h-full animate-in fade-in text-white no-print">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-[#302530]">Inventario</h3>
-          <p className="text-[10px] text-[#d94f83] font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Productos, stock, costo y rentabilidad</p>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Inventario</h3>
+          <p className="text-[10px] text-cyan-300 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Productos, stock, costo y rentabilidad</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="button"
             onClick={() => setIsCatalogModalOpen(true)}
-            className="w-full sm:w-auto border border-[#ee9fbc] bg-white text-[#9b6076] px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-[#fff7fb]"
+            className="w-full sm:w-auto border border-slate-700 bg-slate-900 text-slate-300 px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-slate-800"
           >
             <Settings size={18} />
             Catálogos
@@ -4958,7 +4958,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
           <button
             type="button"
             onClick={openNewProduct}
-            className="w-full sm:w-auto bg-[#d94f83] hover:bg-[#c83f75] text-white px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] shadow-[0_14px_30px_rgba(217,79,131,0.22)] flex items-center justify-center gap-3 transition-all active:scale-95"
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] shadow-[0_14px_30px_rgba(99,102,241,0.28)] flex items-center justify-center gap-3 transition-all active:scale-95"
           >
             <Plus size={18} />
             Nuevo producto
@@ -4966,7 +4966,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
           <button
             type="button"
             onClick={onGoToProducts}
-            className="w-full sm:w-auto border border-[#ee9fbc] bg-white text-[#9b6076] px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-[#fff7fb]"
+            className="w-full sm:w-auto border border-slate-700 bg-slate-900 text-slate-300 px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-slate-800"
           >
             <Package size={18} />
             Ver venta
@@ -4978,14 +4978,14 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
         {inventoryCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.id} className={`rounded-[1.7rem] border ${card.border} ${card.bg} p-6 shadow-[0_18px_44px_rgba(122,77,94,0.10)]`}>
+            <div key={card.id} className={`rounded-[1.7rem] border ${card.border} ${card.bg} p-6 shadow-[0_18px_44px_rgba(34,211,238,0.12)]`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#856a75]">{card.label}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{card.label}</p>
                   <p className={`mt-4 text-3xl font-black italic tracking-tighter leading-none ${card.tone}`}>{card.value}</p>
-                  <p className="mt-3 text-[11px] font-bold text-[#856a75]">{card.helper}</p>
+                  <p className="mt-3 text-[11px] font-bold text-slate-400">{card.helper}</p>
                 </div>
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${card.border} bg-white ${card.tone}`}>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${card.border} bg-slate-900 ${card.tone}`}>
                   <Icon size={22} />
                 </div>
               </div>
@@ -4995,22 +4995,22 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       </div>
 
       <section>
-        <section className="rounded-[2rem] border border-[#ee9fbc] bg-white overflow-hidden shadow-[0_18px_44px_rgba(122,77,94,0.10)]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#f2c1d4] bg-[#fff7fb] px-5 md:px-7 py-5">
+        <section className="rounded-[2rem] border border-cyan-400/25 bg-slate-950 overflow-hidden shadow-[0_18px_44px_rgba(34,211,238,0.12)]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 px-5 md:px-7 py-5">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Catálogo maestro</p>
-              <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-[#302530]">Productos de inventario</h4>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Catálogo maestro</p>
+              <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Productos de inventario</h4>
             </div>
             <div className="relative w-full md:w-[320px]">
-              <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b6076]" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 pr-11 text-xs font-black text-[#302530] outline-none" placeholder="Buscar producto..." />
+              <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar producto..." />
             </div>
           </div>
 
           {filteredItems.length > 0 ? (
             <div className="overflow-x-auto custom-scrollbar">
               <div className="min-w-[940px]">
-                <div className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-[#f2c1d4] text-[9px] font-black uppercase tracking-[0.16em] text-[#856a75]">
+                <div className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
                   <span>Producto</span>
                   <span>Uso</span>
                   <span>Categoría</span>
@@ -5019,32 +5019,32 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                   <span>Venta</span>
                   <span>Acción</span>
                 </div>
-                <div className="divide-y divide-[#f7d7e2]">
+                <div className="divide-y divide-slate-800">
                   {filteredItems.map((item) => {
                     const margin = getMargin(item);
                     const isLowStock = Number(item.minStock || 0) > 0 && Number(item.currentStock || 0) <= Number(item.minStock || 0);
                     return (
                       <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
                         <div>
-                          <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-[#302530]">{item.productName || item.name}</p>
-                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">{item.sku || 'Sin SKU'} · Margen C$ {margin.toLocaleString('es-NI')}</p>
+                          <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-white">{item.productName || item.name}</p>
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{item.sku || 'Sin SKU'} · Margen C$ {margin.toLocaleString('es-NI')}</p>
                         </div>
                         <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${
                           item.usageType === 'internal'
-                            ? 'border-[#e7c97d] bg-[#fff8df] text-[#9b7516]'
+                            ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
                             : item.usageType === 'both'
-                              ? 'border-[#b7d8c7] bg-[#edf7f2] text-[#4f8674]'
-                              : 'border-[#f2c1d4] bg-[#fff7fb] text-[#9b6076]'
+                              ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+                              : 'border-slate-700 bg-slate-900 text-slate-300'
                         }`}>{getUsageLabel(item.usageType)}</span>
-                        <span className="w-fit rounded-full border border-[#b7d8c7] bg-[#edf7f2] px-3 py-1.5 text-[9px] font-black uppercase text-[#4f8674]">{item.productCategory || 'Otros'}</span>
-                        <span className={`text-base font-black italic ${isLowStock ? 'text-[#d94f83]' : 'text-[#4f8674]'}`}>{Number(item.currentStock || 0).toLocaleString('es-NI')}</span>
-                        <p className="text-sm font-black italic text-[#856a75]">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
-                        <p className="text-sm font-black italic text-[#4f8674]">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
+                        <span className="w-fit rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-[9px] font-black uppercase text-emerald-300">{item.productCategory || 'Otros'}</span>
+                        <span className={`text-base font-black italic ${isLowStock ? 'text-cyan-300' : 'text-emerald-300'}`}>{Number(item.currentStock || 0).toLocaleString('es-NI')}</span>
+                        <p className="text-sm font-black italic text-slate-400">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
+                        <p className="text-sm font-black italic text-emerald-300">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
                         <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => openEditProduct(item)} className="rounded-xl border border-[#ee9fbc] px-3 py-2 text-[9px] font-black uppercase text-[#d94f83] hover:bg-[#fff7fb]">
+                          <button type="button" onClick={() => openEditProduct(item)} className="rounded-xl border border-cyan-400/30 px-3 py-2 text-[9px] font-black uppercase text-cyan-300 hover:bg-slate-800">
                             Editar
                           </button>
-                          <button type="button" onClick={() => onDeleteProduct?.(item.id)} className="rounded-xl border border-[#f2c1d4] px-3 py-2 text-[#9b6076] hover:bg-[#fff7fb]" aria-label="Desactivar producto">
+                          <button type="button" onClick={() => onDeleteProduct?.(item.id)} className="rounded-xl border border-slate-700 px-3 py-2 text-slate-400 hover:bg-slate-800" aria-label="Desactivar producto">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -5056,23 +5056,23 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
             </div>
           ) : (
             <div className="px-6 py-14 text-center">
-              <Package size={36} className="mx-auto mb-4 text-[#d94f83]" />
-              <p className="text-sm font-black uppercase italic text-[#302530]">No hay productos de inventario</p>
-              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#856a75]">Crea productos con stock, costo y precio para activar la venta e iniciar rentabilidad</p>
+              <Package size={36} className="mx-auto mb-4 text-cyan-300" />
+              <p className="text-sm font-black uppercase italic text-white">No hay productos de inventario</p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Crea productos con stock, costo y precio para activar la venta e iniciar rentabilidad</p>
             </div>
           )}
         </section>
       </section>
 
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#24181f]/75 p-4 backdrop-blur-md">
-          <form onSubmit={handleSubmit} className="w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[1.8rem] border border-[#ee9fbc] bg-white shadow-[0_28px_80px_rgba(52,31,42,0.35)] custom-scrollbar">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[#f2c1d4] bg-[#fff7fb]/95 px-5 md:px-7 py-5 backdrop-blur">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <form onSubmit={handleSubmit} className="w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_28px_80px_rgba(0,0,0,0.55)] custom-scrollbar">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-950/95 px-5 md:px-7 py-5 backdrop-blur">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Producto</p>
-                <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-[#302530]">{editingProduct ? 'Editar inventario' : 'Nuevo producto'}</h4>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Producto</p>
+                <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">{editingProduct ? 'Editar inventario' : 'Nuevo producto'}</h4>
               </div>
-              <button type="button" onClick={closeProductModal} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#ee9fbc] bg-white text-[#9b6076] transition-all hover:bg-[#fff7fb]" aria-label="Cerrar producto">
+              <button type="button" onClick={closeProductModal} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-300 transition-all hover:bg-slate-800" aria-label="Cerrar producto">
                 <X size={20} />
               </button>
             </div>
@@ -5080,20 +5080,20 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_310px] gap-5 p-5 md:p-7">
               <div className="space-y-4">
                 <label className="block space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Nombre</span>
-                  <input value={form.productName} onChange={(event) => updateForm('productName', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-[#fff7fb] px-4 py-3 text-sm font-black text-[#302530] outline-none focus:border-[#d94f83]" placeholder="Ej. Shampoo hidratante" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Nombre</span>
+                  <input value={form.productName} onChange={(event) => updateForm('productName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Ej. Shampoo hidratante" />
                 </label>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Categoría</span>
-                    <select value={form.productCategory} onChange={(event) => updateForm('productCategory', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black uppercase text-[#302530] outline-none">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Categoría</span>
+                    <select value={form.productCategory} onChange={(event) => updateForm('productCategory', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black uppercase text-white outline-none">
                       {visibleProductCategories.map((category) => <option key={category} value={category}>{category}</option>)}
                     </select>
                   </label>
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Unidad</span>
-                    <input value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black text-[#302530] outline-none" placeholder="unidad, ml, gr" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Unidad</span>
+                    <input value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="unidad, ml, gr" />
                   </label>
                 </div>
 
@@ -5103,7 +5103,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                       type="button"
                       key={option.value}
                       onClick={() => updateForm('usageType', option.value)}
-                      className={`rounded-2xl border px-3 py-3 text-left transition-all ${form.usageType === option.value ? 'border-[#6fb89b] bg-[#e8f6ef] text-[#2f6f61]' : 'border-[#ee9fbc] bg-white text-[#9b6076]'}`}
+                      className={`rounded-2xl border px-3 py-3 text-left transition-all ${form.usageType === option.value ? 'border-cyan-400/50 bg-cyan-400/10 text-cyan-200' : 'border-slate-700 bg-slate-900 text-slate-300'}`}
                     >
                       <span className="block text-[10px] font-black uppercase">{option.label}</span>
                       <span className="mt-1 block text-[8px] font-bold uppercase leading-tight opacity-80">{option.helper}</span>
@@ -5112,47 +5112,47 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Notas de costo o uso</span>
-                  <textarea value={form.notes} onChange={(event) => updateForm('notes', event.target.value)} className="min-h-[96px] w-full resize-none rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-bold text-[#302530] outline-none" placeholder="Ej. Se usa para keratina, rinde 10 servicios..." />
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Notas de costo o uso</span>
+                  <textarea value={form.notes} onChange={(event) => updateForm('notes', event.target.value)} className="min-h-[96px] w-full resize-none rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-bold text-white outline-none" placeholder="Ej. Se usa para keratina, rinde 10 servicios..." />
                 </label>
               </div>
 
-              <div className="space-y-4 rounded-[1.5rem] border border-[#f2c1d4] bg-[#fff7fb] p-4">
+              <div className="space-y-4 rounded-[1.5rem] border border-slate-800 bg-slate-900/70 p-4">
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Stock</span>
-                    <input type="number" min="0" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Stock</span>
+                    <input type="number" min="0" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
                   </label>
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Mínimo</span>
-                    <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Mínimo</span>
+                    <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
                   </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Costo compra</span>
-                    <input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => updateForm('costPrice', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="C$ 0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo compra</span>
+                    <input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => updateForm('costPrice', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" />
                   </label>
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Precio venta</span>
-                    <input type="number" min="0" step="0.01" value={form.salePrice} onChange={(event) => updateForm('salePrice', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="C$ 0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Precio venta</span>
+                    <input type="number" min="0" step="0.01" value={form.salePrice} onChange={(event) => updateForm('salePrice', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" />
                   </label>
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">SKU / código interno</span>
-                  <input value={form.sku} onChange={(event) => updateForm('sku', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black text-[#302530] outline-none" placeholder="Opcional" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">SKU / código interno</span>
+                  <input value={form.sku} onChange={(event) => updateForm('sku', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="Opcional" />
                 </label>
 
-                <div className="rounded-2xl border border-[#b7d8c7] bg-[#edf7f2] p-4">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#4f8674]">Margen estimado</p>
-                  <p className="mt-2 text-2xl font-black italic text-[#2f6f61]">
+                <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Margen estimado</p>
+                  <p className="mt-2 text-2xl font-black italic text-emerald-300">
                     C$ {(Number(form.salePrice || 0) - Number(form.costPrice || 0)).toLocaleString('es-NI')}
                   </p>
                 </div>
 
-                <button type="submit" className="w-full rounded-2xl bg-[#6fb89b] px-5 py-4 text-[11px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(111,184,155,0.24)]">
+                <button type="submit" className="w-full rounded-2xl bg-emerald-400 px-5 py-4 text-[11px] font-black uppercase italic tracking-[0.16em] text-slate-950 shadow-[0_14px_30px_rgba(16,185,129,0.24)] hover:bg-emerald-300">
                   {editingProduct ? 'Guardar cambios' : 'Crear producto'}
                 </button>
               </div>

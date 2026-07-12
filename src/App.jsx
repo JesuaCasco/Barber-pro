@@ -174,6 +174,60 @@ const UiFeedbackContext = createContext({
 const useUiFeedback = () => useContext(UiFeedbackContext);
 const AUTH_RUNTIME_CACHE_KEY = 'bp_auth_runtime_cache_v1';
 
+class AppSectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error(`Falló la sección ${this.props.label || 'actual'}:`, error, info);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="w-full max-w-xl rounded-[2rem] border border-rose-500/35 bg-slate-900 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500 text-white">
+              <Info size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-300">Revisar pantalla</p>
+              <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter">Caja no pudo cargar</h3>
+              <p className="mt-3 text-sm font-bold leading-relaxed text-slate-300">
+                La aplicación sigue activa, pero esta sección encontró un error. Detalle técnico:
+              </p>
+              <pre className="mt-4 max-h-40 overflow-auto rounded-2xl border border-slate-700 bg-black/40 p-4 text-xs font-bold text-rose-100">
+                {String(this.state.error?.message || this.state.error || 'Error desconocido')}
+              </pre>
+              <button
+                type="button"
+                onClick={this.props.onReset}
+                className="mt-5 rounded-2xl bg-indigo-600 px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_15px_30px_rgba(79,70,229,0.3)] transition-all hover:bg-indigo-500"
+              >
+                Volver al dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
 const inventoryProductToService = (item) => ({
   id: item.serviceId || `inventory:${item.id}`,
   inventoryItemId: item.id,
@@ -4755,25 +4809,31 @@ export default function App() {
             />
           )}
           {activeTab === 'caja' && (
-            <POSView
-              services={services}
-              clients={effectiveClientDirectory.clients}
-              onSale={handleRegisterPosSale}
-              cashSession={activeCashSession}
-              cashMovements={activeCashMovements}
-              posSales={activeCashPosSales}
-              cashSessions={cashSessions}
-              allCashMovements={cashMovements}
-              allPosSales={posSales}
-              onOpenCashSession={handleOpenCashSession}
-              onCloseCashSession={handleCloseCashSession}
-              onPrintCashClosure={handlePrintCashClosureFromHistory}
-              onCashMovement={handleCashMovement}
-              onCancelSale={handleCancelPosSale}
-              onCancelCashMovement={handleCancelCashMovement}
-              confirmAction={confirmAction}
-              users={accessControl.users}
-            />
+            <AppSectionErrorBoundary
+              label="caja"
+              resetKey={activeTab}
+              onReset={() => setActiveTab('dashboard')}
+            >
+              <POSView
+                services={services}
+                clients={effectiveClientDirectory.clients}
+                onSale={handleRegisterPosSale}
+                cashSession={activeCashSession}
+                cashMovements={activeCashMovements}
+                posSales={activeCashPosSales}
+                cashSessions={cashSessions}
+                allCashMovements={cashMovements}
+                allPosSales={posSales}
+                onOpenCashSession={handleOpenCashSession}
+                onCloseCashSession={handleCloseCashSession}
+                onPrintCashClosure={handlePrintCashClosureFromHistory}
+                onCashMovement={handleCashMovement}
+                onCancelSale={handleCancelPosSale}
+                onCancelCashMovement={handleCancelCashMovement}
+                confirmAction={confirmAction}
+                users={accessControl.users}
+              />
+            </AppSectionErrorBoundary>
           )}
           {activeTab === 'reportes' && (
             <ReportsView

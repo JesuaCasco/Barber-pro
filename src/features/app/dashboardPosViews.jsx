@@ -1131,110 +1131,110 @@ export function POSView({
   };
 
   return (
-    <div className="pos-view relative h-full flex flex-col bg-[#fff7fb] text-[#34242b] animate-in fade-in no-print">
+    <div className="pos-view relative h-full flex flex-col bg-[#020617] text-[#f8fafc] animate-in fade-in no-print">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-[#f5b6cf] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef]">
+        <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-[#1e293b] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
           <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-            <div className="rounded-[2rem] border border-[#f0a6c3] bg-white p-5 shadow-[0_16px_38px_rgba(196,74,126,0.12)]">
+            <div className="rounded-[2rem] border border-[#334155] bg-slate-950 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.55)]">
               <div className="flex h-full min-h-[210px] flex-col gap-5 lg:flex-row lg:items-stretch lg:justify-between">
                 <div className="flex flex-col justify-center lg:min-w-[220px] lg:flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#c24f82]">Caja operativa</p>
-                  <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter text-[#34242b]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#38bdf8]">Caja operativa</p>
+                  <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter text-[#f8fafc]">
                     {cashSession ? 'Caja abierta' : 'Abrir caja'}
                   </h3>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">
                     {cashSession ? `Desde ${new Date(cashSession.openedAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}` : 'Necesaria para vender'}
                   </p>
                 </div>
 
                 {!cashSession ? (
-                  <div className="flex flex-col items-stretch gap-3 rounded-[1.6rem] border border-[#f2c1d4] bg-[#fff9fc] px-5 py-4 text-right sm:flex-row sm:items-center">
+                  <div className="flex flex-col items-stretch gap-3 rounded-[1.6rem] border border-[#334155] bg-[#0f172a] px-5 py-4 text-right sm:flex-row sm:items-center">
                     <button
                       type="button"
                       onClick={() => setOpeningModalSuppressed(false)}
-                      className="rounded-2xl bg-[#72b79b] px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_28px_rgba(114,183,155,0.24)] transition-all hover:bg-[#63a98d] active:scale-95"
+                      className="rounded-2xl bg-[#059669] px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_28px_rgba(114,183,155,0.24)] transition-all hover:bg-[#047857] active:scale-95"
                     >
                       Abrir caja
                     </button>
                     <div className="flex-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Pendiente de apertura</p>
-                    <p className="mt-1 text-sm font-black italic text-[#c24f82]">Completa el arqueo inicial</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Pendiente de apertura</p>
+                    <p className="mt-1 text-sm font-black italic text-[#38bdf8]">Completa el arqueo inicial</p>
                     </div>
                   </div>
                 ) : (
                   <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:flex-[1.45] lg:content-stretch">
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Efectivo caja</p>
-                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
-                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Efectivo caja</p>
+                      <p className="mt-1 text-lg font-black italic text-[#34d399]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#94a3b8]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
                     </div>
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas total</p>
-                      <p className="mt-1 text-lg font-black italic text-[#c24f82]">{formatCurrency(totalSalesSummary)}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Ventas total</p>
+                      <p className="mt-1 text-lg font-black italic text-[#38bdf8]">{formatCurrency(totalSalesSummary)}</p>
                     </div>
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
-                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.card)}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">POS / tarjeta</p>
+                      <p className="mt-1 text-lg font-black italic text-[#34d399]">{formatCurrency(systemPaymentSummary.card)}</p>
                     </div>
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia</p>
-                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.transfer)}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Transferencia</p>
+                      <p className="mt-1 text-lg font-black italic text-[#34d399]">{formatCurrency(systemPaymentSummary.transfer)}</p>
                     </div>
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Entradas</p>
-                      <p className="mt-1 text-lg font-black italic text-[#72a58f]">{formatCurrency(cashCurrencySummary.manualInNio + (cashCurrencySummary.manualInUsd * cashCurrencySummary.exchangeRate))}</p>
-                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.manualInNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualInUsd || 0).toLocaleString('es-NI')}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Entradas</p>
+                      <p className="mt-1 text-lg font-black italic text-[#34d399]">{formatCurrency(cashCurrencySummary.manualInNio + (cashCurrencySummary.manualInUsd * cashCurrencySummary.exchangeRate))}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#94a3b8]">C$ {Number(cashCurrencySummary.manualInNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualInUsd || 0).toLocaleString('es-NI')}</p>
                     </div>
-                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Salidas</p>
-                      <p className="mt-1 text-lg font-black italic text-[#b35a7b]">{formatCurrency(cashCurrencySummary.manualOutNio + (cashCurrencySummary.manualOutUsd * cashCurrencySummary.exchangeRate))}</p>
-                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.manualOutNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualOutUsd || 0).toLocaleString('es-NI')}</p>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#334155] bg-[#0f172a] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Salidas</p>
+                      <p className="mt-1 text-lg font-black italic text-[#fb7185]">{formatCurrency(cashCurrencySummary.manualOutNio + (cashCurrencySummary.manualOutUsd * cashCurrencySummary.exchangeRate))}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#94a3b8]">C$ {Number(cashCurrencySummary.manualOutNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualOutUsd || 0).toLocaleString('es-NI')}</p>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-[#f0a6c3] bg-white p-5 shadow-[0_16px_38px_rgba(196,74,126,0.10)]">
+            <div className="rounded-[2rem] border border-[#334155] bg-slate-950 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.45)]">
               {cashSession ? (
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setMovementType('in')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'in' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#9b6076]'}`}><ArrowUp size={14} className="inline" /> Entrada</button>
-                    <button type="button" onClick={() => setMovementType('out')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'out' ? 'bg-[#d56b95] text-white' : 'border border-[#efabc7] text-[#9b6076]'}`}><ArrowDown size={14} className="inline" /> Salida</button>
+                    <button type="button" onClick={() => setMovementType('in')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'in' ? 'bg-[#059669] text-white' : 'border border-[#475569] text-[#94a3b8]'}`}><ArrowUp size={14} className="inline" /> Entrada</button>
+                    <button type="button" onClick={() => setMovementType('out')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'out' ? 'bg-[#e11d48] text-white' : 'border border-[#475569] text-[#94a3b8]'}`}><ArrowDown size={14} className="inline" /> Salida</button>
                   </div>
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]">
-                      <div className="flex overflow-hidden rounded-2xl border border-[#efabc7] bg-[#fff9fc] focus-within:border-[#d94f83]">
-                        <select value={movementCurrency} onChange={(event) => setMovementCurrency(event.target.value)} className="w-20 shrink-0 border-r border-[#efabc7] bg-white px-3 py-3 text-sm font-black text-[#8f2d5b] outline-none">
+                      <div className="flex overflow-hidden rounded-2xl border border-[#475569] bg-[#0f172a] focus-within:border-[#4f46e5]">
+                        <select value={movementCurrency} onChange={(event) => setMovementCurrency(event.target.value)} className="w-20 shrink-0 border-r border-[#475569] bg-slate-950 px-3 py-3 text-sm font-black text-[#67e8f9] outline-none">
                           <option value="NIO">C$</option>
                           <option value="USD">US$</option>
                         </select>
                         <input type="number" min="0" value={movementAmount} onChange={(event) => setMovementAmount(event.target.value)} placeholder={movementCurrency === 'USD' ? 'Monto en US$' : 'Monto en C$'} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-black outline-none" />
                       </div>
                     {movementCurrency === 'USD' ? (
-                      <input type="number" min="0" step="0.01" value={movementExchangeRate} onChange={(event) => setMovementExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]" />
+                      <input type="number" min="0" step="0.01" value={movementExchangeRate} onChange={(event) => setMovementExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-3 text-sm font-black outline-none focus:border-[#4f46e5]" />
                     ) : null}
                     </div>
-                    <input type="text" value={movementNotes} onChange={(event) => setMovementNotes(event.target.value)} placeholder="Nota" className="block w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-bold outline-none focus:border-[#d94f83]" />
+                    <input type="text" value={movementNotes} onChange={(event) => setMovementNotes(event.target.value)} placeholder="Nota" className="block w-full rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-3 text-sm font-bold outline-none focus:border-[#4f46e5]" />
                   </div>
-                  <button type="button" onClick={handleManualMovement} className="w-full rounded-2xl border border-[#72b79b]/40 bg-[#eef8f4] px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#426f64] transition-all hover:bg-[#dff2eb]">
+                  <button type="button" onClick={handleManualMovement} className="w-full rounded-2xl border border-[#059669]/40 bg-[#052e2b] px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#34d399] transition-all hover:bg-[#064e3b]">
                     Registrar movimiento
                   </button>
-                  <button type="button" onClick={() => setClosingModalOpen(true)} className="w-full rounded-2xl border border-[#e7a8c0] bg-[#f8dce8] px-5 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f2d5b] shadow-[0_12px_24px_rgba(217,79,131,0.14)] transition-all hover:bg-[#f3c9da] active:scale-95">
+                  <button type="button" onClick={() => setClosingModalOpen(true)} className="w-full rounded-2xl border border-[#334155] bg-[#111827] px-5 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-[#67e8f9] shadow-[0_12px_24px_rgba(217,79,131,0.14)] transition-all hover:bg-[#1e293b] active:scale-95">
                     Arqueo y cierre
                   </button>
                 </div>
               ) : (
-                <div className="flex h-full min-h-32 items-center justify-center rounded-[1.6rem] border border-dashed border-[#efabc7] bg-[#fff9fc] p-6 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Abre caja para activar ventas, entradas y cierre</p>
+                <div className="flex h-full min-h-32 items-center justify-center rounded-[1.6rem] border border-dashed border-[#475569] bg-[#0f172a] p-6 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Abre caja para activar ventas, entradas y cierre</p>
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="relative overflow-hidden rounded-[1.7rem] border border-rose-200 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(120,78,93,0.08)]">
-              <div className="absolute inset-x-0 top-0 h-px bg-rose-100" />
+              <div className="relative overflow-hidden rounded-[1.7rem] border border-slate-800 bg-slate-950 px-5 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.35)]">
+              <div className="absolute inset-x-0 top-0 h-px bg-slate-800" />
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
                 <ShoppingBag size={18} />
               </div>
@@ -1248,11 +1248,11 @@ export function POSView({
                     setMovementsSummaryCollapsed(false);
                     setMovementsModalOpen(true);
                   }}
-                  className="flex items-center gap-3 rounded-[1.6rem] border border-[#efabc7] bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95"
+                  className="flex items-center gap-3 rounded-[1.6rem] border border-[#475569] bg-slate-950 px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#67e8f9] transition-all hover:bg-[#111827] active:scale-95"
                 >
                   <ListChecks size={16} />
                   Movimientos
-                  <span className="rounded-full bg-[#fff0f6] px-2 py-0.5 text-[8px] text-[#c24f82]">{dayMovements.length}</span>
+                  <span className="rounded-full bg-[#111827] px-2 py-0.5 text-[8px] text-[#38bdf8]">{dayMovements.length}</span>
                 </button>
               ) : null}
               <button
@@ -1261,20 +1261,20 @@ export function POSView({
                   setCashHistorySummaryCollapsed(false);
                   setCashHistoryOpen(true);
                 }}
-                className="flex items-center gap-3 rounded-[1.6rem] border border-[#efabc7] bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95"
+                className="flex items-center gap-3 rounded-[1.6rem] border border-[#475569] bg-slate-950 px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#67e8f9] transition-all hover:bg-[#111827] active:scale-95"
               >
                 <Clock size={16} />
                 Historial
               </button>
               <div className="relative">
-                <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-[#9b6076]" size={18} />
-                <input type="text" placeholder="Buscar producto" className="w-full rounded-2xl border border-[#efabc7] bg-white py-4 pl-8 pr-16 text-sm font-black text-[#34242b] outline-none transition-all placeholder:text-[#b4899c] focus:border-[#d94f83] md:w-80" value={search} onChange={(event) => setSearch(event.target.value)} />
+                <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={18} />
+                <input type="text" placeholder="Buscar producto" className="w-full rounded-2xl border border-[#475569] bg-slate-950 py-4 pl-8 pr-16 text-sm font-black text-[#f8fafc] outline-none transition-all placeholder:text-[#64748b] focus:border-[#4f46e5] md:w-80" value={search} onChange={(event) => setSearch(event.target.value)} />
               </div>
               <button
                 type="button"
                 onClick={() => setTicketOpen(true)}
                 disabled={cart.length === 0}
-                className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-[#d94f83]/35 bg-[#d94f83] text-white hover:bg-[#c94a7a]' : 'cursor-not-allowed border-[#efabc7] bg-[#f7edf2] text-[#b4899c] opacity-70'}`}
+                className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-[#4f46e5]/35 bg-[#4f46e5] text-white hover:bg-[#4338ca]' : 'cursor-not-allowed border-[#475569] bg-[#111827] text-[#64748b] opacity-70'}`}
               >
                 <ShoppingBag size={16} />
                 {cart.length > 0 ? `Carrito (${cart.length})` : 'Carrito vacío'}
@@ -1285,7 +1285,7 @@ export function POSView({
         <div className="flex-1 overflow-y-auto p-3 md:p-8 custom-scrollbar">
           <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6">
             {filtered.length === 0 && (
-              <div className="col-span-full rounded-[2rem] border border-dashed border-[#efabc7] bg-white/70 p-10 text-center text-[#9b6076]">
+              <div className="col-span-full rounded-[2rem] border border-dashed border-[#475569] bg-slate-950/70 p-10 text-center text-[#94a3b8]">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em]">No se encontraron productos</p>
               </div>
             )}
@@ -1313,24 +1313,24 @@ export function POSView({
       ) : null}
 
       {shouldShowOpeningModal ? createPortal((
-        <div className="fixed inset-0 z-[220] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
-          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
-            <div className="border-b border-[#f5cddd] px-5 py-3 md:px-7">
+        <div className="fixed inset-0 z-[220] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
+            <div className="border-b border-[#1e293b] px-5 py-3 md:px-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Apertura de caja</p>
-                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Arqueo inicial</h3>
-                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cuenta el efectivo antes de iniciar ventas</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#38bdf8]">Apertura de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#f8fafc]">Arqueo inicial</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Cuenta el efectivo antes de iniciar ventas</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-[1.4rem] border border-[#f2c1d4] bg-white px-4 py-2.5 text-right">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Monto inicial</p>
-                    <p className="mt-0.5 text-2xl font-black italic text-[#426f64]">{formatCurrency(openingTotals.total)}</p>
+                  <div className="rounded-[1.4rem] border border-[#334155] bg-slate-950 px-4 py-2.5 text-right">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Monto inicial</p>
+                    <p className="mt-0.5 text-2xl font-black italic text-[#34d399]">{formatCurrency(openingTotals.total)}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setOpeningModalSuppressed(true)}
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#475569] bg-slate-950 text-[#67e8f9] transition-all hover:bg-[#111827]"
                     aria-label="Cerrar apertura de caja"
                   >
                     <X size={18} />
@@ -1340,10 +1340,10 @@ export function POSView({
             </div>
 
             <div className="grid flex-1 gap-3 overflow-y-auto p-3 custom-scrollbar md:p-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
-              <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white/70 p-2.5">
+              <section className="rounded-[1.6rem] border border-[#334155] bg-slate-950/70 p-2.5">
                 <div className="mb-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Conteo de efectivo</p>
-                  <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Billetes, monedas y dólares</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#38bdf8]">Conteo de efectivo</p>
+                  <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#94a3b8]">Billetes, monedas y dólares</p>
                 </div>
                 <div className="grid gap-2.5 lg:grid-cols-3">
                   <DenominationGrid compact title="Billetes C$" currency="C$" denominations={NIO_BILL_DENOMINATIONS} values={openingBreakdown.nioBills} onChange={(denomination, value) => updateOpeningDenomination('nioBills', denomination, value)} />
@@ -1353,32 +1353,32 @@ export function POSView({
               </section>
 
               <div className="space-y-3">
-                <div className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
-                  <label className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Tasa dólar</label>
+                <div className="rounded-[1.6rem] border border-[#334155] bg-slate-950 p-3">
+                  <label className="text-[9px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Tasa dólar</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={openingExchangeRate}
                     onChange={(event) => setOpeningExchangeRate(event.target.value)}
-                    className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-lg font-black text-[#34242b] outline-none focus:border-[#d94f83]"
+                    className="mt-1.5 w-full rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-2.5 text-lg font-black text-[#f8fafc] outline-none focus:border-[#4f46e5]"
                   />
                 </div>
-                <div className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Resumen</p>
+                <div className="rounded-[1.6rem] border border-[#334155] bg-slate-950 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Resumen</p>
                   <div className="mt-3 space-y-2.5">
                     <div className="flex justify-between gap-3 text-sm font-black"><span>Córdobas</span><span>{formatCurrency(openingTotals.nioTotal)}</span></div>
                     <div className="flex justify-between gap-3 text-sm font-black"><span>Dólares</span><span>$ {openingTotals.usdTotal.toLocaleString('es-NI')}</span></div>
-                    <div className="flex justify-between gap-3 text-sm font-black text-[#426f64]"><span>USD en C$</span><span>{formatCurrency(openingTotals.convertedUsdTotal)}</span></div>
-                    <div className="border-t border-[#f5cddd] pt-3">
-                      <div className="flex justify-between gap-3 text-lg font-black italic text-[#c24f82]"><span>Total</span><span>{formatCurrency(openingTotals.total)}</span></div>
+                    <div className="flex justify-between gap-3 text-sm font-black text-[#34d399]"><span>USD en C$</span><span>{formatCurrency(openingTotals.convertedUsdTotal)}</span></div>
+                    <div className="border-t border-[#1e293b] pt-3">
+                      <div className="flex justify-between gap-3 text-lg font-black italic text-[#38bdf8]"><span>Total</span><span>{formatCurrency(openingTotals.total)}</span></div>
                     </div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleOpenCash}
-                  className="flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-[#72b79b] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_35px_rgba(114,183,155,0.32)] transition-all hover:bg-[#63a98d] active:scale-95"
+                  className="flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-[#059669] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_35px_rgba(114,183,155,0.32)] transition-all hover:bg-[#047857] active:scale-95"
                 >
                   <Wallet size={18} /> Abrir caja
                 </button>
@@ -1389,19 +1389,19 @@ export function POSView({
       ), document.body) : null}
 
       {closingModalOpen && cashSession ? createPortal((
-        <div className="fixed inset-0 z-[230] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
-          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
-            <div className="border-b border-[#f5cddd] px-5 py-3 md:px-7">
+        <div className="fixed inset-0 z-[230] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
+            <div className="border-b border-[#1e293b] px-5 py-3 md:px-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Cierre de caja</p>
-                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Arqueo final</h3>
-                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Debe coincidir efectivo, POS y transferencia</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#38bdf8]">Cierre de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#f8fafc]">Arqueo final</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Debe coincidir efectivo, POS y transferencia</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setClosingModalOpen(false)}
-                  className="h-12 rounded-2xl border border-[#efabc7] bg-white px-5 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                  className="h-12 rounded-2xl border border-[#475569] bg-slate-950 px-5 text-[10px] font-black uppercase tracking-[0.16em] text-[#67e8f9] transition-all hover:bg-[#111827]"
                 >
                   Revisar luego
                 </button>
@@ -1416,32 +1416,32 @@ export function POSView({
                   { label: 'POS / tarjeta', system: systemPaymentSummary.card, counted: closingCardCounted, diff: closingDifferences.card },
                   { label: 'Transferencia', system: systemPaymentSummary.transfer, counted: closingTransferCounted, diff: closingDifferences.transfer },
                 ].map((row) => (
-                  <div key={row.label} className="rounded-[1.25rem] border border-[#f2c1d4] bg-white p-3">
+                  <div key={row.label} className="rounded-[1.25rem] border border-[#334155] bg-slate-950 p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">{row.label}</p>
-                      <span className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${Math.abs(row.diff) < 0.01 ? 'bg-[#eef8f4] text-[#426f64]' : 'bg-[#fff0f6] text-[#b35a7b]'}`}>
+                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">{row.label}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${Math.abs(row.diff) < 0.01 ? 'bg-[#052e2b] text-[#34d399]' : 'bg-[#111827] text-[#fb7185]'}`}>
                         {Math.abs(row.diff) < 0.01 ? 'Cuadra' : 'Diferencia'}
                       </span>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-[10px] font-black">
-                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Sistema</p><p className="mt-1 text-[#426f64]">{(row.formatter || formatCurrency)(row.system)}</p></div>
-                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Contado</p><p className="mt-1 text-[#34242b]">{(row.formatter || formatCurrency)(row.counted)}</p></div>
-                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Dif.</p><p className={`mt-1 ${Math.abs(row.diff) < 0.01 ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>{(row.formatter || formatCurrency)(row.diff)}</p></div>
+                      <div><p className="uppercase tracking-[0.12em] text-[#94a3b8]">Sistema</p><p className="mt-1 text-[#34d399]">{(row.formatter || formatCurrency)(row.system)}</p></div>
+                      <div><p className="uppercase tracking-[0.12em] text-[#94a3b8]">Contado</p><p className="mt-1 text-[#f8fafc]">{(row.formatter || formatCurrency)(row.counted)}</p></div>
+                      <div><p className="uppercase tracking-[0.12em] text-[#94a3b8]">Dif.</p><p className={`mt-1 ${Math.abs(row.diff) < 0.01 ? 'text-[#34d399]' : 'text-[#fb7185]'}`}>{(row.formatter || formatCurrency)(row.diff)}</p></div>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
-                <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white/70 p-2.5">
+                <section className="rounded-[1.6rem] border border-[#334155] bg-slate-950/70 p-2.5">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Conteo de efectivo</p>
-                      <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Billetes, monedas y dólares</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#38bdf8]">Conteo de efectivo</p>
+                      <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#94a3b8]">Billetes, monedas y dólares</p>
                     </div>
-                    <div className="rounded-xl border border-[#f2c1d4] bg-white px-3 py-1.5 text-right">
-                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Total contado</p>
-                      <p className="text-lg font-black italic text-[#426f64]">{formatCurrency(closingTotals.total)}</p>
+                    <div className="rounded-xl border border-[#334155] bg-slate-950 px-3 py-1.5 text-right">
+                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#94a3b8]">Total contado</p>
+                      <p className="text-lg font-black italic text-[#34d399]">{formatCurrency(closingTotals.total)}</p>
                     </div>
                   </div>
                   <div className="grid gap-2.5 lg:grid-cols-3">
@@ -1452,29 +1452,29 @@ export function POSView({
                 </section>
 
                 <aside className="space-y-3">
-                  <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Configuración</p>
-                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Tasa dólar</label>
-                    <input type="number" min="0" step="0.01" value={closingExchangeRate} onChange={(event) => setClosingExchangeRate(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-lg font-black text-[#34242b] outline-none focus:border-[#d94f83]" />
+                  <section className="rounded-[1.6rem] border border-[#334155] bg-slate-950 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#38bdf8]">Configuración</p>
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Tasa dólar</label>
+                    <input type="number" min="0" step="0.01" value={closingExchangeRate} onChange={(event) => setClosingExchangeRate(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-2.5 text-lg font-black text-[#f8fafc] outline-none focus:border-[#4f46e5]" />
                   </section>
 
-                  <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Pagos electrónicos</p>
-                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta contado</label>
-                    <input type="number" min="0" value={closingCardAmount} onChange={(event) => setClosingCardAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-base font-black text-[#34242b] outline-none focus:border-[#d94f83]" placeholder="0" />
-                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia contada</label>
-                    <input type="number" min="0" value={closingTransferAmount} onChange={(event) => setClosingTransferAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-base font-black text-[#34242b] outline-none focus:border-[#d94f83]" placeholder="0" />
+                  <section className="rounded-[1.6rem] border border-[#334155] bg-slate-950 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#38bdf8]">Pagos electrónicos</p>
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">POS / tarjeta contado</label>
+                    <input type="number" min="0" value={closingCardAmount} onChange={(event) => setClosingCardAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-2.5 text-base font-black text-[#f8fafc] outline-none focus:border-[#4f46e5]" placeholder="0" />
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Transferencia contada</label>
+                    <input type="number" min="0" value={closingTransferAmount} onChange={(event) => setClosingTransferAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-2.5 text-base font-black text-[#f8fafc] outline-none focus:border-[#4f46e5]" placeholder="0" />
                   </section>
                 </aside>
               </div>
             </div>
 
-            <div className="border-t border-[#f5cddd] bg-white/85 px-5 py-3 md:px-7">
+            <div className="border-t border-[#1e293b] bg-white/85 px-5 py-3 md:px-7">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isBalancedClose ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isBalancedClose ? 'text-[#34d399]' : 'text-[#fb7185]'}`}>
                   {isBalancedClose ? 'Arqueo cuadrado. Listo para cerrar.' : 'Hay diferencias. Se pedirá motivo al cerrar.'}
                 </p>
-                <button type="button" onClick={handleCloseCash} className={`flex items-center justify-center gap-3 rounded-[1.5rem] px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${isBalancedClose ? 'bg-[#72b79b] text-white shadow-[0_18px_35px_rgba(114,183,155,0.24)] hover:bg-[#63a98d]' : 'bg-[#d65f7f] text-white shadow-[0_18px_35px_rgba(214,95,127,0.24)] hover:bg-[#c24f74]'}`}>
+                <button type="button" onClick={handleCloseCash} className={`flex items-center justify-center gap-3 rounded-[1.5rem] px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${isBalancedClose ? 'bg-[#059669] text-white shadow-[0_18px_35px_rgba(114,183,155,0.24)] hover:bg-[#047857]' : 'bg-[#d65f7f] text-white shadow-[0_18px_35px_rgba(214,95,127,0.24)] hover:bg-[#c24f74]'}`}>
                   <Check size={18} /> Cerrar caja
                 </button>
               </div>
@@ -1484,14 +1484,14 @@ export function POSView({
       ), document.body) : null}
 
       {movementsModalOpen && cashSession ? createPortal((
-        <div className="fixed inset-0 z-[235] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
-          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(98vw,100rem)] flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
-            <div className="border-b border-[#f5cddd] px-5 py-4 md:px-7">
+        <div className="fixed inset-0 z-[235] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(98vw,100rem)] flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
+            <div className="border-b border-[#1e293b] px-5 py-4 md:px-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Caja actual</p>
-                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Movimientos del día</h3>
-                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas, servicios cobrados, entradas y salidas</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#38bdf8]">Caja actual</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#f8fafc]">Movimientos del día</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Ventas, servicios cobrados, entradas y salidas</p>
                 </div>
                 <button
                   type="button"
@@ -1499,7 +1499,7 @@ export function POSView({
                     setMovementsSummaryCollapsed(false);
                     setMovementsModalOpen(false);
                   }}
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#475569] bg-slate-950 text-[#67e8f9] transition-all hover:bg-[#111827]"
                   aria-label="Cerrar movimientos"
                 >
                   <X size={18} />
@@ -1507,43 +1507,43 @@ export function POSView({
               </div>
             </div>
 
-            <div className={`grid grid-cols-2 gap-3 bg-white/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#f5cddd] md:px-7 md:py-3 ${movementsSummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#f5cddd] max-md:py-3 max-md:opacity-100'}`}>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Esperado efectivo</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
-                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
+            <div className={`grid grid-cols-2 gap-3 bg-slate-950/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#1e293b] md:px-7 md:py-3 ${movementsSummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#1e293b] max-md:py-3 max-md:opacity-100'}`}>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Esperado efectivo</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
+                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#94a3b8]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas efectivo</p>
-                <p className="mt-1 text-xl font-black italic text-[#c24f82]">{formatCurrency(cashSummary.sales)}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Ventas efectivo</p>
+                <p className="mt-1 text-xl font-black italic text-[#38bdf8]">{formatCurrency(cashSummary.sales)}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.card)}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">POS / tarjeta</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{formatCurrency(systemPaymentSummary.card)}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.transfer)}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Transferencia</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{formatCurrency(systemPaymentSummary.transfer)}</p>
               </div>
             </div>
 
-            <div className="border-b border-[#f5cddd] bg-white/75 px-5 py-3 md:px-7">
+            <div className="border-b border-[#1e293b] bg-white/75 px-5 py-3 md:px-7">
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="relative">
-                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b6076]" size={16} />
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={16} />
                 <input
                   type="text"
                   value={movementSearch}
                   onChange={(event) => setMovementSearch(event.target.value)}
                   placeholder="Buscar por ticket, cliente, servicio, producto, usuario o método"
-                  className="w-full rounded-2xl border border-[#efabc7] bg-white py-3 pl-5 pr-12 text-sm font-black text-[#34242b] outline-none placeholder:text-[#b4899c] focus:border-[#d94f83]"
+                  className="w-full rounded-2xl border border-[#475569] bg-slate-950 py-3 pl-5 pr-12 text-sm font-black text-[#f8fafc] outline-none placeholder:text-[#64748b] focus:border-[#4f46e5]"
                 />
                 </div>
                 <button
                   type="button"
                   onClick={exportMovementsToExcel}
                   disabled={filteredDayMovements.length === 0}
-                  className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] transition-all active:scale-95 ${filteredDayMovements.length > 0 ? 'border-[#72b79b]/45 bg-[#eef8f4] text-[#426f64] hover:bg-[#dff2eb]' : 'cursor-not-allowed border-[#f2c1d4] bg-[#fff7fb] text-[#b4899c] opacity-70'}`}
+                  className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] transition-all active:scale-95 ${filteredDayMovements.length > 0 ? 'border-[#059669]/45 bg-[#052e2b] text-[#34d399] hover:bg-[#064e3b]' : 'cursor-not-allowed border-[#334155] bg-[#020617] text-[#64748b] opacity-70'}`}
                 >
                   <Save size={15} /> Exportar Excel
                 </button>
@@ -1558,12 +1558,12 @@ export function POSView({
               }}
             >
               {filteredDayMovements.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#efabc7] bg-white/70 p-10 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9b6076]">Sin movimientos para esta búsqueda</p>
+                <div className="rounded-2xl border border-dashed border-[#475569] bg-slate-950/70 p-10 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#94a3b8]">Sin movimientos para esta búsqueda</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-[#f0a6c3] bg-white custom-scrollbar">
-                  <div className="grid min-w-[98rem] grid-cols-[5.2rem_6.5rem_minmax(12.5rem,1.12fr)_minmax(14.5rem,1.18fr)_minmax(8.5rem,0.75fr)_minmax(8.5rem,0.75fr)_minmax(7.5rem,0.7fr)_7.3rem_7.3rem_7.3rem] gap-3 border-b border-[#f5cddd] bg-[#fff7fb] px-5 py-3 text-[8px] font-black uppercase tracking-[0.15em] text-[#9b6076] max-xl:hidden">
+                <div className="overflow-x-auto rounded-2xl border border-[#334155] bg-slate-950 custom-scrollbar">
+                  <div className="grid min-w-[98rem] grid-cols-[5.2rem_6.5rem_minmax(12.5rem,1.12fr)_minmax(14.5rem,1.18fr)_minmax(8.5rem,0.75fr)_minmax(8.5rem,0.75fr)_minmax(7.5rem,0.7fr)_7.3rem_7.3rem_7.3rem] gap-3 border-b border-[#1e293b] bg-[#020617] px-5 py-3 text-[8px] font-black uppercase tracking-[0.15em] text-[#94a3b8] max-xl:hidden">
                     <span>Hora</span>
                     <span>Ticket</span>
                     <span>Concepto</span>
@@ -1576,7 +1576,7 @@ export function POSView({
                     <span className="w-[6.4rem] justify-self-center text-center">Acción</span>
                   </div>
 
-                  <div className="divide-y divide-[#f5cddd]">
+                  <div className="divide-y divide-[#1e293b]">
                     {filteredDayMovements.map((entry) => {
                       const isOut = entry.type === 'out';
                       const isSale = entry.kind === 'sale';
@@ -1595,43 +1595,43 @@ export function POSView({
                       const userLabel = resolveUserName(entry.createdBy);
                       const rowTone = isOpening
                         ? 'border-l-[#75a7b8] bg-[#f3f9fb]'
-                        : (isReversal ? 'border-l-[#b35a7b] bg-[#fff3f7]' : (isOut ? 'border-l-[#d65f7f] bg-[#fff6f8]' : 'border-l-[#72b79b] bg-[#f8fffb]'));
+                        : (isReversal ? 'border-l-[#fb7185] bg-[#fff3f7]' : (isOut ? 'border-l-[#d65f7f] bg-[#fff6f8]' : 'border-l-[#059669] bg-[#f8fffb]'));
                       const iconTone = isOpening
                         ? 'bg-[#75a7b8] shadow-[#75a7b8]/20'
-                        : (isReversal ? 'bg-[#b35a7b] shadow-[#b35a7b]/20' : (isOut ? 'bg-[#d65f7f] shadow-[#d65f7f]/20' : 'bg-[#72b79b] shadow-[#72b79b]/20'));
+                        : (isReversal ? 'bg-[#fb7185] shadow-[#fb7185]/20' : (isOut ? 'bg-[#d65f7f] shadow-[#d65f7f]/20' : 'bg-[#059669] shadow-[#059669]/20'));
                       return (
                         <div key={entry.id} className={`grid min-w-[98rem] gap-3 border-l-4 px-5 py-3 text-sm transition-colors max-xl:min-w-0 max-xl:grid-cols-[minmax(0,1fr)] xl:grid-cols-[5.2rem_6.5rem_minmax(12.5rem,1.12fr)_minmax(14.5rem,1.18fr)_minmax(8.5rem,0.75fr)_minmax(8.5rem,0.75fr)_minmax(7.5rem,0.7fr)_7.3rem_7.3rem_7.3rem] xl:items-center ${rowTone}`}>
-                          <p className="text-[12px] font-black text-[#34242b] max-xl:hidden">{timeLabel}</p>
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-[#8f2d5b] max-xl:hidden">{ticketLabel}</p>
+                          <p className="text-[12px] font-black text-[#f8fafc] max-xl:hidden">{timeLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-[#67e8f9] max-xl:hidden">{ticketLabel}</p>
                           <div className="flex min-w-0 items-center gap-2.5">
                             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg ${iconTone}`}>
                               {isReversal ? <RotateCcw size={15} /> : (isSale ? <ReceiptText size={15} /> : (isOut ? <ArrowDown size={15} /> : <ArrowUp size={15} />))}
                             </div>
                             <div className="min-w-0">
-                              <p className="line-clamp-2 text-[10px] font-black uppercase italic leading-snug text-[#34242b]">{entry.title}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">{timeLabel} · Ticket: {ticketLabel} · {methodLabel} · Cliente: {clientLabel} · Barbero: {barberLabel}</p>
+                              <p className="line-clamp-2 text-[10px] font-black uppercase italic leading-snug text-[#f8fafc]">{entry.title}</p>
+                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#94a3b8] xl:hidden">{timeLabel} · Ticket: {ticketLabel} · {methodLabel} · Cliente: {clientLabel} · Barbero: {barberLabel}</p>
                             </div>
                           </div>
-                          <p className="line-clamp-2 text-[9px] font-bold uppercase tracking-[0.06em] text-[#9b6076] max-xl:rounded-2xl max-xl:border max-xl:border-[#f2c1d4] max-xl:bg-[#fff7fb] max-xl:px-3 max-xl:py-2">{detailText}</p>
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#426f64] max-xl:hidden">{clientLabel}</p>
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#8f2d5b] max-xl:hidden">{barberLabel}</p>
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#8f2d5b] max-xl:hidden">{userLabel}</p>
-                          <span className={`rounded-full border px-3 py-1.5 text-center text-[8px] font-black uppercase tracking-[0.1em] max-lg:w-fit ${isOpening ? 'border-[#c4dce4] bg-white text-[#4f7b8b]' : (isReversal ? 'border-[#f3b8c8] bg-white text-[#b35a7b]' : (isOut ? 'border-[#f3b8c8] bg-white text-[#b84868]' : 'border-[#cdeadd] bg-white text-[#426f64]'))}`}>
+                          <p className="line-clamp-2 text-[9px] font-bold uppercase tracking-[0.06em] text-[#94a3b8] max-xl:rounded-2xl max-xl:border max-xl:border-[#334155] max-xl:bg-[#020617] max-xl:px-3 max-xl:py-2">{detailText}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#34d399] max-xl:hidden">{clientLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#67e8f9] max-xl:hidden">{barberLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#67e8f9] max-xl:hidden">{userLabel}</p>
+                          <span className={`rounded-full border px-3 py-1.5 text-center text-[8px] font-black uppercase tracking-[0.1em] max-lg:w-fit ${isOpening ? 'border-[#c4dce4] bg-slate-950 text-[#4f7b8b]' : (isReversal ? 'border-[#f3b8c8] bg-slate-950 text-[#fb7185]' : (isOut ? 'border-[#f3b8c8] bg-slate-950 text-[#b84868]' : 'border-[#cdeadd] bg-slate-950 text-[#34d399]'))}`}>
                             {isOpening ? 'Fondo inicial' : (isReversal ? 'Reverso' : methodLabel)}
                           </span>
-                          <p className={`text-right text-lg font-black italic max-xl:text-left ${isOut ? 'text-[#b35a7b]' : 'text-[#426f64]'}`}>
+                          <p className={`text-right text-lg font-black italic max-xl:text-left ${isOut ? 'text-[#fb7185]' : 'text-[#34d399]'}`}>
                             {isOut ? '-' : '+'}{formatCurrency(entry.amount)}
                           </p>
                           {entry.canCancel ? (
                             <button
                               type="button"
                               onClick={() => handleCancelMovementEntry(entry)}
-                              className="flex min-w-[6.4rem] items-center justify-center gap-2 justify-self-center rounded-xl border border-[#f0a6c3] bg-white px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95 max-xl:justify-self-start"
+                              className="flex min-w-[6.4rem] items-center justify-center gap-2 justify-self-center rounded-xl border border-[#334155] bg-slate-950 px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-[#67e8f9] transition-all hover:bg-[#111827] active:scale-95 max-xl:justify-self-start"
                             >
                               <RotateCcw size={14} /> Anular
                             </button>
                           ) : (
-                            <span className="inline-flex min-w-[6.4rem] items-center justify-center justify-self-center rounded-xl border border-[#f2c1d4] bg-[#fff7fb] px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-[#b4899c] max-xl:justify-self-start">
+                            <span className="inline-flex min-w-[6.4rem] items-center justify-center justify-self-center rounded-xl border border-[#334155] bg-[#020617] px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-[#64748b] max-xl:justify-self-start">
                               {isOpening ? 'Base' : (isReversal ? 'Reverso' : (entry.isVoidedOriginal ? 'Anulado' : 'Bloqueado'))}
                             </span>
                           )}
@@ -1647,14 +1647,14 @@ export function POSView({
       ), document.body) : null}
 
       {cashHistoryOpen ? createPortal((
-        <div className="fixed inset-0 z-[236] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
-          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(96vw,86rem)] flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
-            <div className="border-b border-[#f5cddd] px-5 py-4 md:px-7">
+        <div className="fixed inset-0 z-[236] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(96vw,86rem)] flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
+            <div className="border-b border-[#1e293b] px-5 py-4 md:px-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Control de caja</p>
-                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Historial de cajas</h3>
-                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cierres, diferencias y usuarios responsables</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#38bdf8]">Control de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#f8fafc]">Historial de cajas</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Cierres, diferencias y usuarios responsables</p>
                 </div>
                 <button
                   type="button"
@@ -1662,7 +1662,7 @@ export function POSView({
                     setCashHistorySummaryCollapsed(false);
                     setCashHistoryOpen(false);
                   }}
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#475569] bg-slate-950 text-[#67e8f9] transition-all hover:bg-[#111827]"
                   aria-label="Cerrar historial de caja"
                 >
                   <X size={18} />
@@ -1670,22 +1670,22 @@ export function POSView({
               </div>
             </div>
 
-            <div className={`grid grid-cols-2 gap-3 bg-white/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#f5cddd] md:px-7 md:py-3 ${cashHistorySummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#f5cddd] max-md:py-3 max-md:opacity-100'}`}>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cajas cerradas</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{cashHistoryRows.length}</p>
+            <div className={`grid grid-cols-2 gap-3 bg-slate-950/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#1e293b] md:px-7 md:py-3 ${cashHistorySummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#1e293b] max-md:py-3 max-md:opacity-100'}`}>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Cajas cerradas</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{cashHistoryRows.length}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas cerradas</p>
-                <p className="mt-1 text-xl font-black italic text-[#c24f82]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.saleTotal, 0))}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Ventas cerradas</p>
+                <p className="mt-1 text-xl font-black italic text-[#38bdf8]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.saleTotal, 0))}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.cardTotal, 0))}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">POS / tarjeta</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.cardTotal, 0))}</p>
               </div>
-              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencias</p>
-                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.transferTotal, 0))}</p>
+              <div className="rounded-[1.3rem] border border-[#334155] bg-slate-950 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">Transferencias</p>
+                <p className="mt-1 text-xl font-black italic text-[#34d399]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.transferTotal, 0))}</p>
               </div>
             </div>
 
@@ -1697,12 +1697,12 @@ export function POSView({
               }}
             >
               {cashHistoryRows.length === 0 ? (
-                <div className="rounded-[1.8rem] border border-dashed border-[#efabc7] bg-white/70 p-10 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9b6076]">Todavía no hay cajas cerradas</p>
+                <div className="rounded-[1.8rem] border border-dashed border-[#475569] bg-slate-950/70 p-10 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#94a3b8]">Todavía no hay cajas cerradas</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-[1.8rem] border border-[#f0a6c3] bg-white">
-                  <div className="grid grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] gap-3 border-b border-[#f5cddd] bg-[#fff7fb] px-5 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076] max-xl:hidden">
+                <div className="overflow-hidden rounded-[1.8rem] border border-[#334155] bg-white">
+                  <div className="grid grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] gap-3 border-b border-[#1e293b] bg-[#020617] px-5 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#94a3b8] max-xl:hidden">
                     <span>Apertura</span>
                     <span>Cierre</span>
                     <span className="text-right">Esperado</span>
@@ -1713,7 +1713,7 @@ export function POSView({
                     <span className="text-right">Soporte</span>
                   </div>
 
-                  <div className="divide-y divide-[#f5cddd]">
+                  <div className="divide-y divide-[#1e293b]">
                     {cashHistoryRows.map((row) => {
                       const openedLabel = row.openedAt
                         ? new Date(row.openedAt).toLocaleString('es-NI', { dateStyle: 'medium', timeStyle: 'short' })
@@ -1723,30 +1723,30 @@ export function POSView({
                         : 'Sin cierre';
                       const balanced = Math.abs(row.difference) < 0.01;
                       return (
-                        <div key={row.id} className={`grid gap-3 border-l-4 px-5 py-4 text-sm max-xl:grid-cols-1 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] xl:items-center ${balanced ? 'border-l-[#72b79b] bg-[#f8fffb]' : 'border-l-[#d65f7f] bg-[#fff6f8]'}`}>
+                        <div key={row.id} className={`grid gap-3 border-l-4 px-5 py-4 text-sm max-xl:grid-cols-1 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] xl:items-center ${balanced ? 'border-l-[#059669] bg-[#f8fffb]' : 'border-l-[#d65f7f] bg-[#fff6f8]'}`}>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">Apertura</p>
-                            <p className="font-black text-[#34242b]">{openedLabel}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#94a3b8] xl:hidden">Apertura</p>
+                            <p className="font-black text-[#f8fafc]">{openedLabel}</p>
                           </div>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">Cierre</p>
-                            <p className="font-black text-[#34242b]">{closedLabel}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#94a3b8] xl:hidden">Cierre</p>
+                            <p className="font-black text-[#f8fafc]">{closedLabel}</p>
                           </div>
-                          <p className="text-right font-black italic text-[#426f64] max-xl:text-left">{formatCurrency(row.expectedCash)}</p>
-                          <p className="text-right font-black italic text-[#34242b] max-xl:text-left">{formatCurrency(row.countedCash)}</p>
-                          <p className={`text-right font-black italic max-xl:text-left ${balanced ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>{formatCurrency(row.difference)}</p>
+                          <p className="text-right font-black italic text-[#34d399] max-xl:text-left">{formatCurrency(row.expectedCash)}</p>
+                          <p className="text-right font-black italic text-[#f8fafc] max-xl:text-left">{formatCurrency(row.countedCash)}</p>
+                          <p className={`text-right font-black italic max-xl:text-left ${balanced ? 'text-[#34d399]' : 'text-[#fb7185]'}`}>{formatCurrency(row.difference)}</p>
                           <div className="text-right max-xl:text-left">
-                            <p className="font-black italic text-[#c24f82]">{formatCurrency(row.saleTotal)}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#9b6076]">{row.saleCount} ventas · {row.movementCount} mov.</p>
+                            <p className="font-black italic text-[#38bdf8]">{formatCurrency(row.saleTotal)}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#94a3b8]">{row.saleCount} ventas · {row.movementCount} mov.</p>
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#8f2d5b]">Abrió: {row.openedByLabel}</p>
-                            <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#9b6076]">Cerró: {row.closedByLabel}</p>
+                            <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#67e8f9]">Abrió: {row.openedByLabel}</p>
+                            <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#94a3b8]">Cerró: {row.closedByLabel}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => onPrintCashClosure?.(row)}
-                            className="flex items-center justify-center gap-2 justify-self-end rounded-2xl border border-[#72b79b]/45 bg-[#eef8f4] px-3 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#426f64] transition-all hover:bg-[#dff2eb] active:scale-95 max-xl:justify-self-start"
+                            className="flex items-center justify-center gap-2 justify-self-end rounded-2xl border border-[#059669]/45 bg-[#052e2b] px-3 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#34d399] transition-all hover:bg-[#064e3b] active:scale-95 max-xl:justify-self-start"
                           >
                             <ReceiptText size={14} /> Ver
                           </button>
@@ -1763,15 +1763,15 @@ export function POSView({
 
       {ticketOpen && cart.length > 0 ? createPortal((
         <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/75 p-2 backdrop-blur-sm xl:items-center">
-          <div className="max-h-[calc(100vh-0.25rem)] w-full max-w-3xl overflow-hidden rounded-[2rem] border border-[#efabc7] bg-[#fff7fb] text-[#34242b] shadow-[0_30px_120px_rgba(143,45,91,0.28)] xl:max-w-7xl">
-            <div className="flex items-center justify-between gap-4 border-b border-[#f4c6d9] px-6 py-3.5 md:px-8">
+          <div className="max-h-[calc(100vh-0.25rem)] w-full max-w-3xl overflow-hidden rounded-[2rem] border border-[#475569] bg-[#020617] text-[#f8fafc] shadow-[0_30px_120px_rgba(143,45,91,0.28)] xl:max-w-7xl">
+            <div className="flex items-center justify-between gap-4 border-b border-[#334155] px-6 py-3.5 md:px-8">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/40">
                   <ShoppingBag size={22} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[#34242b]">Ticket de venta</h3>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Aplica promociones guardadas antes de completar la venta</p>
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[#f8fafc]">Ticket de venta</h3>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Aplica promociones guardadas antes de completar la venta</p>
                 </div>
               </div>
               <button
@@ -1780,14 +1780,14 @@ export function POSView({
                   setPromotionPickerOpen(false);
                   setTicketOpen(false);
                 }}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#9b6076] transition-colors hover:bg-[#fff0f6] hover:text-[#8f2d5b]"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#475569] bg-slate-950 text-[#94a3b8] transition-colors hover:bg-[#111827] hover:text-[#67e8f9]"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_32rem]">
-              <div className="max-h-[calc(100vh-6.25rem)] overflow-y-auto border-b border-[#f4c6d9] bg-white/45 p-4 md:p-5 xl:border-b-0 xl:border-r custom-scrollbar">
+              <div className="max-h-[calc(100vh-6.25rem)] overflow-y-auto border-b border-[#334155] bg-white/45 p-4 md:p-5 xl:border-b-0 xl:border-r custom-scrollbar">
                 <div className="space-y-4">
                   {cart.map((item) => (
                     <CartLine key={item.id} item={item} onRemove={removeItem} />
@@ -1795,12 +1795,12 @@ export function POSView({
                 </div>
               </div>
 
-              <div className="flex max-h-[calc(100vh-6.25rem)] flex-col bg-[#fff7fb] p-3.5 md:p-4">
-                <div className="mb-2.5 rounded-[1.25rem] border border-emerald-500/20 bg-white p-2.5">
+              <div className="flex max-h-[calc(100vh-6.25rem)] flex-col bg-[#020617] p-3.5 md:p-4">
+                <div className="mb-2.5 rounded-[1.25rem] border border-emerald-500/20 bg-slate-950 p-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones</p>
-                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#9b6076]">
+                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
                         {selectedPromotion
                           ? `Aplicada: ${selectedPromotion.name}`
                           : savedPromotions.length > 0
@@ -1820,7 +1820,7 @@ export function POSView({
                       type="button"
                       onClick={() => setPromotionPickerOpen(true)}
                       disabled={savedPromotions.length === 0}
-                      className={`inline-flex items-center gap-2 rounded-[1rem] border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${savedPromotions.length > 0 ? 'border-[#b9dccd] bg-[#eef8f4] text-[#426f64] hover:border-[#72b79b] hover:bg-[#e2f3ec]' : 'cursor-not-allowed border-[#ead4dd] bg-[#f7edf2] text-[#b4899c] opacity-70'}`}
+                      className={`inline-flex items-center gap-2 rounded-[1rem] border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${savedPromotions.length > 0 ? 'border-[#b9dccd] bg-[#052e2b] text-[#34d399] hover:border-[#059669] hover:bg-[#e2f3ec]' : 'cursor-not-allowed border-[#ead4dd] bg-[#111827] text-[#64748b] opacity-70'}`}
                     >
                       Elegir promoción
                       <ChevronDown size={16} className="text-current" />
@@ -1830,7 +1830,7 @@ export function POSView({
                       <button
                         type="button"
                         onClick={() => setSelectedPromotionId('')}
-                        className="rounded-[1rem] border border-[#efabc7] bg-[#fff0f6] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] text-[#b35a7b] transition-all hover:border-[#d94f83]"
+                        className="rounded-[1rem] border border-[#475569] bg-[#111827] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] text-[#fb7185] transition-all hover:border-[#4f46e5]"
                       >
                         Quitar
                       </button>
@@ -1844,16 +1844,16 @@ export function POSView({
                   ) : null}
                 </div>
 
-                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-white px-4 py-2.5 text-[#34242b]">
-                  <div className="flex justify-between items-center"><span className="text-[#9b6076] text-[9px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-sm font-black italic">C$ {subtotal.toLocaleString('es-NI')}</span></div>
-                  {selectedPromotion ? <div className="mt-2 flex justify-between items-center"><span className="text-[#426f64] text-[9px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-sm font-black italic text-[#426f64]">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
-                  <div className="mt-2 flex justify-between items-end border-t border-[#f4c6d9] pt-2"><span className="text-[#9b6076] text-[9px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-3xl font-black italic tracking-tighter leading-none text-[#34242b]">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#475569] bg-slate-950 px-4 py-2.5 text-[#f8fafc]">
+                  <div className="flex justify-between items-center"><span className="text-[#94a3b8] text-[9px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-sm font-black italic">C$ {subtotal.toLocaleString('es-NI')}</span></div>
+                  {selectedPromotion ? <div className="mt-2 flex justify-between items-center"><span className="text-[#34d399] text-[9px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-sm font-black italic text-[#34d399]">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
+                  <div className="mt-2 flex justify-between items-end border-t border-[#334155] pt-2"><span className="text-[#94a3b8] text-[9px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-3xl font-black italic tracking-tighter leading-none text-[#f8fafc]">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
                 </div>
 
-                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-[#fff7fb] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#475569] bg-[#020617] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Cliente</p>
-                    <label className="flex items-center gap-2 rounded-full border border-[#f2c1d4] bg-white px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-[#8f5d71]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Cliente</p>
+                    <label className="flex items-center gap-2 rounded-full border border-[#334155] bg-slate-950 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-[#cbd5e1]">
                       <input
                         type="checkbox"
                         checked={genericClientSale}
@@ -1865,13 +1865,13 @@ export function POSView({
                             setClientPickerOpen(false);
                           }
                         }}
-                        className="h-3 w-3 accent-[#72b79b]"
+                        className="h-3 w-3 accent-[#059669]"
                       />
                       Genérico
                     </label>
                   </div>
                   <div className="relative">
-                    <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#b07089]" />
+                    <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
                     <input
                       type="text"
                       value={genericClientSale ? 'CLIENTE GENÉRICO' : clientSearch}
@@ -1889,7 +1889,7 @@ export function POSView({
                         window.setTimeout(() => setClientPickerOpen(false), 120);
                       }}
                       placeholder={selectedClient ? selectedClient.name : 'Buscar cliente por nombre o celular'}
-                      className="w-full rounded-2xl border border-[#f2c1d4] bg-white px-11 py-2.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#34242b] outline-none transition-all placeholder:text-[#b4899c] disabled:opacity-60 focus:border-[#d94f83] focus:shadow-[0_0_0_3px_rgba(217,79,131,0.08)]"
+                      className="w-full rounded-2xl border border-[#334155] bg-slate-950 px-11 py-2.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#f8fafc] outline-none transition-all placeholder:text-[#64748b] disabled:opacity-60 focus:border-[#4f46e5] focus:shadow-[0_0_0_3px_rgba(217,79,131,0.08)]"
                     />
                     {!genericClientSale && (selectedClientId || clientSearch) ? (
                       <button
@@ -1899,14 +1899,14 @@ export function POSView({
                           setClientSearch('');
                           setClientPickerOpen(false);
                         }}
-                        className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl text-[#b07089] transition-colors hover:bg-[#fff0f6] hover:text-[#8f2d5b]"
+                        className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl text-[#94a3b8] transition-colors hover:bg-[#111827] hover:text-[#67e8f9]"
                       >
                         <X size={14} />
                       </button>
                     ) : null}
 
                     {clientPickerOpen && !genericClientSale ? (
-                      <div className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-56 overflow-y-auto rounded-2xl border border-[#efabc7] bg-white shadow-[0_18px_45px_rgba(143,45,91,0.18)] custom-scrollbar">
+                      <div className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-56 overflow-y-auto rounded-2xl border border-[#475569] bg-slate-950 shadow-[0_18px_45px_rgba(143,45,91,0.18)] custom-scrollbar">
                         <button
                           type="button"
                           onClick={() => {
@@ -1914,7 +1914,7 @@ export function POSView({
                             setClientSearch('');
                             setClientPickerOpen(false);
                           }}
-                          className={`flex w-full items-center justify-between gap-3 border-b border-[#f8d8e4] px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.1em] transition-colors hover:bg-[#fff7fb] ${selectedClientId ? 'text-[#9b6076]' : 'bg-[#fff7fb] text-[#8f2d5b]'}`}
+                          className={`flex w-full items-center justify-between gap-3 border-b border-[#1e293b] px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.1em] transition-colors hover:bg-[#020617] ${selectedClientId ? 'text-[#94a3b8]' : 'bg-[#020617] text-[#67e8f9]'}`}
                         >
                           Sin cliente asignado
                           {!selectedClientId ? <Check size={14} /> : null}
@@ -1930,16 +1930,16 @@ export function POSView({
                               setGenericClientSale(false);
                               setClientPickerOpen(false);
                             }}
-                            className={`flex w-full items-center justify-between gap-3 border-b border-[#f8d8e4] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#fff7fb] ${String(selectedClientId) === String(client.id) ? 'bg-[#fff0f6]' : 'bg-white'}`}
+                            className={`flex w-full items-center justify-between gap-3 border-b border-[#1e293b] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#020617] ${String(selectedClientId) === String(client.id) ? 'bg-[#111827]' : 'bg-white'}`}
                           >
                             <span className="min-w-0">
-                              <span className="block truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#34242b]">{client.name || 'Cliente sin nombre'}</span>
-                              <span className="mt-1 block truncate text-[8px] font-black uppercase tracking-[0.12em] text-[#9b6076]">{client.phone || 'Sin celular'}</span>
+                              <span className="block truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#f8fafc]">{client.name || 'Cliente sin nombre'}</span>
+                              <span className="mt-1 block truncate text-[8px] font-black uppercase tracking-[0.12em] text-[#94a3b8]">{client.phone || 'Sin celular'}</span>
                             </span>
-                            {String(selectedClientId) === String(client.id) ? <Check size={14} className="shrink-0 text-[#d94f83]" /> : null}
+                            {String(selectedClientId) === String(client.id) ? <Check size={14} className="shrink-0 text-[#4f46e5]" /> : null}
                           </button>
                         )) : (
-                          <div className="px-4 py-4 text-[9px] font-black uppercase tracking-[0.14em] text-[#b4899c]">
+                          <div className="px-4 py-4 text-[9px] font-black uppercase tracking-[0.14em] text-[#64748b]">
                             No hay clientes con esa búsqueda.
                           </div>
                         )}
@@ -1948,8 +1948,8 @@ export function POSView({
                   </div>
                 </div>
 
-                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-[#fff7fb] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
-                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Método de pago</p>
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#475569] bg-[#020617] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-[#94a3b8]">Método de pago</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: 'cash', label: 'Efectivo', icon: DollarSign },
@@ -1963,7 +1963,7 @@ export function POSView({
                           key={method.id}
                           type="button"
                           onClick={() => setPaymentMethod(method.id)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[8px] font-black uppercase tracking-[0.12em] transition-all active:scale-95 ${active ? 'border-[#6eb293] bg-[#72b79b] text-white shadow-[0_10px_20px_rgba(114,183,155,0.24)]' : 'border-[#f2c1d4] bg-white text-[#8f5d71] hover:border-[#d94f83] hover:bg-[#fff0f6] hover:text-[#8f2d5b]'}`}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[8px] font-black uppercase tracking-[0.12em] transition-all active:scale-95 ${active ? 'border-[#059669] bg-[#059669] text-white shadow-[0_10px_20px_rgba(114,183,155,0.24)]' : 'border-[#334155] bg-slate-950 text-[#cbd5e1] hover:border-[#4f46e5] hover:bg-[#111827] hover:text-[#67e8f9]'}`}
                         >
                           <Icon size={14} />
                           {method.label}
@@ -1972,19 +1972,19 @@ export function POSView({
                     })}
                   </div>
                   {paymentMethod === 'cash' ? (
-                    <div className="mt-2 rounded-[1.2rem] border border-[#f2c1d4] bg-white p-2">
+                    <div className="mt-2 rounded-[1.2rem] border border-[#334155] bg-slate-950 p-2">
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setCashPaymentCurrency('NIO')}
-                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'NIO' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#8f5d71]'}`}
+                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'NIO' ? 'bg-[#059669] text-white' : 'border border-[#475569] text-[#cbd5e1]'}`}
                         >
                           Paga C$
                         </button>
                         <button
                           type="button"
                           onClick={() => setCashPaymentCurrency('USD')}
-                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'USD' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#8f5d71]'}`}
+                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'USD' ? 'bg-[#059669] text-white' : 'border border-[#475569] text-[#cbd5e1]'}`}
                         >
                           Paga US$
                         </button>
@@ -1999,10 +1999,10 @@ export function POSView({
                             value={nioReceived}
                             onChange={(event) => setNioReceived(event.target.value)}
                             placeholder="C$ recibido"
-                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-sm font-black outline-none focus:border-[#d94f83]"
+                            className="rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-2.5 text-sm font-black outline-none focus:border-[#4f46e5]"
                           />
-                          <div className={`rounded-2xl border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] ${nioPaymentIsEnough ? 'border-[#72b79b] bg-[#eef8f4] text-[#244f43]' : 'border-[#d94f83] bg-[#fff0f6] text-[#7f274d]'}`}>
-                            <p className="text-[#34242b]">Cliente paga: {formatCurrency(nioReceivedAmount)}</p>
+                          <div className={`rounded-2xl border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] ${nioPaymentIsEnough ? 'border-[#059669] bg-[#052e2b] text-[#a7f3d0]' : 'border-[#4f46e5] bg-[#111827] text-[#fecdd3]'}`}>
+                            <p className="text-[#f8fafc]">Cliente paga: {formatCurrency(nioReceivedAmount)}</p>
                             <p className={nioPaymentIsEnough ? 'text-[#2f6f5a]' : 'text-[#c0255a]'}>
                               {nioPaymentIsEnough ? `Vuelto sugerido: ${formatCurrency(nioChangeNio)}` : `Faltan: ${formatCurrency(Math.max(totalToCharge - nioReceivedAmount, 0))}`}
                             </p>
@@ -2019,7 +2019,7 @@ export function POSView({
                             value={usdReceived}
                             onChange={(event) => setUsdReceived(event.target.value)}
                             placeholder="US$ recibido"
-                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]"
+                            className="rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-3 text-sm font-black outline-none focus:border-[#4f46e5]"
                           />
                           <input
                             type="number"
@@ -2028,10 +2028,10 @@ export function POSView({
                             value={saleExchangeRate}
                             onChange={(event) => setSaleExchangeRate(event.target.value)}
                             placeholder="Tasa"
-                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]"
+                            className="rounded-2xl border border-[#475569] bg-[#0f172a] px-4 py-3 text-sm font-black outline-none focus:border-[#4f46e5]"
                           />
-                          <div className={`col-span-2 rounded-2xl border px-4 py-3 text-[9px] font-black uppercase tracking-[0.12em] ${usdPaymentIsEnough ? 'border-[#72b79b] bg-[#eef8f4] text-[#244f43]' : 'border-[#d94f83] bg-[#fff0f6] text-[#7f274d]'}`}>
-                            <p className="text-[#34242b]">Recibido equivalente: {formatCurrency(usdReceivedEquivalent)}</p>
+                          <div className={`col-span-2 rounded-2xl border px-4 py-3 text-[9px] font-black uppercase tracking-[0.12em] ${usdPaymentIsEnough ? 'border-[#059669] bg-[#052e2b] text-[#a7f3d0]' : 'border-[#4f46e5] bg-[#111827] text-[#fecdd3]'}`}>
+                            <p className="text-[#f8fafc]">Recibido equivalente: {formatCurrency(usdReceivedEquivalent)}</p>
                             <p className={usdPaymentIsEnough ? 'text-[#2f6f5a]' : 'text-[#c0255a]'}>
                               {usdPaymentIsEnough ? `Vuelto sugerido C$: ${usdChangeNio.toLocaleString('es-NI')}` : 'El monto recibido no cubre el total'}
                             </p>
@@ -2048,8 +2048,8 @@ export function POSView({
                   </p>
                 ) : null}
 
-                <div className="mt-auto border-t border-[#f4c6d9] pt-3">
-                  <button disabled={cart.length === 0 || !cashSession || !cashPaymentIsEnough} onClick={handleCompleteSale} className="w-full bg-[#d94f83] hover:bg-[#c94a7a] disabled:bg-[#f6d5e2] disabled:text-[#9b6076] disabled:shadow-none py-3.5 rounded-[1.35rem] font-black uppercase italic text-xs shadow-[0_16px_34px_rgba(217,79,131,0.28)] active:scale-95 transition-all text-white flex items-center justify-center gap-3"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+                <div className="mt-auto border-t border-[#334155] pt-3">
+                  <button disabled={cart.length === 0 || !cashSession || !cashPaymentIsEnough} onClick={handleCompleteSale} className="w-full bg-[#4f46e5] hover:bg-[#4338ca] disabled:bg-[#1e293b] disabled:text-[#94a3b8] disabled:shadow-none py-3.5 rounded-[1.35rem] font-black uppercase italic text-xs shadow-[0_16px_34px_rgba(217,79,131,0.28)] active:scale-95 transition-all text-white flex items-center justify-center gap-3"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
                 </div>
               </div>
             </div>

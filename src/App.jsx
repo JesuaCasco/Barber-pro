@@ -1,6 +1,10 @@
 import React, { Suspense, createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
+  closeCashSession,
+  cancelPosSaleWithReversal,
+  createCashAuditMovement,
   createCashAdvance,
+  createCashMovement,
   createManagedUser,
   createPosSale,
   createPayrollSettlements,
@@ -8,13 +12,13 @@ import {
   deleteBarberRecord,
   deleteClientRecord,
   deleteInventoryProduct,
-  deletePosSaleRecord,
   deleteServiceRecord,
   fetchAccessControlSnapshot,
   fetchBarbershopSnapshot,
   fetchClientDirectorySnapshot,
   fetchScopedBarbers,
   fetchScopedClients,
+  openCashSession,
   resetManagedUserPassword,
   replaceUserRoles,
   syncServiceComboItems,
@@ -144,7 +148,7 @@ import { DashboardView, POSView } from './features/app/dashboardPosViews';
 import { ClientDetailModal, ClientsTableView } from './features/app/clientViews';
 import { FinalizeModal } from './features/app/finalizeModal';
 import { ServiceEditorModal } from './features/app/serviceEditorModal';
-import { PaymentReceiptModal, PosSaleReceiptModal, StaffSettlementModal } from './features/app/receiptModals';
+import { CashClosureReceiptModal, PaymentReceiptModal, PosSaleReceiptModal, StaffSettlementModal } from './features/app/receiptModals';
 import { LoginScreen, PasswordActionModal, UserEditorModal } from './features/system/accessUi';
 
 const { useCallback } = React;
@@ -1666,6 +1670,14 @@ export default function App() {
     const saved = localDevStorage?.getItem('bp_dev_pos_sales') || null;
     return saved ? JSON.parse(saved) : [];
   });
+  const [cashSessions, setCashSessions] = useState(() => {
+    const saved = localDevStorage?.getItem('bp_dev_cash_sessions') || null;
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [cashMovements, setCashMovements] = useState(() => {
+    const saved = localDevStorage?.getItem('bp_dev_cash_movements') || null;
+    return saved ? JSON.parse(saved) : [];
+  });
   const [cashWithdrawals, setCashWithdrawals] = useState(() => {
     if (typeof window === 'undefined' || hasSupabaseConfig) return [];
     try {
@@ -1701,12 +1713,21 @@ export default function App() {
   const effectiveOperationalBarbershopId = isSuperAdmin
     ? (superAdminViewBarbershopId || availableBarbershops[0]?.id || null)
     : (accessControl.currentBarbershopId || null);
-  const effectiveOperationalBranchId = isSuperAdmin ? null : (accessControl.currentBranchId || null);
+  const resolvedOperationalBarbershopId = effectiveOperationalBarbershopId || availableBarbershops[0]?.id || null;
+  const effectiveOperationalBranchId = isSuperAdmin
+    ? (
+        availableBranches.find((branch) => String(branch.barbershopId || '') === String(resolvedOperationalBarbershopId || ''))?.id
+        || null
+      )
+    : (accessControl.currentBranchId || null);
+  const resolvedOperationalBranchId = effectiveOperationalBranchId
+    || availableBranches.find((branch) => String(branch.barbershopId || '') === String(resolvedOperationalBarbershopId || ''))?.id
+    || null;
   const superAdminScopeOverride = useMemo(() => (
-    isSuperAdmin && effectiveOperationalBarbershopId
-      ? { currentBarbershopId: effectiveOperationalBarbershopId, currentBranchId: null }
+    isSuperAdmin && resolvedOperationalBarbershopId
+      ? { currentBarbershopId: resolvedOperationalBarbershopId, currentBranchId: resolvedOperationalBranchId }
       : {}
-  ), [isSuperAdmin, effectiveOperationalBarbershopId]);
+  ), [isSuperAdmin, resolvedOperationalBarbershopId, resolvedOperationalBranchId]);
 
   const dismissFeedbackToast = React.useCallback(() => {
     if (feedbackTimerRef.current) {
@@ -1792,6 +1813,8 @@ export default function App() {
     setClients([]);
     setBarbers([]);
     setPosSales([]);
+    setCashSessions([]);
+    setCashMovements([]);
     setCashWithdrawals([]);
     setPayrollSettlements([]);
     setOperationalWarnings([]);
@@ -1830,6 +1853,8 @@ export default function App() {
     );
     setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
     setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
+    setCashSessions(Array.isArray(cached.cashSessions) ? cached.cashSessions : []);
+    setCashMovements(Array.isArray(cached.cashMovements) ? cached.cashMovements : []);
     setInventoryItems(Array.isArray(cached.inventoryItems) ? cached.inventoryItems : []);
     setCatalogSettings(cached.catalogSettings || {
       serviceCategories: CATEGORIES,
@@ -1886,6 +1911,14 @@ export default function App() {
     localDevStorage?.setItem('bp_dev_pos_sales', JSON.stringify(posSales));
   }, [posSales, useBrowserCache, localDevStorage]);
   useEffect(() => {
+    if (!useBrowserCache) return;
+    localDevStorage?.setItem('bp_dev_cash_sessions', JSON.stringify(cashSessions));
+  }, [cashSessions, useBrowserCache, localDevStorage]);
+  useEffect(() => {
+    if (!useBrowserCache) return;
+    localDevStorage?.setItem('bp_dev_cash_movements', JSON.stringify(cashMovements));
+  }, [cashMovements, useBrowserCache, localDevStorage]);
+  useEffect(() => {
     if (typeof window === 'undefined' || hasSupabaseConfig) return;
     try {
       window.localStorage.setItem(CASH_WITHDRAWALS_STORAGE_KEY, JSON.stringify(cashWithdrawals));
@@ -1906,11 +1939,11 @@ export default function App() {
     localDevStorage?.removeItem('bp_dev_revenue');
   }, [useBrowserCache, localDevStorage]);
   const [modals, setModals] = useState({ 
-    appointment: false, quickAppointment: false, cashWithdrawal: false, payrollHistory: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, rescheduleAppointment: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false
+    appointment: false, quickAppointment: false, cashWithdrawal: false, payrollHistory: false, service: false, finalize: false, client: false, clientDetail: false, appointmentActions: false, rescheduleAppointment: false, transferAppointment: false, paymentReceipt: false, staffSettlement: false, posSaleReceipt: false, cashClosureReceipt: false
   });
   
   const [selectedData, setSelectedData] = useState({ 
-    appointment: null, quickAppointment: null, cashWithdrawal: null, payrollHistory: null, service: null, finalize: null, client: null, appointmentActions: null, rescheduleAppointment: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null
+    appointment: null, quickAppointment: null, cashWithdrawal: null, payrollHistory: null, service: null, finalize: null, client: null, appointmentActions: null, rescheduleAppointment: null, transferAppointment: null, paymentReceipt: null, staffSettlement: null, posSaleReceipt: null, cashClosureReceipt: null
   });
 
   useEffect(() => {
@@ -2044,7 +2077,7 @@ export default function App() {
             if (!ignore) setLoading(true);
             return;
           }
-          if (isSuperAdmin && !effectiveOperationalBarbershopId) {
+          if (isSuperAdmin && !resolvedOperationalBarbershopId) {
             if (!ignore) {
               clearScopedOperationalState();
               setLoading(false);
@@ -2060,6 +2093,8 @@ export default function App() {
           setBarbers(snapshot.barbers.map((barber, index) => ensureBarberTheme(barber, index)));
           setAppointments(snapshot.appointments);
           setPosSales(snapshot.posSales || []);
+          setCashSessions(snapshot.cashSessions || []);
+          setCashMovements(snapshot.cashMovements || []);
           setInventoryItems(snapshot.inventoryItems || []);
           setCatalogSettings({
             serviceCategories: snapshot.catalogs?.serviceCategories?.length ? snapshot.catalogs.serviceCategories : CATEGORIES,
@@ -2069,11 +2104,15 @@ export default function App() {
           setPayrollSettlements(snapshot.payrollSettlements || []);
           setOperationalWarnings([
             ...(snapshot.posSalesLoadError ? [snapshot.posSalesLoadError] : []),
+            ...(snapshot.cashLoadError ? [snapshot.cashLoadError] : []),
             ...(snapshot.inventoryLoadError ? [snapshot.inventoryLoadError] : []),
             ...(snapshot.payrollLoadWarnings || []),
           ]);
           if (snapshot.posSalesLoadError) {
             notify(`Advertencia de POS\n\n${snapshot.posSalesLoadError}`, 'warning');
+          }
+          if (snapshot.cashLoadError) {
+            notify(`Advertencia de caja\n\n${snapshot.cashLoadError}`, 'warning');
           }
           if (snapshot.payrollLoadWarnings?.length) {
             notify(`Advertencia de nómina\n\n${snapshot.payrollLoadWarnings.join('\n\n')}`, 'warning');
@@ -2112,7 +2151,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [sessionUserId, accessLoaded, isSuperAdmin, availableBarbershops.length, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
+  }, [sessionUserId, accessLoaded, isSuperAdmin, availableBarbershops.length, resolvedOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !sessionUserId || typeof window === 'undefined') return undefined;
@@ -2124,6 +2163,8 @@ export default function App() {
       barbers,
       appointments,
       posSales,
+      cashSessions,
+      cashMovements,
       inventoryItems,
       catalogSettings,
       cashWithdrawals,
@@ -2150,6 +2191,8 @@ export default function App() {
     barbers,
     appointments,
     posSales,
+    cashSessions,
+    cashMovements,
     inventoryItems,
     catalogSettings,
     cashWithdrawals,
@@ -2211,7 +2254,7 @@ export default function App() {
     setClientDirectoryLoaded(false);
     setClientDirectoryData({ clients: [], appointments: [], barbers: [] });
     setClientDirectoryWarnings([]);
-  }, [sessionUserId, effectiveOperationalBarbershopId, superAdminScopeOverride]);
+  }, [sessionUserId, resolvedOperationalBarbershopId, superAdminScopeOverride]);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !sessionUserId || activeTab !== 'clientes' || clientDirectoryLoaded) return undefined;
@@ -2254,7 +2297,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [sessionUserId, activeTab, clientDirectoryLoaded, effectiveOperationalBarbershopId, superAdminScopeOverride, notify]);
+  }, [sessionUserId, activeTab, clientDirectoryLoaded, resolvedOperationalBarbershopId, superAdminScopeOverride, notify]);
 
   const handleSignIn = async (email, password) => {
     if (!supabase) return;
@@ -2532,12 +2575,37 @@ export default function App() {
     }
   };
   const defaultBarberId = barbers[0]?.id || '';
-  const currentBarbershopId = effectiveOperationalBarbershopId;
-  const currentBranchId = effectiveOperationalBranchId;
+  const currentBarbershopId = resolvedOperationalBarbershopId;
+  const currentBranchId = resolvedOperationalBranchId;
   const currentBarbershop = availableBarbershops.find((shop) => String(shop.id) === String(currentBarbershopId || ''))
     || availableBarbershops[0]
     || null;
   const currentBranch = availableBranches.find((branch) => String(branch.id) === String(currentBranchId || '')) || null;
+  const activeCashSession = useMemo(() => (
+    (cashSessions || []).find((cashSession) => (
+      cashSession.status !== 'closed'
+      && !cashSession.closedAt
+      && String(cashSession.barbershopId || '') === String(currentBarbershopId || '')
+      && String(cashSession.branchId || '') === String(currentBranchId || '')
+    )) || null
+  ), [cashSessions, currentBarbershopId, currentBranchId]);
+  const activeCashMovements = useMemo(() => (
+    activeCashSession
+      ? (cashMovements || []).filter((movement) => String(movement.cashSessionId || '') === String(activeCashSession.id || ''))
+      : []
+  ), [cashMovements, activeCashSession]);
+  const activeCashPosSales = useMemo(() => (
+    activeCashSession
+      ? (posSales || []).filter((sale) => (
+        String(sale.cashSessionId || '') === String(activeCashSession.id || '')
+        && !sale.canceledAt
+      ))
+      : []
+  ), [posSales, activeCashSession]);
+  const activePosSales = useMemo(
+    () => (posSales || []).filter((sale) => !sale.canceledAt),
+    [posSales],
+  );
   const isAdmin = isSuperAdmin || currentUserRoles.includes('admin');
   const isCashier = currentUserRoles.includes('cashier');
   const effectiveClientDirectory = useMemo(() => ({
@@ -2559,7 +2627,7 @@ export default function App() {
     { id: 'barberos', label: 'Barbero', icon: UserCheck, allow: isAdmin },
     { id: 'services', label: 'Servicios', icon: Scissors, allow: isAdmin },
     { id: 'inventario', label: 'Inventario', icon: Package, allow: isAdmin },
-    { id: 'caja', label: 'Venta / POS', icon: ShoppingBag, allow: isAdmin || isCashier },
+    { id: 'caja', label: 'Caja', icon: ShoppingBag, allow: isAdmin || isCashier },
     { id: 'reportes', label: 'Reportes', icon: BarChart3, allow: isAdmin },
     { id: 'sistema', label: 'Sistema', icon: Layers, allow: isAdmin },
   ].filter((item) => {
@@ -2873,6 +2941,10 @@ export default function App() {
       setModals({ ...modals, finalize: true });
       return;
     }
+    if (status === 'Finalizada' && apt.status !== 'Finalizada' && extra && !activeCashSession) {
+      notify('Debes abrir caja antes de cobrar y finalizar servicios.', 'warning');
+      return;
+    }
 
     let resolvedClientId = apt.clientId || null;
     let clientsForAppointmentSync = clients;
@@ -2936,6 +3008,55 @@ export default function App() {
         await refreshClientsAfterAppointmentSync();
       } catch (error) {
         handleSyncError(error, 'No pude guardar el cambio de estado en Supabase.');
+        setAppointments(prev => prev.map(a => (a.id === id ? apt : a)));
+        return;
+      }
+    }
+
+    if (status === 'Finalizada' && apt.status !== 'Finalizada' && extra) {
+      const appointmentClient = clientsForAppointmentSync.find((client) => String(client.id) === String(updatedAppointment.clientId || ''));
+      const appointmentBarber = barbers.find((barber) => String(barber.id) === String(updatedAppointment.barberId || ''));
+      const normalizeChargedItem = (item) => {
+        const matchedService = (services || []).find((service) => (
+          String(service.id || '') === String(item.id || '')
+          || String(service.name || '').toLowerCase() === String(item.name || '').toLowerCase()
+        ));
+        return {
+          id: item.id,
+          inventoryItemId: item.inventoryItemId || matchedService?.inventoryItemId || null,
+          inventoryUsage: item.inventoryUsage || matchedService?.inventoryUsage || [],
+          name: item.name,
+          category: item.category || matchedService?.category || 'Servicio',
+          price: Number(item.price) || 0,
+          qty: Number(item.qty) || 1,
+          source: 'appointment',
+          appointmentId: updatedAppointment.id,
+          barberId: updatedAppointment.barberId || null,
+          barberName: appointmentBarber?.name || updatedAppointment.barberName || '',
+          clientName: appointmentClient?.name || updatedAppointment.clientName || STANDARD_CLIENT_NAME,
+        };
+      };
+      const serviceSaleRecord = await handleRegisterPosSale({
+        clientId: updatedAppointment.clientId || null,
+        clientName: appointmentClient?.name || updatedAppointment.clientName || STANDARD_CLIENT_NAME,
+        items: Array.isArray(extra.items) && extra.items.length
+          ? extra.items.map(normalizeChargedItem)
+          : [normalizeChargedItem({
+            id: updatedAppointment.serviceId || updatedAppointment.id,
+            name: updatedAppointment.service || 'Servicio',
+            category: 'Servicio',
+            price: Number(updatedAppointment.grossAmount || updatedAppointment.price || 0),
+            qty: 1,
+          })],
+        rawSubtotal: Number(extra.grossAmount ?? extra.price ?? 0),
+        discountTotal: Number(extra.discountAmount || 0),
+        subtotal: Number(extra.price || 0),
+        paymentMethod: extra.paymentMethod || 'cash',
+        promotion: extra.promotionName ? { id: null, name: extra.promotionName } : null,
+        notes: extra.notes || null,
+      });
+      if (!serviceSaleRecord) {
+        setAppointments(prev => prev.map(a => (a.id === id ? apt : a)));
       }
     }
   };
@@ -3130,7 +3251,38 @@ export default function App() {
     }
   };
 
-  const handleConfirmPayment = async (barberId) => {
+  const normalizePayrollPaymentMethod = (method) => (
+    ['cash_box', 'transfer', 'external'].includes(method) ? method : 'cash_box'
+  );
+
+  const getPayrollPaymentMethodLabel = (method) => ({
+    cash_box: 'Efectivo caja',
+    transfer: 'Transferencia',
+    external: 'Externo',
+  }[normalizePayrollPaymentMethod(method)]);
+
+  const buildPayrollCashMovement = (settlement, barber, paidAt, referenceId = null) => ({
+    id: globalThis.crypto?.randomUUID?.() || `cash-payroll-${Date.now()}-${barber?.id || settlement.id}`,
+    cashSessionId: activeCashSession?.id || null,
+    barbershopId: currentBarbershopId,
+    branchId: currentBranchId || barber?.branchId || null,
+    type: 'out',
+    movementKind: 'payroll_payment',
+    paymentMethod: 'cash',
+    amount: Number(settlement.total || 0),
+    notes: `Pago de nómina - ${barber?.fullName || barber?.name || 'Personal'}`,
+    referenceType: 'payroll_payment',
+    referenceId: referenceId || settlement.id,
+    createdBy: session?.user?.id || null,
+    createdAt: paidAt,
+  });
+
+  const handleConfirmPayment = async (barberId, method = 'cash_box') => {
+    const paymentMethod = normalizePayrollPaymentMethod(method);
+    if (paymentMethod === 'cash_box' && !activeCashSession) {
+      notify('Debes abrir caja antes de pagar nómina con efectivo de caja.', 'warning');
+      return;
+    }
     const paidBarber = barbers.find((barber) => String(barber.id) === String(barberId));
     const nomina = paidBarber
       ? getBarberNominaData(paidBarber, appointments)
@@ -3165,6 +3317,7 @@ export default function App() {
           paidAt: settlementTime,
           paidBy: session?.user?.id || null,
           type: 'individual',
+          notes: `Liquidación individual de nómina - ${getPayrollPaymentMethodLabel(paymentMethod)}`,
           barbershopId: currentBarbershopId || null,
           branchId: currentBranchId || paidBarber.branchId || null,
           advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
@@ -3188,15 +3341,45 @@ export default function App() {
         ? { ...withdrawal, settledAt: settlementTime, settlementId }
         : withdrawal
     )));
+    const cashMovementDraft = settlementRecord && paymentMethod === 'cash_box'
+      ? buildPayrollCashMovement(settlementRecord, paidBarber, settlementTime)
+      : null;
     if (settlementRecord) {
       setPayrollSettlements((prev) => [settlementRecord, ...prev]);
+    }
+    if (cashMovementDraft) {
+      setCashMovements((prev) => [...prev, cashMovementDraft]);
     }
     setModals({ ...modals, paymentReceipt: false });
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current) {
       try {
         if (settlementRecord) {
-          await createPayrollSettlements([settlementRecord], session?.user?.id, superAdminScopeOverride);
+          const savedSettlements = await createPayrollSettlements([settlementRecord], session?.user?.id, superAdminScopeOverride);
+          const savedSettlement = savedSettlements?.[0] || settlementRecord;
+          if (paymentMethod === 'cash_box') {
+            const savedMovement = await createCashAuditMovement(
+              {
+                cashSessionId: activeCashSession.id,
+                type: 'out',
+                amount: settlementRecord.total,
+                notes: `Pago de nómina - ${paidBarber?.fullName || paidBarber?.name || 'Personal'}`,
+                movementKind: 'payroll_payment',
+                paymentMethod: 'cash',
+                referenceType: 'payroll_payment',
+                referenceId: savedSettlement.id,
+                barbershopId: currentBarbershopId,
+                branchId: currentBranchId || paidBarber?.branchId || null,
+              },
+              session?.user?.id,
+              superAdminScopeOverride,
+            );
+            if (cashMovementDraft) {
+              setCashMovements((prev) => prev.map((movement) => (
+                String(movement.id) === String(cashMovementDraft.id) ? savedMovement : movement
+              )));
+            }
+          }
         }
         if (updatedAppointments.length) {
           await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
@@ -3207,7 +3390,12 @@ export default function App() {
     }
   };
 
-  const handleConfirmStaffSettlement = async (barberIds = []) => {
+  const handleConfirmStaffSettlement = async (barberIds = [], method = 'cash_box') => {
+    const paymentMethod = normalizePayrollPaymentMethod(method);
+    if (paymentMethod === 'cash_box' && !activeCashSession) {
+      notify('Debes abrir caja antes de liquidar nómina con efectivo de caja.', 'warning');
+      return;
+    }
     const normalizedIds = new Set((barberIds || []).map(id => String(id)));
     const settlementTime = new Date().toISOString();
     const settlementIdsByBarber = new Map(
@@ -3248,6 +3436,7 @@ export default function App() {
           paidAt: settlementTime,
           paidBy: session?.user?.id || null,
           type: 'staff',
+          notes: `Liquidación general de equipo - ${getPayrollPaymentMethodLabel(paymentMethod)}`,
           barbershopId: currentBarbershopId || null,
           branchId: currentBranchId || barber.branchId || null,
           advanceIds: pendingWithdrawals.map((withdrawal) => withdrawal.id),
@@ -3275,12 +3464,46 @@ export default function App() {
     if (settlementRecords.length) {
       setPayrollSettlements((prev) => [...settlementRecords, ...prev]);
     }
+    const barberById = new Map((barbers || []).map((barber) => [String(barber.id), barber]));
+    const cashMovementDrafts = paymentMethod === 'cash_box'
+      ? settlementRecords.map((settlement) => buildPayrollCashMovement(settlement, barberById.get(String(settlement.barberId)), settlementTime))
+      : [];
+    if (cashMovementDrafts.length) {
+      setCashMovements((prev) => [...prev, ...cashMovementDrafts]);
+    }
     setModals(prev => ({ ...prev, staffSettlement: false }));
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current) {
       try {
         if (settlementRecords.length) {
-          await createPayrollSettlements(settlementRecords, session?.user?.id, superAdminScopeOverride);
+          const savedSettlements = await createPayrollSettlements(settlementRecords, session?.user?.id, superAdminScopeOverride);
+          if (paymentMethod === 'cash_box') {
+            const savedMovements = [];
+            for (const savedSettlement of savedSettlements || []) {
+              const barber = barberById.get(String(savedSettlement.barberId));
+              const savedMovement = await createCashAuditMovement(
+                {
+                  cashSessionId: activeCashSession.id,
+                  type: 'out',
+                  amount: savedSettlement.total,
+                  notes: `Pago de nómina - ${barber?.fullName || barber?.name || 'Personal'}`,
+                  movementKind: 'payroll_payment',
+                  paymentMethod: 'cash',
+                  referenceType: 'payroll_payment',
+                  referenceId: savedSettlement.id,
+                  barbershopId: currentBarbershopId,
+                  branchId: currentBranchId || barber?.branchId || null,
+                },
+                session?.user?.id,
+                superAdminScopeOverride,
+              );
+              savedMovements.push({ localId: savedSettlement.id, movement: savedMovement });
+            }
+            if (savedMovements.length) {
+              const savedMovementByReference = new Map(savedMovements.map((item) => [String(item.localId), item.movement]));
+              setCashMovements((prev) => prev.map((movement) => savedMovementByReference.get(String(movement.referenceId)) || movement));
+            }
+          }
         }
         if (updatedAppointments.length) {
           await upsertAppointments(updatedAppointments, services, currentBarbershopId, currentBranchId, barbers, clients);
@@ -3813,6 +4036,183 @@ export default function App() {
     }
   };
 
+  const handleOpenCashSession = async ({ openingAmount = 0, notes = '' } = {}) => {
+    if (!currentBarbershopId) {
+      notify('No se puede abrir caja porque no hay una barbería activa.', 'error');
+      return null;
+    }
+    if (!currentBranchId) {
+      notify('Debes seleccionar una sucursal antes de abrir caja.', 'warning');
+      return null;
+    }
+    if (activeCashSession) {
+      notify('Ya hay una caja abierta en esta sucursal.', 'warning');
+      return activeCashSession;
+    }
+
+    if (!hasSupabaseConfig || !session?.user?.id) {
+      const sessionRecord = {
+        id: makeId(),
+        barbershopId: currentBarbershopId,
+        branchId: currentBranchId,
+        openedBy: session?.user?.id || null,
+        closedBy: null,
+        openedAt: new Date().toISOString(),
+        closedAt: null,
+        openingAmount: Number(openingAmount || 0),
+        closingAmount: 0,
+        expectedCashAmount: Number(openingAmount || 0),
+        countedCashAmount: 0,
+        differenceAmount: 0,
+        status: 'open',
+        notes,
+      };
+      const movementRecord = {
+        id: makeId(),
+        cashSessionId: sessionRecord.id,
+        barbershopId: currentBarbershopId,
+        branchId: currentBranchId,
+        type: 'in',
+        movementKind: 'opening',
+        paymentMethod: 'cash',
+        amount: Number(openingAmount || 0),
+        notes: notes || 'Apertura de caja',
+        createdBy: session?.user?.id || null,
+        createdAt: new Date().toISOString(),
+      };
+      setCashSessions((prev) => [sessionRecord, ...prev]);
+      setCashMovements((prev) => [...prev, movementRecord]);
+      notify('Caja abierta correctamente.', 'success');
+      return sessionRecord;
+    }
+
+    try {
+      const result = await openCashSession(
+        { openingAmount, notes, barbershopId: currentBarbershopId, branchId: currentBranchId },
+        session.user.id,
+        superAdminScopeOverride,
+      );
+      setCashSessions((prev) => [result.session, ...prev]);
+      setCashMovements((prev) => [...prev, result.movement]);
+      notify('Caja abierta correctamente.', 'success');
+      return result.session;
+    } catch (error) {
+      handleSyncError(error, 'No pude abrir la caja.');
+      return null;
+    }
+  };
+
+  const handleCashMovement = async ({ type = 'in', amount = 0, notes = '' } = {}) => {
+    if (!activeCashSession) {
+      notify('Debes abrir caja antes de registrar movimientos.', 'warning');
+      return null;
+    }
+
+    if (!hasSupabaseConfig || !session?.user?.id) {
+      const movementRecord = {
+        id: makeId(),
+        cashSessionId: activeCashSession.id,
+        barbershopId: currentBarbershopId,
+        branchId: currentBranchId,
+        type: type === 'out' ? 'out' : 'in',
+        movementKind: 'manual',
+        paymentMethod: 'cash',
+        amount: Number(amount || 0),
+        notes,
+        createdBy: session?.user?.id || null,
+        createdAt: new Date().toISOString(),
+      };
+      setCashMovements((prev) => [...prev, movementRecord]);
+      notify('Movimiento de caja registrado.', 'success');
+      return movementRecord;
+    }
+
+    try {
+      const movement = await createCashMovement(
+        { cashSessionId: activeCashSession.id, type, amount, notes, barbershopId: currentBarbershopId, branchId: currentBranchId },
+        session.user.id,
+        superAdminScopeOverride,
+      );
+      setCashMovements((prev) => [...prev, movement]);
+      notify('Movimiento de caja registrado.', 'success');
+      return movement;
+    } catch (error) {
+      handleSyncError(error, 'No pude registrar el movimiento de caja.');
+      return null;
+    }
+  };
+
+  const calculateLocalExpectedCash = (movements = activeCashMovements) =>
+    (movements || []).reduce((total, movement) => {
+      if ((movement.paymentMethod || 'cash') !== 'cash') return total;
+      const amount = Number(movement.amount || 0);
+      return movement.type === 'out' ? total - amount : total + amount;
+    }, 0);
+
+  const handleCloseCashSession = async ({ countedCashAmount = 0, notes = '' } = {}) => {
+    if (!activeCashSession) {
+      notify('No hay una caja abierta para cerrar.', 'warning');
+      return null;
+    }
+    const receiptMovements = activeCashMovements;
+    const receiptSales = activeCashPosSales;
+
+    if (!hasSupabaseConfig || !session?.user?.id) {
+      const expectedCashAmount = calculateLocalExpectedCash();
+      const counted = Number(countedCashAmount || 0);
+      const closedSession = {
+        ...activeCashSession,
+        closedBy: session?.user?.id || null,
+        closedAt: new Date().toISOString(),
+        closingAmount: counted,
+        countedCashAmount: counted,
+        expectedCashAmount,
+        differenceAmount: counted - expectedCashAmount,
+        status: 'closed',
+        notes,
+      };
+      setCashSessions((prev) => prev.map((cashSession) => String(cashSession.id) === String(activeCashSession.id) ? closedSession : cashSession));
+      setSelectedData((prev) => ({
+        ...prev,
+        cashClosureReceipt: {
+          cashSession: closedSession,
+          cashMovements: receiptMovements,
+          posSales: receiptSales,
+          barbershopName: currentBarbershop?.name || 'BarberPro',
+          branchName: currentBranch?.name || 'General',
+        },
+      }));
+      setModals((prev) => ({ ...prev, cashClosureReceipt: true }));
+      notify('Caja cerrada correctamente.', 'success');
+      return closedSession;
+    }
+
+    try {
+      const closedSession = await closeCashSession(
+        { cashSessionId: activeCashSession.id, countedCashAmount, notes, barbershopId: currentBarbershopId, branchId: currentBranchId },
+        session.user.id,
+        superAdminScopeOverride,
+      );
+      setCashSessions((prev) => prev.map((cashSession) => String(cashSession.id) === String(closedSession.id) ? closedSession : cashSession));
+      setSelectedData((prev) => ({
+        ...prev,
+        cashClosureReceipt: {
+          cashSession: closedSession,
+          cashMovements: receiptMovements,
+          posSales: receiptSales,
+          barbershopName: currentBarbershop?.name || 'BarberPro',
+          branchName: currentBranch?.name || 'General',
+        },
+      }));
+      setModals((prev) => ({ ...prev, cashClosureReceipt: true }));
+      notify('Caja cerrada correctamente.', 'success');
+      return closedSession;
+    } catch (error) {
+      handleSyncError(error, 'No pude cerrar la caja.');
+      return null;
+    }
+  };
+
   const handleRegisterPosSale = async (saleDraft) => {
     const normalizedItems = Array.isArray(saleDraft?.items) ? saleDraft.items : [];
     if (!currentBarbershopId) {
@@ -3823,13 +4223,23 @@ export default function App() {
       notify('Debes seleccionar una sucursal antes de registrar una venta POS.', 'warning');
       return null;
     }
+    if (!activeCashSession) {
+      notify('Debes abrir caja antes de registrar ventas.', 'warning');
+      return null;
+    }
     const rawSubtotal = Number(saleDraft?.rawSubtotal) || normalizedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
     const discountTotal = Number(saleDraft?.discountTotal || 0);
     const subtotal = Number(saleDraft?.subtotal) || Math.max(rawSubtotal - discountTotal, 0);
-    const productTotal = normalizedItems
+    const rawProductTotal = normalizedItems
       .filter((item) => item.category === 'Producto')
       .reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
-    const serviceTotal = Math.max(subtotal - productTotal, 0);
+    const rawServiceTotal = Math.max(rawSubtotal - rawProductTotal, 0);
+    const productTotal = Number.isFinite(Number(saleDraft?.productTotal))
+      ? Number(saleDraft.productTotal)
+      : (rawServiceTotal > 0 ? rawProductTotal : subtotal);
+    const serviceTotal = Number.isFinite(Number(saleDraft?.serviceTotal))
+      ? Number(saleDraft.serviceTotal)
+      : (rawServiceTotal > 0 ? Math.max(subtotal - productTotal, 0) : 0);
     const nextLocalTicketNumber = (posSales || []).reduce(
       (max, sale) => Math.max(max, Number(sale.ticketNumber || 0)),
       0,
@@ -3844,8 +4254,16 @@ export default function App() {
         category: item.category,
         price: Number(item.price) || 0,
         qty: Number(item.qty) || 0,
+        productId: item.category === 'Producto' ? (item.serviceId || item.id) : null,
         inventoryItemId: item.inventoryItemId || null,
         inventoryUsage: Array.isArray(item.inventoryUsage) ? item.inventoryUsage : [],
+        inventoryAction: item.category === 'Producto' ? 'decrement_pending' : null,
+        inventoryQuantity: item.category === 'Producto' ? Number(item.qty) || 0 : 0,
+        source: item.source || '',
+        appointmentId: item.appointmentId || null,
+        barberId: item.barberId || null,
+        barberName: item.barberName || '',
+        clientName: item.clientName || '',
       })),
       rawSubtotal,
       discountTotal,
@@ -3863,6 +4281,10 @@ export default function App() {
         : (saleDraft?.manualDiscount
           ? `Descuento manual aplicado: ${saleDraft.manualDiscount.type === 'percentage' ? `${saleDraft.manualDiscount.value}%` : `C$ ${Number(saleDraft.manualDiscount.value || 0).toLocaleString('es-NI')}`}`
           : ''),
+      cashSessionId: activeCashSession.id,
+      paymentMethod: saleDraft?.paymentMethod || 'cash',
+      clientId: saleDraft?.clientId || null,
+      clientName: saleDraft?.clientName || '',
       barbershopId: currentBarbershopId || null,
       branchId: currentBranchId || null,
       createdAt: new Date().toISOString(),
@@ -3870,6 +4292,26 @@ export default function App() {
     };
 
     setPosSales((prev) => [...prev, saleRecord]);
+    if ((!hasSupabaseConfig || !session?.user?.id) && saleRecord.paymentMethod === 'cash') {
+      setCashMovements((prev) => ([
+        ...prev,
+        {
+          id: makeId(),
+          cashSessionId: activeCashSession.id,
+          barbershopId: currentBarbershopId,
+          branchId: currentBranchId,
+          type: 'in',
+          movementKind: 'sale',
+          paymentMethod: 'cash',
+          amount: saleRecord.subtotal,
+          notes: `Venta POS #${saleRecord.ticketNumber}`,
+          referenceType: 'pos_sale',
+          referenceId: saleRecord.id,
+          createdBy: session?.user?.id || null,
+          createdAt: saleRecord.createdAt,
+        },
+      ]));
+    }
 
     if (!hasSupabaseConfig || !session?.user?.id) {
       setSelectedData((prev) => ({
@@ -3901,6 +4343,12 @@ export default function App() {
       if (persistedSale.inventoryConsumptionError) {
         notify(persistedSale.inventoryConsumptionError, 'warning');
       }
+      if (persistedSale.paymentMethod === 'cash' && persistedSale.cashMovement) {
+        setCashMovements((prev) => ([
+          ...prev.filter((movement) => String(movement.referenceId || '') !== String(saleRecord.id)),
+          persistedSale.cashMovement,
+        ]));
+      }
       setSelectedData((prev) => ({
         ...prev,
         posSaleReceipt: {
@@ -3919,28 +4367,144 @@ export default function App() {
     }
   };
 
-  const handleCancelPosSale = async (saleId) => {
+  const handleCancelPosSale = async (saleId, reason = '') => {
     if (!saleId) return false;
+    const saleToCancel = (posSales || []).find((sale) => String(sale.id) === String(saleId));
+    if (!saleToCancel || saleToCancel.canceledAt) return false;
+    const canceledAt = new Date().toISOString();
+    const cancellationReason = reason || 'Sin motivo especificado';
+    const reversalMovement = {
+      id: makeId(),
+      cashSessionId: saleToCancel.cashSessionId || activeCashSession?.id || null,
+      barbershopId: saleToCancel.barbershopId || currentBarbershopId,
+      branchId: saleToCancel.branchId || currentBranchId,
+      type: 'out',
+      movementKind: 'sale',
+      paymentMethod: saleToCancel.paymentMethod || 'cash',
+      amount: Number(saleToCancel.subtotal || 0),
+      notes: `Anulación venta POS #${saleToCancel.ticketNumber || ''} - ${cancellationReason}`,
+      referenceType: 'pos_sale_void',
+      referenceId: saleToCancel.id,
+      ticketNumber: saleToCancel.ticketNumber || 0,
+      createdBy: session?.user?.id || null,
+      createdAt: canceledAt,
+    };
 
     if (!hasSupabaseConfig || !session?.user?.id) {
-      setPosSales((prev) => prev.filter((sale) => String(sale.id) !== String(saleId)));
+      setPosSales((prev) => prev.map((sale) => (
+        String(sale.id) === String(saleId)
+          ? { ...sale, canceledAt, canceledBy: session?.user?.id || null, cancellationReason }
+          : sale
+      )));
+      setCashMovements((prev) => [...prev, reversalMovement]);
       setModals((prev) => ({ ...prev, posSaleReceipt: false }));
       setSelectedData((prev) => ({ ...prev, posSaleReceipt: null }));
-      notify('Venta cancelada.', 'success');
+      notify('Venta anulada con reverso de caja.', 'success');
       return true;
     }
 
     try {
-      await deletePosSaleRecord(saleId);
-      setPosSales((prev) => prev.filter((sale) => String(sale.id) !== String(saleId)));
+      const result = await cancelPosSaleWithReversal(
+        saleToCancel,
+        cancellationReason,
+        session.user.id,
+        superAdminScopeOverride,
+      );
+      setPosSales((prev) => prev.map((sale) => String(sale.id) === String(saleId) ? result.sale : sale));
+      setCashMovements((prev) => [...prev, result.movement]);
       setModals((prev) => ({ ...prev, posSaleReceipt: false }));
       setSelectedData((prev) => ({ ...prev, posSaleReceipt: null }));
-      notify('Venta cancelada.', 'success');
+      notify('Venta anulada con reverso de caja.', 'success');
       return true;
     } catch (error) {
       handleSyncError(error, 'No pude cancelar la venta de POS en Supabase.');
       return false;
     }
+  };
+
+  const handleCancelCashMovement = async (movementId, reason = '') => {
+    if (!movementId) return false;
+    const movementToCancel = (cashMovements || []).find((movement) => String(movement.id) === String(movementId));
+    if (!movementToCancel) return false;
+    const movementNoteMeta = (() => {
+      try {
+        return movementToCancel.notes ? JSON.parse(movementToCancel.notes) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const reversalNotes = JSON.stringify({
+      label: `Anulación movimiento: ${movementNoteMeta?.label || movementToCancel.notes || 'Sin detalle'} - ${reason || 'Sin motivo especificado'}`,
+      currency: movementNoteMeta?.currency === 'USD' ? 'USD' : 'NIO',
+      amountOriginal: Number(movementNoteMeta?.amountOriginal ?? movementToCancel.amount ?? 0),
+      exchangeRate: movementNoteMeta?.exchangeRate ?? null,
+      amountNio: Number(movementToCancel.amount || 0),
+      reversalOf: movementToCancel.id,
+    });
+    const reversalMovement = {
+      id: makeId(),
+      cashSessionId: movementToCancel.cashSessionId || activeCashSession?.id || null,
+      barbershopId: movementToCancel.barbershopId || currentBarbershopId,
+      branchId: movementToCancel.branchId || currentBranchId,
+      type: movementToCancel.type === 'out' ? 'in' : 'out',
+      movementKind: 'manual',
+      paymentMethod: movementToCancel.paymentMethod || 'cash',
+      amount: Number(movementToCancel.amount || 0),
+      notes: reversalNotes,
+      referenceType: 'cash_movement_void',
+      referenceId: movementToCancel.id,
+      createdBy: session?.user?.id || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (!hasSupabaseConfig || !session?.user?.id) {
+      setCashMovements((prev) => [...prev, reversalMovement]);
+      notify('Movimiento anulado con reverso de caja.', 'success');
+      return true;
+    }
+
+    try {
+      const movement = await createCashAuditMovement(
+        {
+          cashSessionId: movementToCancel.cashSessionId,
+          barbershopId: movementToCancel.barbershopId || currentBarbershopId,
+          branchId: movementToCancel.branchId || currentBranchId,
+          type: movementToCancel.type === 'out' ? 'in' : 'out',
+          movementKind: 'manual',
+          paymentMethod: movementToCancel.paymentMethod || 'cash',
+          amount: Number(movementToCancel.amount || 0),
+          notes: reversalNotes,
+          referenceType: 'cash_movement_void',
+          referenceId: movementToCancel.id,
+        },
+        session.user.id,
+        superAdminScopeOverride,
+      );
+      setCashMovements((prev) => [...prev, movement]);
+      notify('Movimiento anulado con reverso de caja.', 'success');
+      return true;
+    } catch (error) {
+      handleSyncError(error, 'No pude anular el movimiento de caja.');
+      return false;
+    }
+  };
+
+  const handlePrintCashClosureFromHistory = (cashSessionRecord) => {
+    if (!cashSessionRecord?.id) return;
+    setSelectedData((prev) => ({
+      ...prev,
+      cashClosureReceipt: {
+        cashSession: cashSessionRecord,
+        cashMovements: (cashMovements || []).filter((movement) => String(movement.cashSessionId || '') === String(cashSessionRecord.id || '')),
+        posSales: (posSales || []).filter((sale) => (
+          String(sale.cashSessionId || '') === String(cashSessionRecord.id || '')
+          && !sale.canceledAt
+        )),
+        barbershopName: currentBarbershop?.name || 'BarberPro',
+        branchName: currentBranch?.name || 'General',
+      },
+    }));
+    setModals((prev) => ({ ...prev, cashClosureReceipt: true }));
   };
 
   const getNextWalkinQueueTime = (barberId, date = getTodayString()) => {
@@ -4141,7 +4705,7 @@ export default function App() {
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
-          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={posSales} />}
+          {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={activePosSales} />}
           {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} onTransferApt={openTransferAppointment} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
@@ -4190,7 +4754,27 @@ export default function App() {
               onDeleteProduct={handleDeleteInventoryProduct}
             />
           )}
-          {activeTab === 'caja' && <POSView services={services} onSale={handleRegisterPosSale} />}
+          {activeTab === 'caja' && (
+            <POSView
+              services={services}
+              clients={effectiveClientDirectory.clients}
+              onSale={handleRegisterPosSale}
+              cashSession={activeCashSession}
+              cashMovements={activeCashMovements}
+              posSales={activeCashPosSales}
+              cashSessions={cashSessions}
+              allCashMovements={cashMovements}
+              allPosSales={posSales}
+              onOpenCashSession={handleOpenCashSession}
+              onCloseCashSession={handleCloseCashSession}
+              onPrintCashClosure={handlePrintCashClosureFromHistory}
+              onCashMovement={handleCashMovement}
+              onCancelSale={handleCancelPosSale}
+              onCancelCashMovement={handleCancelCashMovement}
+              confirmAction={confirmAction}
+              users={accessControl.users}
+            />
+          )}
           {activeTab === 'reportes' && (
             <ReportsView
               appointments={appointments}
@@ -4199,7 +4783,7 @@ export default function App() {
               services={services}
               branches={availableBranches}
               currentBranchId={currentBranchId}
-              posSales={posSales}
+              posSales={activePosSales}
             />
           )}
           {activeTab === 'sistema' && (
@@ -4236,6 +4820,7 @@ export default function App() {
       {modals.paymentReceipt && <PaymentReceiptModal data={selectedData.paymentReceipt} onClose={() => setModals({...modals, paymentReceipt: false})} onConfirmPayment={handleConfirmPayment} confirmAction={confirmAction} />}
       {modals.posSaleReceipt && <PosSaleReceiptModal data={selectedData.posSaleReceipt} onClose={() => setModals({...modals, posSaleReceipt: false})} onCancelSale={handleCancelPosSale} confirmAction={confirmAction} />}
       {modals.staffSettlement && <StaffSettlementModal data={selectedData.staffSettlement} onClose={() => setModals({...modals, staffSettlement: false})} onConfirmSettlement={handleConfirmStaffSettlement} confirmAction={confirmAction} />}
+      {modals.cashClosureReceipt && <CashClosureReceiptModal data={selectedData.cashClosureReceipt} onClose={() => setModals({...modals, cashClosureReceipt: false})} />}
       {showSelfPasswordModal && (
         <Suspense fallback={accessUiFallback}>
         <PasswordActionModal

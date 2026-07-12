@@ -1,12 +1,20 @@
-import React, { memo, useDeferredValue, useMemo, useState } from 'react';
+import React, { memo, useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   Check,
   CheckCircle2,
   ChevronDown,
   Clock,
+  CreditCard,
   DollarSign,
   Plus,
+  ListChecks,
+  ReceiptText,
+  RotateCcw,
+  Save,
   Search,
   ShoppingBag,
   Sparkles,
@@ -20,6 +28,7 @@ import {
 import {
   calculatePromotionDiscount,
   formatPromotionValue,
+  getPhoneDigits,
   getTodayString,
   isPromotionService,
   standardizeDate,
@@ -344,15 +353,305 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
   );
 }
 
-export function POSView({ services, onSale }) {
+const summarizeMovementItems = (items = []) => {
+  if (!Array.isArray(items) || items.length === 0) return 'Sin detalle guardado';
+  return items
+    .map((item) => `${item.name || 'Item'} x${Number(item.qty || 1)}`)
+    .join(' · ');
+};
+
+const SERVICE_INCOME_LABELS = {
+  Cortes: 'Servicio de corte',
+  Tratamientos: 'Tratamiento',
+  Facial: 'Servicio facial',
+  Uñas: 'Servicio de uñas',
+  Combo: 'Combo de servicios',
+  Promociones: 'Promoción',
+  Servicio: 'Servicio',
+};
+
+const NIO_BILL_DENOMINATIONS = [1000, 500, 200, 100, 50, 20, 10];
+const NIO_COIN_DENOMINATIONS = [10, 5, 1];
+const USD_BILL_DENOMINATIONS = [100, 50, 20, 10, 5, 1];
+const DEFAULT_EXCHANGE_RATE = 36.7;
+
+const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+const parseJsonNote = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const getNoteLabel = (value, fallback = '') => {
+  const parsed = parseJsonNote(value);
+  return parsed?.label || parsed?.source || fallback || value || '';
+};
+
+const getUniqueLabels = (values = []) => [...new Set(values.filter(Boolean))];
+
+const getSaleIncomeType = (sale) => {
+  const items = Array.isArray(sale.items) ? sale.items : [];
+  const categories = getUniqueLabels(items.map((item) => item.category || 'Servicio'));
+  const hasProducts = categories.includes('Producto') || Number(sale.productTotal || 0) > 0;
+  const serviceCategories = categories.filter((category) => category !== 'Producto');
+  const hasServices = serviceCategories.length > 0 || Number(sale.serviceTotal || 0) > 0;
+
+  if (hasProducts && hasServices) return 'Venta mixta';
+  if (hasProducts) return 'Venta de producto';
+  if (serviceCategories.length === 1) return SERVICE_INCOME_LABELS[serviceCategories[0]] || 'Servicio';
+  if (serviceCategories.length > 1) return 'Servicios varios';
+  return 'Ingreso por servicio';
+};
+
+const getSaleClientLabel = (sale) => sale.clientName || getUniqueLabels((sale.items || []).map((item) => item.clientName))[0] || '-';
+
+const getSaleBarberLabel = (sale) => {
+  const barberNames = getUniqueLabels((sale.items || []).map((item) => item.barberName));
+  return barberNames.length ? barberNames.join(', ') : '-';
+};
+
+const getMovementTicketNumber = (movement) => {
+  const match = `${movement.notes || ''}`.match(/(?:POS\s*)?#(\d+)/i);
+  return match ? Number(match[1]) : 0;
+};
+
+const formatTicketNumber = (ticketNumber) => (
+  Number(ticketNumber || 0) > 0 ? String(Number(ticketNumber)).padStart(6, '0') : ''
+);
+
+const summarizeSaleMovementSource = (sale) => {
+  return summarizeMovementItems(sale.items);
+};
+
+export function POSView({
+  services,
+  clients = [],
+  onSale,
+  cashSession = null,
+  cashMovements = [],
+  posSales = [],
+  cashSessions = [],
+  allCashMovements = [],
+  allPosSales = [],
+  onOpenCashSession,
+  onCloseCashSession,
+  onPrintCashClosure,
+  onCashMovement,
+  onCancelSale,
+  onCancelCashMovement,
+  confirmAction,
+  users = [],
+}) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
   const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(false);
+  const [closingModalOpen, setClosingModalOpen] = useState(false);
+  const [movementsModalOpen, setMovementsModalOpen] = useState(false);
+  const [movementsSummaryCollapsed, setMovementsSummaryCollapsed] = useState(false);
+  const [cashHistoryOpen, setCashHistoryOpen] = useState(false);
+  const [cashHistorySummaryCollapsed, setCashHistorySummaryCollapsed] = useState(false);
+  const [movementSearch, setMovementSearch] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [genericClientSale, setGenericClientSale] = useState(false);
+  const [openingModalSuppressed, setOpeningModalSuppressed] = useState(false);
+  const [openingBreakdown, setOpeningBreakdown] = useState({
+    nioBills: {},
+    nioCoins: {},
+    usdBills: {},
+  });
+  const [closingBreakdown, setClosingBreakdown] = useState({
+    nioBills: {},
+    nioCoins: {},
+    usdBills: {},
+  });
+  const [openingExchangeRate, setOpeningExchangeRate] = useState('36.7');
+  const [closingExchangeRate, setClosingExchangeRate] = useState('36.7');
+  const [closingCardAmount, setClosingCardAmount] = useState('');
+  const [closingTransferAmount, setClosingTransferAmount] = useState('');
+  const [movementAmount, setMovementAmount] = useState('');
+  const [movementNotes, setMovementNotes] = useState('');
+  const [movementType, setMovementType] = useState('in');
+  const [movementCurrency, setMovementCurrency] = useState('NIO');
+  const [movementExchangeRate, setMovementExchangeRate] = useState(String(DEFAULT_EXCHANGE_RATE));
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [cashPaymentCurrency, setCashPaymentCurrency] = useState('NIO');
+  const [saleExchangeRate, setSaleExchangeRate] = useState(String(DEFAULT_EXCHANGE_RATE));
+  const [nioReceived, setNioReceived] = useState('');
+  const [usdReceived, setUsdReceived] = useState('');
   const deferredSearch = useDeferredValue(search);
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const normalizedSearch = deferredSearch.trim().toLowerCase();
+  const normalizedMovementSearch = movementSearch.trim().toLowerCase();
+  const formatCurrency = (value) => `C$ ${(Number(value) || 0).toLocaleString('es-NI')}`;
+  const sumDenominations = (denominations, values) =>
+    denominations.reduce((sum, denomination) => sum + (Number(values[denomination] || 0) * denomination), 0);
+  const openingTotals = useMemo(() => {
+    const nioBillsTotal = sumDenominations(NIO_BILL_DENOMINATIONS, openingBreakdown.nioBills);
+    const nioCoinsTotal = sumDenominations(NIO_COIN_DENOMINATIONS, openingBreakdown.nioCoins);
+    const usdTotal = sumDenominations(USD_BILL_DENOMINATIONS, openingBreakdown.usdBills);
+    const exchangeRate = Math.max(Number(openingExchangeRate || 0), 0);
+
+    return {
+      nioBillsTotal,
+      nioCoinsTotal,
+      nioTotal: nioBillsTotal + nioCoinsTotal,
+      usdTotal,
+      exchangeRate,
+      convertedUsdTotal: usdTotal * exchangeRate,
+      total: nioBillsTotal + nioCoinsTotal + (usdTotal * exchangeRate),
+    };
+  }, [openingBreakdown, openingExchangeRate]);
+  const closingTotals = useMemo(() => {
+    const nioBillsTotal = sumDenominations(NIO_BILL_DENOMINATIONS, closingBreakdown.nioBills);
+    const nioCoinsTotal = sumDenominations(NIO_COIN_DENOMINATIONS, closingBreakdown.nioCoins);
+    const usdTotal = sumDenominations(USD_BILL_DENOMINATIONS, closingBreakdown.usdBills);
+    const exchangeRate = Math.max(Number(closingExchangeRate || 0), 0);
+
+    return {
+      nioBillsTotal,
+      nioCoinsTotal,
+      nioTotal: nioBillsTotal + nioCoinsTotal,
+      usdTotal,
+      exchangeRate,
+      convertedUsdTotal: usdTotal * exchangeRate,
+      total: nioBillsTotal + nioCoinsTotal + (usdTotal * exchangeRate),
+    };
+  }, [closingBreakdown, closingExchangeRate]);
+  const cashSummary = useMemo(() => {
+    const base = {
+      expectedCash: 0,
+      opening: 0,
+      sales: 0,
+      manualIn: 0,
+      manualOut: 0,
+      saleCount: 0,
+    };
+
+    return (cashMovements || []).reduce((summary, movement) => {
+      if ((movement.paymentMethod || 'cash') !== 'cash') return summary;
+      const amount = Number(movement.amount || 0);
+      if (movement.movementKind === 'opening') summary.opening += amount;
+      if (movement.movementKind === 'sale') {
+        summary.sales += movement.type === 'out' ? -amount : amount;
+        summary.saleCount += 1;
+      }
+      if (movement.movementKind === 'manual' && movement.type === 'in') summary.manualIn += amount;
+      if (movement.movementKind === 'manual' && movement.type === 'out') summary.manualOut += amount;
+      summary.expectedCash += movement.type === 'out' ? -amount : amount;
+      return summary;
+    }, base);
+  }, [cashMovements]);
+  const systemPaymentSummary = useMemo(() => (
+    (posSales || []).reduce((summary, sale) => {
+      const method = sale.paymentMethod || 'cash';
+      const amount = Number(sale.subtotal || 0);
+      if (method === 'card') summary.card += amount;
+      if (method === 'transfer') summary.transfer += amount;
+      if (method === 'mixed' || method === 'other') summary.other += amount;
+      return summary;
+    }, { card: 0, transfer: 0, other: 0 })
+  ), [posSales]);
+  const cashCurrencySummary = useMemo(() => {
+    const summary = {
+      expectedNio: 0,
+      expectedUsd: 0,
+      openingNio: 0,
+      openingUsd: 0,
+      salesNio: 0,
+      salesUsd: 0,
+      changeNio: 0,
+      manualInNio: 0,
+      manualOutNio: 0,
+      manualInUsd: 0,
+      manualOutUsd: 0,
+      exchangeRate: Number(closingExchangeRate || openingExchangeRate || DEFAULT_EXCHANGE_RATE) || DEFAULT_EXCHANGE_RATE,
+    };
+
+    (cashMovements || []).forEach((movement) => {
+      if ((movement.paymentMethod || 'cash') !== 'cash') return;
+      if (movement.movementKind === 'sale') return;
+
+      const parsed = parseJsonNote(movement.notes);
+      const amount = Number(movement.amount || 0);
+
+      if (movement.movementKind === 'opening') {
+        const nioTotal = Number(parsed?.nioTotal ?? amount);
+        const usdTotal = Number(parsed?.usdTotal ?? 0);
+        summary.openingNio += nioTotal;
+        summary.openingUsd += usdTotal;
+        summary.expectedNio += nioTotal;
+        summary.expectedUsd += usdTotal;
+        if (parsed?.exchangeRate) summary.exchangeRate = Number(parsed.exchangeRate) || summary.exchangeRate;
+        return;
+      }
+
+      const direction = movement.type === 'out' ? -1 : 1;
+      const currency = parsed?.currency === 'USD' ? 'USD' : 'NIO';
+      const originalAmount = Number(parsed?.amountOriginal ?? (currency === 'USD' ? 0 : amount));
+
+      if (currency === 'USD') {
+        summary.expectedUsd += direction * originalAmount;
+        if (movement.type === 'out') summary.manualOutUsd += originalAmount;
+        else summary.manualInUsd += originalAmount;
+        if (parsed?.exchangeRate) summary.exchangeRate = Number(parsed.exchangeRate) || summary.exchangeRate;
+        return;
+      }
+
+      summary.expectedNio += direction * amount;
+      if (movement.type === 'out') summary.manualOutNio += amount;
+      else summary.manualInNio += amount;
+    });
+
+    (posSales || []).forEach((sale) => {
+      if ((sale.paymentMethod || 'cash') !== 'cash') return;
+      const parsed = parseJsonNote(sale.notes);
+      const paymentMeta = parsed?.paymentMeta;
+      const saleAmount = Number(sale.subtotal || 0);
+
+      if (paymentMeta?.currency === 'USD') {
+        const receivedUsd = Number(paymentMeta.receivedUsd || 0);
+        const changeNio = Number(paymentMeta.changeNio || 0);
+        summary.expectedUsd += receivedUsd;
+        summary.expectedNio -= changeNio;
+        summary.salesUsd += receivedUsd;
+        summary.changeNio += changeNio;
+        if (paymentMeta.exchangeRate) summary.exchangeRate = Number(paymentMeta.exchangeRate) || summary.exchangeRate;
+        return;
+      }
+
+      summary.expectedNio += saleAmount;
+      summary.salesNio += saleAmount;
+    });
+
+    summary.expectedNio = roundMoney(summary.expectedNio);
+    summary.expectedUsd = roundMoney(summary.expectedUsd);
+    summary.expectedEquivalent = roundMoney(summary.expectedNio + (summary.expectedUsd * summary.exchangeRate));
+    return summary;
+  }, [cashMovements, closingExchangeRate, openingExchangeRate, posSales]);
+  const totalSalesSummary = cashSummary.sales + systemPaymentSummary.card + systemPaymentSummary.transfer + systemPaymentSummary.other;
+  const closingCardCounted = Number(closingCardAmount || 0);
+  const closingTransferCounted = Number(closingTransferAmount || 0);
+  const closingDifferences = {
+    cash: closingTotals.total - cashCurrencySummary.expectedEquivalent,
+    nio: closingTotals.nioTotal - cashCurrencySummary.expectedNio,
+    usd: closingTotals.usdTotal - cashCurrencySummary.expectedUsd,
+    card: closingCardCounted - systemPaymentSummary.card,
+    transfer: closingTransferCounted - systemPaymentSummary.transfer,
+  };
+  const isBalancedClose = Math.abs(closingDifferences.nio) < 0.01
+    && Math.abs(closingDifferences.usd) < 0.01
+    && Math.abs(closingDifferences.card) < 0.01
+    && Math.abs(closingDifferences.transfer) < 0.01;
+  const shouldShowOpeningModal = !cashSession && !openingModalSuppressed;
 
   const filtered = useMemo(() => (
     (services || []).filter((service) => (
@@ -360,6 +659,22 @@ export function POSView({ services, onSale }) {
       && service.name.toLowerCase().includes(normalizedSearch)
     ))
   ), [services, normalizedSearch]);
+  const selectedClient = useMemo(
+    () => (clients || []).find((client) => String(client.id) === String(selectedClientId || '')) || null,
+    [clients, selectedClientId],
+  );
+  const filteredTicketClients = useMemo(() => {
+    const query = clientSearch.trim().toLowerCase();
+    const phoneQuery = getPhoneDigits(clientSearch);
+    if (!query && !phoneQuery) return (clients || []).slice(0, 6);
+    return (clients || [])
+      .filter((client) => {
+        const name = `${client.name || ''}`.toLowerCase();
+        const phone = getPhoneDigits(client.phone || '');
+        return name.includes(query) || (phoneQuery && phone.includes(phoneQuery));
+      })
+      .slice(0, 8);
+  }, [clientSearch, clients]);
 
   const savedPromotions = useMemo(
     () => (services || [])
@@ -385,6 +700,15 @@ export function POSView({ services, onSale }) {
 
   const promotionDiscount = promotionPreview.amount;
   const totalToCharge = Math.max(subtotal - promotionDiscount, 0);
+  const activeSaleExchangeRate = Math.max(Number(saleExchangeRate || 0), 0);
+  const nioReceivedAmount = Math.max(Number(nioReceived || 0), 0);
+  const nioChangeNio = Math.max(roundMoney(nioReceivedAmount - totalToCharge), 0);
+  const nioPaymentIsEnough = cashPaymentCurrency !== 'NIO' || nioReceivedAmount + 0.01 >= totalToCharge;
+  const usdReceivedAmount = Math.max(Number(usdReceived || 0), 0);
+  const usdReceivedEquivalent = roundMoney(usdReceivedAmount * activeSaleExchangeRate);
+  const usdChangeNio = Math.max(roundMoney(usdReceivedEquivalent - totalToCharge), 0);
+  const usdPaymentIsEnough = cashPaymentCurrency !== 'USD' || usdReceivedEquivalent + 0.01 >= totalToCharge;
+  const cashPaymentIsEnough = paymentMethod !== 'cash' || (cashPaymentCurrency === 'USD' ? usdPaymentIsEnough : nioPaymentIsEnough);
   const applicablePromotionIds = useMemo(
     () => new Set(
       savedPromotions
@@ -393,6 +717,254 @@ export function POSView({ services, onSale }) {
     ),
     [savedPromotions, cart],
   );
+  const userNameById = useMemo(() => (
+    new Map((users || []).map((user) => [
+      String(user.id),
+      user.fullName || user.email || 'Usuario',
+    ]))
+  ), [users]);
+  const resolveUserName = useCallback((userId) => {
+    if (!userId) return 'Sistema';
+    return userNameById.get(String(userId)) || 'Usuario';
+  }, [userNameById]);
+  const dayMovements = useMemo(() => {
+    const saleReferenceIds = new Set((posSales || []).map((sale) => String(sale.id)));
+    const voidedReferenceIds = new Set(
+      (cashMovements || [])
+        .filter((movement) => ['pos_sale_void', 'cash_movement_void'].includes(movement.referenceType))
+        .map((movement) => String(movement.referenceId || '')),
+    );
+    const saleRows = (posSales || []).map((sale) => {
+      const firstItem = Array.isArray(sale.items) && sale.items.length ? sale.items[0] : null;
+      const itemCount = Array.isArray(sale.items) ? sale.items.length : 0;
+      const incomeType = getSaleIncomeType(sale);
+      return {
+        id: `sale-${sale.id}`,
+        rawId: sale.id,
+        kind: 'sale',
+        title: incomeType,
+        detail: itemCount > 1 ? `${itemCount} ítems cobrados` : (firstItem?.name || 'Cobro'),
+        sourceDetail: summarizeSaleMovementSource(sale),
+        incomeType,
+        clientLabel: getSaleClientLabel(sale),
+        barberLabel: getSaleBarberLabel(sale),
+        method: sale.paymentMethod || 'cash',
+        amount: Number(sale.subtotal || 0),
+        productTotal: Number(sale.productTotal || 0),
+        serviceTotal: Number(sale.serviceTotal || 0),
+        discountTotal: Number(sale.discountTotal || 0),
+        ticketNumber: sale.ticketNumber || 0,
+        items: Array.isArray(sale.items) ? sale.items : [],
+        clientId: sale.clientId || null,
+        clientName: sale.clientName || '',
+        createdBy: sale.createdBy || null,
+        createdAt: sale.createdAt,
+        isVoidedOriginal: voidedReferenceIds.has(String(sale.id)),
+        isReversal: false,
+        canCancel: Boolean(cashSession && !voidedReferenceIds.has(String(sale.id))),
+      };
+    });
+    const movementRows = (cashMovements || [])
+      .filter((movement) => (
+        movement.referenceType?.includes('void')
+        ||
+        movement.movementKind !== 'sale'
+        || !movement.referenceId
+        || !saleReferenceIds.has(String(movement.referenceId))
+      ))
+      .map((movement) => {
+        const ticketNumber = movement.ticketNumber || getMovementTicketNumber(movement);
+        const ticketLabel = formatTicketNumber(ticketNumber);
+        const movementLabel = getNoteLabel(movement.notes, movement.type === 'out' ? 'Salida manual' : 'Entrada manual');
+        const isPayrollPayment = movement.movementKind === 'payroll_payment';
+        const payrollBarberLabel = isPayrollPayment
+          ? String(movement.notes || '').replace(/^Pago de n[oó]mina\s*-\s*/i, '').trim()
+          : '';
+        return {
+          id: `movement-${movement.id}`,
+          rawId: movement.id,
+          kind: movement.movementKind || 'manual',
+          type: movement.type || 'in',
+          title: movement.referenceType === 'pos_sale_void'
+            ? `Anulación de venta${ticketLabel ? ` #${ticketLabel}` : ''}`
+            : (movement.referenceType === 'cash_movement_void'
+              ? 'Anulación de movimiento'
+              : (movement.movementKind === 'opening'
+                ? 'Apertura de caja'
+                : (movement.movementKind === 'sale'
+                  ? (movement.notes || 'Venta sin detalle')
+                  : (isPayrollPayment
+                    ? 'Pago de nómina'
+                    : movementLabel)))),
+          detail: movement.referenceType?.includes('void')
+            ? 'Reverso / auditoría'
+            : (movement.movementKind === 'opening'
+              ? 'Fondo inicial'
+              : (movement.movementKind === 'sale'
+                ? 'Venta registrada en caja'
+                : (isPayrollPayment
+                  ? 'Salida por pago al equipo'
+                  : (movement.type === 'out' ? 'Salida de efectivo' : 'Entrada de efectivo')))),
+          sourceDetail: movement.referenceType?.includes('void')
+            ? (movement.notes || 'Reverso de auditoría')
+            : (movement.movementKind === 'opening'
+              ? 'Fondo inicial de caja'
+              : (movement.movementKind === 'sale'
+                ? 'Sin detalle guardado'
+                : (isPayrollPayment
+                  ? 'Pago de nómina'
+                  : movementLabel))),
+          method: movement.paymentMethod || 'cash',
+          amount: Number(movement.amount || 0),
+          ticketNumber,
+          notes: movement.notes || '',
+          referenceType: movement.referenceType || null,
+          referenceId: movement.referenceId || null,
+          clientLabel: '-',
+          barberLabel: payrollBarberLabel || '-',
+          createdBy: movement.createdBy || null,
+          createdAt: movement.createdAt,
+          isVoidedOriginal: voidedReferenceIds.has(String(movement.id)),
+          isReversal: Boolean(movement.referenceType?.includes('void')),
+          canCancel: Boolean(cashSession && movement.movementKind === 'manual' && !movement.referenceType?.includes('void') && !voidedReferenceIds.has(String(movement.id))),
+        };
+      });
+
+    return [...saleRows, ...movementRows]
+      .sort((left, right) => new Date(right.createdAt || 0) - new Date(left.createdAt || 0));
+  }, [cashMovements, cashSession, posSales]);
+  const filteredDayMovements = useMemo(() => {
+    if (!normalizedMovementSearch) return dayMovements;
+    return dayMovements.filter((entry) => {
+      const userLabel = resolveUserName(entry.createdBy);
+      const text = [
+        entry.title,
+        entry.sourceDetail,
+        entry.detail,
+        entry.method,
+        entry.clientName,
+        entry.clientLabel,
+        entry.barberLabel,
+        userLabel,
+        entry.ticketNumber ? `ticket ${entry.ticketNumber}` : '',
+        String(entry.amount || ''),
+      ].join(' ').toLowerCase();
+      return text.includes(normalizedMovementSearch);
+    });
+  }, [dayMovements, normalizedMovementSearch, resolveUserName]);
+  const exportMovementsToExcel = () => {
+    if (!filteredDayMovements.length) return;
+
+    const normalizeExcelText = (value) => `${value ?? ''}`
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const escapeCsv = (value) => `"${normalizeExcelText(value).replace(/"/g, '""')}"`;
+    const formatMethodLabel = (entry) => {
+      if (entry.kind === 'opening') return 'Fondo inicial';
+      if (entry.method === 'card') return 'POS / tarjeta';
+      if (entry.method === 'transfer') return 'Transferencia';
+      return 'Efectivo';
+    };
+    const rows = filteredDayMovements.map((entry) => {
+      const timeLabel = entry.createdAt
+        ? new Date(entry.createdAt).toLocaleString('es-NI', { dateStyle: 'medium', timeStyle: 'short' })
+        : '';
+      const clientLabel = entry.clientLabel || entry.clientName || '-';
+      const barberLabel = entry.barberLabel || '-';
+      const ticketLabel = formatTicketNumber(entry.ticketNumber) || '-';
+      const amount = Number(entry.amount || 0) * (entry.type === 'out' ? -1 : 1);
+      return [
+        timeLabel,
+        ticketLabel,
+        entry.title,
+        entry.sourceDetail || entry.detail,
+        clientLabel,
+        barberLabel,
+        resolveUserName(entry.createdBy),
+        formatMethodLabel(entry),
+        amount,
+        entry.isReversal ? 'Reverso' : (entry.isVoidedOriginal ? 'Anulado' : (entry.canCancel ? 'Anulable' : (entry.kind === 'opening' ? 'Base' : 'Bloqueado'))),
+      ].map(escapeCsv).join(',');
+    });
+    const headers = ['Fecha y hora', 'Ticket', 'Concepto', 'Detalle', 'Cliente', 'Barbero', 'Usuario', 'Metodo', 'Monto', 'Estado'];
+    const csv = `\uFEFFsep=,\r\n${headers.map(escapeCsv).join(',')}\r\n${rows.join('\r\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const fileDate = new Date().toISOString().slice(0, 10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `movimientos-caja-${fileDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  };
+  const closedCashSessions = useMemo(() => (
+    (cashSessions || [])
+      .filter((session) => session.status === 'closed' || session.closedAt)
+      .sort((left, right) => new Date(right.closedAt || right.openedAt || 0) - new Date(left.closedAt || left.openedAt || 0))
+  ), [cashSessions]);
+  const cashHistoryRows = useMemo(() => (
+    closedCashSessions.map((session) => {
+      const sessionMovements = (allCashMovements || []).filter((movement) => (
+        String(movement.cashSessionId || '') === String(session.id || '')
+      ));
+      const sessionSales = (allPosSales || []).filter((sale) => (
+        String(sale.cashSessionId || '') === String(session.id || '')
+        && !sale.canceledAt
+      ));
+      const systemCash = sessionMovements.reduce((total, movement) => {
+        if ((movement.paymentMethod || 'cash') !== 'cash') return total;
+        const amount = Number(movement.amount || 0);
+        return movement.type === 'out' ? total - amount : total + amount;
+      }, 0);
+      const cardTotal = sessionSales.reduce((total, sale) => (
+        sale.paymentMethod === 'card' ? total + Number(sale.subtotal || 0) : total
+      ), 0);
+      const transferTotal = sessionSales.reduce((total, sale) => (
+        sale.paymentMethod === 'transfer' ? total + Number(sale.subtotal || 0) : total
+      ), 0);
+      const saleTotal = sessionSales.reduce((total, sale) => total + Number(sale.subtotal || 0), 0);
+      const closureNotes = parseJsonNote(session.notes);
+      const expectedCash = Number(closureNotes?.expectedCashAmount ?? session.expectedCashAmount ?? systemCash);
+      const countedCash = Number(closureNotes?.countedCashAmount ?? session.countedCashAmount ?? session.closingAmount ?? 0);
+      const difference = Number(session.differenceAmount ?? (countedCash - expectedCash));
+
+      return {
+        ...session,
+        movementCount: sessionMovements.length,
+        saleCount: sessionSales.length,
+        saleTotal,
+        expectedCash,
+        countedCash,
+        difference,
+        cardTotal,
+        transferTotal,
+        openedByLabel: resolveUserName(session.openedBy),
+        closedByLabel: resolveUserName(session.closedBy),
+      };
+    })
+  ), [allCashMovements, allPosSales, closedCashSessions, resolveUserName]);
+
+  const handleCancelMovementEntry = async (entry) => {
+    if (!entry?.canCancel) return;
+    const confirmed = await confirmAction?.({
+      title: entry.kind === 'sale' ? 'Anular venta' : 'Anular movimiento',
+      message: entry.kind === 'sale'
+        ? `¿Deseas anular esta venta por ${formatCurrency(entry.amount)}? Se registrará un reverso de auditoría.`
+        : `¿Deseas anular este movimiento por ${formatCurrency(entry.amount)}? Se registrará un reverso de auditoría.`,
+      confirmLabel: 'Anular',
+      cancelLabel: 'Volver',
+    });
+    if (!confirmed) return;
+    const reason = window.prompt('Motivo de anulación');
+    if (!reason?.trim()) return;
+
+    if (entry.kind === 'sale') {
+      await onCancelSale?.(entry.rawId, reason.trim());
+      return;
+    }
+    await onCancelCashMovement?.(entry.rawId, reason.trim());
+  };
 
 
   const addItem = (item) => {
@@ -407,45 +979,302 @@ export function POSView({ services, onSale }) {
 
   const removeItem = (id) => setCart((prev) => prev.filter((item) => item.id !== id));
 
+  const updateOpeningDenomination = (group, denomination, value) => {
+    const nextValue = Math.max(Number.parseInt(value || '0', 10) || 0, 0);
+    setOpeningBreakdown((prev) => ({
+      ...prev,
+      [group]: {
+        ...prev[group],
+        [denomination]: nextValue,
+      },
+    }));
+  };
+
+  const updateClosingDenomination = (group, denomination, value) => {
+    const nextValue = Math.max(Number.parseInt(value || '0', 10) || 0, 0);
+    setClosingBreakdown((prev) => ({
+      ...prev,
+      [group]: {
+        ...prev[group],
+        [denomination]: nextValue,
+      },
+    }));
+  };
+
+  const handleOpenCash = async () => {
+    const result = await onOpenCashSession?.({
+      openingAmount: openingTotals.total,
+      notes: JSON.stringify({
+        source: 'Apertura desde caja POS',
+        nioBills: openingBreakdown.nioBills,
+        nioCoins: openingBreakdown.nioCoins,
+        usdBills: openingBreakdown.usdBills,
+        exchangeRate: openingTotals.exchangeRate,
+        nioTotal: openingTotals.nioTotal,
+        usdTotal: openingTotals.usdTotal,
+        convertedUsdTotal: openingTotals.convertedUsdTotal,
+      }),
+    });
+    if (result) {
+      setOpeningBreakdown({ nioBills: {}, nioCoins: {}, usdBills: {} });
+      setOpeningModalSuppressed(false);
+    }
+  };
+
+  const handleManualMovement = async () => {
+    const originalAmount = Math.max(Number(movementAmount || 0), 0);
+    const exchangeRate = Math.max(Number(movementExchangeRate || 0), 0);
+    const movementAmountNio = movementCurrency === 'USD'
+      ? roundMoney(originalAmount * exchangeRate)
+      : originalAmount;
+    const label = movementNotes.trim() || (movementType === 'out' ? 'Salida manual' : 'Entrada manual');
+    const result = await onCashMovement?.({
+      type: movementType,
+      amount: movementAmountNio,
+      notes: JSON.stringify({
+        label,
+        currency: movementCurrency,
+        amountOriginal: originalAmount,
+        exchangeRate: movementCurrency === 'USD' ? exchangeRate : null,
+        amountNio: movementAmountNio,
+      }),
+    });
+    if (result) {
+      setMovementAmount('');
+      setMovementNotes('');
+      setMovementCurrency('NIO');
+    }
+  };
+
+  const handleCloseCash = async () => {
+    let differenceReason = '';
+    if (!isBalancedClose) {
+      const reason = window.prompt('La caja tiene diferencia. Escribe el motivo para cerrar.');
+      if (!reason?.trim()) return;
+      differenceReason = reason.trim();
+    }
+    const result = await onCloseCashSession?.({
+      countedCashAmount: closingTotals.total,
+      notes: JSON.stringify({
+        source: 'Cierre desde caja POS',
+        nioBills: closingBreakdown.nioBills,
+        nioCoins: closingBreakdown.nioCoins,
+        usdBills: closingBreakdown.usdBills,
+        exchangeRate: closingTotals.exchangeRate,
+        countedCashAmount: closingTotals.total,
+        expectedCashAmount: cashCurrencySummary.expectedEquivalent,
+        expectedNioAmount: cashCurrencySummary.expectedNio,
+        countedNioAmount: closingTotals.nioTotal,
+        expectedUsdAmount: cashCurrencySummary.expectedUsd,
+        countedUsdAmount: closingTotals.usdTotal,
+        countedCardAmount: closingCardCounted,
+        expectedCardAmount: systemPaymentSummary.card,
+        countedTransferAmount: closingTransferCounted,
+        expectedTransferAmount: systemPaymentSummary.transfer,
+        differences: closingDifferences,
+        differenceReason,
+      }),
+    });
+    if (result) {
+      setClosingBreakdown({ nioBills: {}, nioCoins: {}, usdBills: {} });
+      setClosingCardAmount('');
+      setClosingTransferAmount('');
+      setClosingModalOpen(false);
+      setOpeningModalSuppressed(true);
+    }
+  };
+
   const handleCompleteSale = async () => {
+    if (paymentMethod === 'cash' && !cashPaymentIsEnough) return;
+    const saleClientName = genericClientSale
+      ? 'Cliente genérico'
+      : (selectedClient?.name || '');
+    const paymentMeta = paymentMethod === 'cash'
+      ? (cashPaymentCurrency === 'USD' ? {
+          currency: 'USD',
+          receivedUsd: usdReceivedAmount,
+          exchangeRate: activeSaleExchangeRate,
+          receivedEquivalentNio: usdReceivedEquivalent,
+          changeNio: usdChangeNio,
+        } : {
+          currency: 'NIO',
+          receivedNio: nioReceivedAmount,
+          changeNio: nioChangeNio,
+        })
+      : { currency: 'NIO' };
     const result = await onSale({
       items: cart,
       rawSubtotal: subtotal,
       discountTotal: promotionDiscount,
       subtotal: totalToCharge,
+      paymentMethod,
+      clientId: genericClientSale ? null : (selectedClient?.id || null),
+      clientName: saleClientName,
       promotion: selectedPromotion ? { id: selectedPromotion.id, name: selectedPromotion.name } : null,
+      notes: JSON.stringify({ paymentMeta }),
     });
 
     if (result) {
       setCart([]);
       setSelectedPromotionId('');
+      setPaymentMethod('cash');
+      setCashPaymentCurrency('NIO');
+      setNioReceived('');
+      setUsdReceived('');
+      setSelectedClientId('');
+      setClientSearch('');
+      setClientPickerOpen(false);
+      setGenericClientSale(false);
       setPromotionPickerOpen(false);
       setTicketOpen(false);
     }
   };
 
   return (
-    <div className="pos-view relative h-full flex flex-col text-white animate-in fade-in no-print">
-      <div className="flex-1 flex flex-col min-w-0 text-white">
-        <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-slate-900 bg-black text-white">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
-            <div className="relative overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-gradient-to-r from-emerald-500/15 via-slate-900 to-indigo-500/15 px-5 py-4 shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+    <div className="pos-view relative h-full flex flex-col bg-[#fff7fb] text-[#34242b] animate-in fade-in no-print">
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="p-4 md:p-8 space-y-4 md:space-y-6 border-b border-[#f5b6cf] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef]">
+          <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+            <div className="rounded-[2rem] border border-[#f0a6c3] bg-white p-5 shadow-[0_16px_38px_rgba(196,74,126,0.12)]">
+              <div className="flex h-full min-h-[210px] flex-col gap-5 lg:flex-row lg:items-stretch lg:justify-between">
+                <div className="flex flex-col justify-center lg:min-w-[220px] lg:flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#c24f82]">Caja operativa</p>
+                  <h3 className="mt-2 text-2xl font-black uppercase italic tracking-tighter text-[#34242b]">
+                    {cashSession ? 'Caja abierta' : 'Abrir caja'}
+                  </h3>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">
+                    {cashSession ? `Desde ${new Date(cashSession.openedAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}` : 'Necesaria para vender'}
+                  </p>
+                </div>
+
+                {!cashSession ? (
+                  <div className="flex flex-col items-stretch gap-3 rounded-[1.6rem] border border-[#f2c1d4] bg-[#fff9fc] px-5 py-4 text-right sm:flex-row sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => setOpeningModalSuppressed(false)}
+                      className="rounded-2xl bg-[#72b79b] px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_28px_rgba(114,183,155,0.24)] transition-all hover:bg-[#63a98d] active:scale-95"
+                    >
+                      Abrir caja
+                    </button>
+                    <div className="flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Pendiente de apertura</p>
+                    <p className="mt-1 text-sm font-black italic text-[#c24f82]">Completa el arqueo inicial</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:flex-[1.45] lg:content-stretch">
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Efectivo caja</p>
+                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
+                    </div>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas total</p>
+                      <p className="mt-1 text-lg font-black italic text-[#c24f82]">{formatCurrency(totalSalesSummary)}</p>
+                    </div>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
+                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.card)}</p>
+                    </div>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia</p>
+                      <p className="mt-1 text-lg font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.transfer)}</p>
+                    </div>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Entradas</p>
+                      <p className="mt-1 text-lg font-black italic text-[#72a58f]">{formatCurrency(cashCurrencySummary.manualInNio + (cashCurrencySummary.manualInUsd * cashCurrencySummary.exchangeRate))}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.manualInNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualInUsd || 0).toLocaleString('es-NI')}</p>
+                    </div>
+                    <div className="flex min-h-[78px] flex-col justify-center rounded-[1.25rem] border border-[#f2c1d4] bg-[#fff9fc] px-4 py-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Salidas</p>
+                      <p className="mt-1 text-lg font-black italic text-[#b35a7b]">{formatCurrency(cashCurrencySummary.manualOutNio + (cashCurrencySummary.manualOutUsd * cashCurrencySummary.exchangeRate))}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.manualOutNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.manualOutUsd || 0).toLocaleString('es-NI')}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-[#f0a6c3] bg-white p-5 shadow-[0_16px_38px_rgba(196,74,126,0.10)]">
+              {cashSession ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setMovementType('in')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'in' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#9b6076]'}`}><ArrowUp size={14} className="inline" /> Entrada</button>
+                    <button type="button" onClick={() => setMovementType('out')} className={`flex-1 rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${movementType === 'out' ? 'bg-[#d56b95] text-white' : 'border border-[#efabc7] text-[#9b6076]'}`}><ArrowDown size={14} className="inline" /> Salida</button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                      <div className="flex overflow-hidden rounded-2xl border border-[#efabc7] bg-[#fff9fc] focus-within:border-[#d94f83]">
+                        <select value={movementCurrency} onChange={(event) => setMovementCurrency(event.target.value)} className="w-20 shrink-0 border-r border-[#efabc7] bg-white px-3 py-3 text-sm font-black text-[#8f2d5b] outline-none">
+                          <option value="NIO">C$</option>
+                          <option value="USD">US$</option>
+                        </select>
+                        <input type="number" min="0" value={movementAmount} onChange={(event) => setMovementAmount(event.target.value)} placeholder={movementCurrency === 'USD' ? 'Monto en US$' : 'Monto en C$'} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-black outline-none" />
+                      </div>
+                    {movementCurrency === 'USD' ? (
+                      <input type="number" min="0" step="0.01" value={movementExchangeRate} onChange={(event) => setMovementExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]" />
+                    ) : null}
+                    </div>
+                    <input type="text" value={movementNotes} onChange={(event) => setMovementNotes(event.target.value)} placeholder="Nota" className="block w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-bold outline-none focus:border-[#d94f83]" />
+                  </div>
+                  <button type="button" onClick={handleManualMovement} className="w-full rounded-2xl border border-[#72b79b]/40 bg-[#eef8f4] px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#426f64] transition-all hover:bg-[#dff2eb]">
+                    Registrar movimiento
+                  </button>
+                  <button type="button" onClick={() => setClosingModalOpen(true)} className="w-full rounded-2xl border border-[#e7a8c0] bg-[#f8dce8] px-5 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f2d5b] shadow-[0_12px_24px_rgba(217,79,131,0.14)] transition-all hover:bg-[#f3c9da] active:scale-95">
+                    Arqueo y cierre
+                  </button>
+                </div>
+              ) : (
+                <div className="flex h-full min-h-32 items-center justify-center rounded-[1.6rem] border border-dashed border-[#efabc7] bg-[#fff9fc] p-6 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Abre caja para activar ventas, entradas y cierre</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="relative overflow-hidden rounded-[1.7rem] border border-rose-200 bg-white px-5 py-4 shadow-[0_12px_28px_rgba(120,78,93,0.08)]">
+              <div className="absolute inset-x-0 top-0 h-px bg-rose-100" />
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
                 <ShoppingBag size={18} />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] italic text-emerald-400 leading-none">Catálogo de productos</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative text-white">
-                <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input type="text" placeholder="Buscar producto" className="bg-black border border-slate-800 rounded-2xl pl-8 pr-16 py-4 text-sm font-black w-full md:w-80 outline-none focus:border-indigo-600 transition-all text-white italic placeholder:text-slate-600 shadow-inner" value={search} onChange={(event) => setSearch(event.target.value)} />
+              {cashSession ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMovementsSummaryCollapsed(false);
+                    setMovementsModalOpen(true);
+                  }}
+                  className="flex items-center gap-3 rounded-[1.6rem] border border-[#efabc7] bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95"
+                >
+                  <ListChecks size={16} />
+                  Movimientos
+                  <span className="rounded-full bg-[#fff0f6] px-2 py-0.5 text-[8px] text-[#c24f82]">{dayMovements.length}</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setCashHistorySummaryCollapsed(false);
+                  setCashHistoryOpen(true);
+                }}
+                className="flex items-center gap-3 rounded-[1.6rem] border border-[#efabc7] bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95"
+              >
+                <Clock size={16} />
+                Historial
+              </button>
+              <div className="relative">
+                <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-[#9b6076]" size={18} />
+                <input type="text" placeholder="Buscar producto" className="w-full rounded-2xl border border-[#efabc7] bg-white py-4 pl-8 pr-16 text-sm font-black text-[#34242b] outline-none transition-all placeholder:text-[#b4899c] focus:border-[#d94f83] md:w-80" value={search} onChange={(event) => setSearch(event.target.value)} />
               </div>
               <button
                 type="button"
                 onClick={() => setTicketOpen(true)}
                 disabled={cart.length === 0}
-                className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-indigo-500/30 bg-indigo-600/15 text-indigo-200 hover:border-indigo-400 hover:bg-indigo-600/25' : 'border-slate-800 bg-slate-950 text-slate-500 cursor-not-allowed opacity-70'}`}
+                className={`hidden md:flex items-center gap-3 rounded-[1.6rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${cart.length > 0 ? 'border-[#d94f83]/35 bg-[#d94f83] text-white hover:bg-[#c94a7a]' : 'cursor-not-allowed border-[#efabc7] bg-[#f7edf2] text-[#b4899c] opacity-70'}`}
               >
                 <ShoppingBag size={16} />
                 {cart.length > 0 ? `Carrito (${cart.length})` : 'Carrito vacío'}
@@ -453,15 +1282,17 @@ export function POSView({ services, onSale }) {
             </div>
           </div>
         </div>
-        <div className="flex-1 p-3 md:p-8 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 content-start custom-scrollbar text-white">
-          {filtered.length === 0 && (
-            <div className="col-span-full rounded-[2rem] border border-dashed border-slate-700 bg-slate-950/70 p-10 text-center text-slate-500">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em]">No se encontraron productos</p>
+        <div className="flex-1 overflow-y-auto p-3 md:p-8 custom-scrollbar">
+          <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6">
+            {filtered.length === 0 && (
+              <div className="col-span-full rounded-[2rem] border border-dashed border-[#efabc7] bg-white/70 p-10 text-center text-[#9b6076]">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em]">No se encontraron productos</p>
+              </div>
+            )}
+            {filtered.map((service) => (
+              <ProductCard key={service.id} service={service} onAdd={addItem} />
+            ))}
             </div>
-          )}
-          {filtered.map((service) => (
-            <ProductCard key={service.id} service={service} onAdd={addItem} />
-          ))}
         </div>
       </div>
 
@@ -481,17 +1312,466 @@ export function POSView({ services, onSale }) {
         </button>
       ) : null}
 
-      {ticketOpen && cart.length > 0 ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm xl:items-center">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[2.6rem] border border-slate-800 bg-black text-white shadow-[0_30px_120px_rgba(0,0,0,0.65)] xl:max-w-4xl">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-900 px-6 py-5 md:px-8 md:py-6">
+      {shouldShowOpeningModal ? createPortal((
+        <div className="fixed inset-0 z-[220] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
+            <div className="border-b border-[#f5cddd] px-5 py-3 md:px-7">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Apertura de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Arqueo inicial</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cuenta el efectivo antes de iniciar ventas</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-[1.4rem] border border-[#f2c1d4] bg-white px-4 py-2.5 text-right">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Monto inicial</p>
+                    <p className="mt-0.5 text-2xl font-black italic text-[#426f64]">{formatCurrency(openingTotals.total)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpeningModalSuppressed(true)}
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                    aria-label="Cerrar apertura de caja"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid flex-1 gap-3 overflow-y-auto p-3 custom-scrollbar md:p-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+              <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white/70 p-2.5">
+                <div className="mb-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Conteo de efectivo</p>
+                  <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Billetes, monedas y dólares</p>
+                </div>
+                <div className="grid gap-2.5 lg:grid-cols-3">
+                  <DenominationGrid compact title="Billetes C$" currency="C$" denominations={NIO_BILL_DENOMINATIONS} values={openingBreakdown.nioBills} onChange={(denomination, value) => updateOpeningDenomination('nioBills', denomination, value)} />
+                  <DenominationGrid compact title="Monedas C$" currency="C$" denominations={NIO_COIN_DENOMINATIONS} values={openingBreakdown.nioCoins} onChange={(denomination, value) => updateOpeningDenomination('nioCoins', denomination, value)} />
+                  <DenominationGrid compact title="Dólares" currency="$" denominations={USD_BILL_DENOMINATIONS} values={openingBreakdown.usdBills} onChange={(denomination, value) => updateOpeningDenomination('usdBills', denomination, value)} />
+                </div>
+              </section>
+
+              <div className="space-y-3">
+                <div className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
+                  <label className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Tasa dólar</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={openingExchangeRate}
+                    onChange={(event) => setOpeningExchangeRate(event.target.value)}
+                    className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-lg font-black text-[#34242b] outline-none focus:border-[#d94f83]"
+                  />
+                </div>
+                <div className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Resumen</p>
+                  <div className="mt-3 space-y-2.5">
+                    <div className="flex justify-between gap-3 text-sm font-black"><span>Córdobas</span><span>{formatCurrency(openingTotals.nioTotal)}</span></div>
+                    <div className="flex justify-between gap-3 text-sm font-black"><span>Dólares</span><span>$ {openingTotals.usdTotal.toLocaleString('es-NI')}</span></div>
+                    <div className="flex justify-between gap-3 text-sm font-black text-[#426f64]"><span>USD en C$</span><span>{formatCurrency(openingTotals.convertedUsdTotal)}</span></div>
+                    <div className="border-t border-[#f5cddd] pt-3">
+                      <div className="flex justify-between gap-3 text-lg font-black italic text-[#c24f82]"><span>Total</span><span>{formatCurrency(openingTotals.total)}</span></div>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenCash}
+                  className="flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-[#72b79b] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_35px_rgba(114,183,155,0.32)] transition-all hover:bg-[#63a98d] active:scale-95"
+                >
+                  <Wallet size={18} /> Abrir caja
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
+      {closingModalOpen && cashSession ? createPortal((
+        <div className="fixed inset-0 z-[230] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-0.75rem)] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
+            <div className="border-b border-[#f5cddd] px-5 py-3 md:px-7">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Cierre de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Arqueo final</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Debe coincidir efectivo, POS y transferencia</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClosingModalOpen(false)}
+                  className="h-12 rounded-2xl border border-[#efabc7] bg-white px-5 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                >
+                  Revisar luego
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar md:p-4">
+              <div className="mb-3 grid gap-2.5 md:grid-cols-4">
+                {[
+                  { label: 'Efectivo C$', system: cashCurrencySummary.expectedNio, counted: closingTotals.nioTotal, diff: closingDifferences.nio, formatter: formatCurrency },
+                  { label: 'Dólares', system: cashCurrencySummary.expectedUsd, counted: closingTotals.usdTotal, diff: closingDifferences.usd, formatter: (value) => `$ ${Number(value || 0).toLocaleString('es-NI')}` },
+                  { label: 'POS / tarjeta', system: systemPaymentSummary.card, counted: closingCardCounted, diff: closingDifferences.card },
+                  { label: 'Transferencia', system: systemPaymentSummary.transfer, counted: closingTransferCounted, diff: closingDifferences.transfer },
+                ].map((row) => (
+                  <div key={row.label} className="rounded-[1.25rem] border border-[#f2c1d4] bg-white p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">{row.label}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${Math.abs(row.diff) < 0.01 ? 'bg-[#eef8f4] text-[#426f64]' : 'bg-[#fff0f6] text-[#b35a7b]'}`}>
+                        {Math.abs(row.diff) < 0.01 ? 'Cuadra' : 'Diferencia'}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-[10px] font-black">
+                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Sistema</p><p className="mt-1 text-[#426f64]">{(row.formatter || formatCurrency)(row.system)}</p></div>
+                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Contado</p><p className="mt-1 text-[#34242b]">{(row.formatter || formatCurrency)(row.counted)}</p></div>
+                      <div><p className="uppercase tracking-[0.12em] text-[#9b6076]">Dif.</p><p className={`mt-1 ${Math.abs(row.diff) < 0.01 ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>{(row.formatter || formatCurrency)(row.diff)}</p></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
+                <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white/70 p-2.5">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Conteo de efectivo</p>
+                      <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Billetes, monedas y dólares</p>
+                    </div>
+                    <div className="rounded-xl border border-[#f2c1d4] bg-white px-3 py-1.5 text-right">
+                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#9b6076]">Total contado</p>
+                      <p className="text-lg font-black italic text-[#426f64]">{formatCurrency(closingTotals.total)}</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-2.5 lg:grid-cols-3">
+                    <DenominationGrid compact title="Billetes C$" currency="C$" denominations={NIO_BILL_DENOMINATIONS} values={closingBreakdown.nioBills} onChange={(denomination, value) => updateClosingDenomination('nioBills', denomination, value)} />
+                    <DenominationGrid compact title="Monedas C$" currency="C$" denominations={NIO_COIN_DENOMINATIONS} values={closingBreakdown.nioCoins} onChange={(denomination, value) => updateClosingDenomination('nioCoins', denomination, value)} />
+                    <DenominationGrid compact title="Dólares" currency="$" denominations={USD_BILL_DENOMINATIONS} values={closingBreakdown.usdBills} onChange={(denomination, value) => updateClosingDenomination('usdBills', denomination, value)} />
+                  </div>
+                </section>
+
+                <aside className="space-y-3">
+                  <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Configuración</p>
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Tasa dólar</label>
+                    <input type="number" min="0" step="0.01" value={closingExchangeRate} onChange={(event) => setClosingExchangeRate(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-lg font-black text-[#34242b] outline-none focus:border-[#d94f83]" />
+                  </section>
+
+                  <section className="rounded-[1.6rem] border border-[#f2c1d4] bg-white p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c24f82]">Pagos electrónicos</p>
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta contado</label>
+                    <input type="number" min="0" value={closingCardAmount} onChange={(event) => setClosingCardAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-base font-black text-[#34242b] outline-none focus:border-[#d94f83]" placeholder="0" />
+                    <label className="mt-3 block text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia contada</label>
+                    <input type="number" min="0" value={closingTransferAmount} onChange={(event) => setClosingTransferAmount(event.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-base font-black text-[#34242b] outline-none focus:border-[#d94f83]" placeholder="0" />
+                  </section>
+                </aside>
+              </div>
+            </div>
+
+            <div className="border-t border-[#f5cddd] bg-white/85 px-5 py-3 md:px-7">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isBalancedClose ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>
+                  {isBalancedClose ? 'Arqueo cuadrado. Listo para cerrar.' : 'Hay diferencias. Se pedirá motivo al cerrar.'}
+                </p>
+                <button type="button" onClick={handleCloseCash} className={`flex items-center justify-center gap-3 rounded-[1.5rem] px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${isBalancedClose ? 'bg-[#72b79b] text-white shadow-[0_18px_35px_rgba(114,183,155,0.24)] hover:bg-[#63a98d]' : 'bg-[#d65f7f] text-white shadow-[0_18px_35px_rgba(214,95,127,0.24)] hover:bg-[#c24f74]'}`}>
+                  <Check size={18} /> Cerrar caja
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
+      {movementsModalOpen && cashSession ? createPortal((
+        <div className="fixed inset-0 z-[235] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(98vw,100rem)] flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
+            <div className="border-b border-[#f5cddd] px-5 py-4 md:px-7">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Caja actual</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Movimientos del día</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas, servicios cobrados, entradas y salidas</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMovementsSummaryCollapsed(false);
+                    setMovementsModalOpen(false);
+                  }}
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                  aria-label="Cerrar movimientos"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className={`grid grid-cols-2 gap-3 bg-white/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#f5cddd] md:px-7 md:py-3 ${movementsSummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#f5cddd] max-md:py-3 max-md:opacity-100'}`}>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Esperado efectivo</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashCurrencySummary.expectedEquivalent)}</p>
+                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9b6076]">C$ {Number(cashCurrencySummary.expectedNio || 0).toLocaleString('es-NI')} · $ {Number(cashCurrencySummary.expectedUsd || 0).toLocaleString('es-NI')}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas efectivo</p>
+                <p className="mt-1 text-xl font-black italic text-[#c24f82]">{formatCurrency(cashSummary.sales)}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.card)}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencia</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(systemPaymentSummary.transfer)}</p>
+              </div>
+            </div>
+
+            <div className="border-b border-[#f5cddd] bg-white/75 px-5 py-3 md:px-7">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="relative">
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b6076]" size={16} />
+                <input
+                  type="text"
+                  value={movementSearch}
+                  onChange={(event) => setMovementSearch(event.target.value)}
+                  placeholder="Buscar por ticket, cliente, servicio, producto, usuario o método"
+                  className="w-full rounded-2xl border border-[#efabc7] bg-white py-3 pl-5 pr-12 text-sm font-black text-[#34242b] outline-none placeholder:text-[#b4899c] focus:border-[#d94f83]"
+                />
+                </div>
+                <button
+                  type="button"
+                  onClick={exportMovementsToExcel}
+                  disabled={filteredDayMovements.length === 0}
+                  className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] transition-all active:scale-95 ${filteredDayMovements.length > 0 ? 'border-[#72b79b]/45 bg-[#eef8f4] text-[#426f64] hover:bg-[#dff2eb]' : 'cursor-not-allowed border-[#f2c1d4] bg-[#fff7fb] text-[#b4899c] opacity-70'}`}
+                >
+                  <Save size={15} /> Exportar Excel
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="flex-1 overflow-y-auto p-3 custom-scrollbar md:p-5"
+              onScroll={(event) => {
+                if (window.innerWidth >= 768) return;
+                setMovementsSummaryCollapsed(event.currentTarget.scrollTop > 12);
+              }}
+            >
+              {filteredDayMovements.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#efabc7] bg-white/70 p-10 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9b6076]">Sin movimientos para esta búsqueda</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-[#f0a6c3] bg-white custom-scrollbar">
+                  <div className="grid min-w-[98rem] grid-cols-[5.2rem_6.5rem_minmax(12.5rem,1.12fr)_minmax(14.5rem,1.18fr)_minmax(8.5rem,0.75fr)_minmax(8.5rem,0.75fr)_minmax(7.5rem,0.7fr)_7.3rem_7.3rem_7.3rem] gap-3 border-b border-[#f5cddd] bg-[#fff7fb] px-5 py-3 text-[8px] font-black uppercase tracking-[0.15em] text-[#9b6076] max-xl:hidden">
+                    <span>Hora</span>
+                    <span>Ticket</span>
+                    <span>Concepto</span>
+                    <span>Qué generó el movimiento</span>
+                    <span>Cliente</span>
+                    <span>Barbero</span>
+                    <span>Usuario</span>
+                    <span>Método</span>
+                    <span className="text-right">Monto</span>
+                    <span className="w-[6.4rem] justify-self-center text-center">Acción</span>
+                  </div>
+
+                  <div className="divide-y divide-[#f5cddd]">
+                    {filteredDayMovements.map((entry) => {
+                      const isOut = entry.type === 'out';
+                      const isSale = entry.kind === 'sale';
+                      const isOpening = entry.kind === 'opening';
+                      const isReversal = entry.isReversal;
+                      const methodLabel = entry.method === 'card'
+                        ? 'POS / tarjeta'
+                        : (entry.method === 'transfer' ? 'Transferencia' : 'Efectivo');
+                      const timeLabel = entry.createdAt
+                        ? new Date(entry.createdAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })
+                        : '--:--';
+                      const detailText = entry.sourceDetail || entry.detail;
+                      const clientLabel = entry.clientLabel || entry.clientName || '-';
+                      const barberLabel = entry.barberLabel || '-';
+                      const ticketLabel = formatTicketNumber(entry.ticketNumber) || '-';
+                      const userLabel = resolveUserName(entry.createdBy);
+                      const rowTone = isOpening
+                        ? 'border-l-[#75a7b8] bg-[#f3f9fb]'
+                        : (isReversal ? 'border-l-[#b35a7b] bg-[#fff3f7]' : (isOut ? 'border-l-[#d65f7f] bg-[#fff6f8]' : 'border-l-[#72b79b] bg-[#f8fffb]'));
+                      const iconTone = isOpening
+                        ? 'bg-[#75a7b8] shadow-[#75a7b8]/20'
+                        : (isReversal ? 'bg-[#b35a7b] shadow-[#b35a7b]/20' : (isOut ? 'bg-[#d65f7f] shadow-[#d65f7f]/20' : 'bg-[#72b79b] shadow-[#72b79b]/20'));
+                      return (
+                        <div key={entry.id} className={`grid min-w-[98rem] gap-3 border-l-4 px-5 py-3 text-sm transition-colors max-xl:min-w-0 max-xl:grid-cols-[minmax(0,1fr)] xl:grid-cols-[5.2rem_6.5rem_minmax(12.5rem,1.12fr)_minmax(14.5rem,1.18fr)_minmax(8.5rem,0.75fr)_minmax(8.5rem,0.75fr)_minmax(7.5rem,0.7fr)_7.3rem_7.3rem_7.3rem] xl:items-center ${rowTone}`}>
+                          <p className="text-[12px] font-black text-[#34242b] max-xl:hidden">{timeLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-[#8f2d5b] max-xl:hidden">{ticketLabel}</p>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg ${iconTone}`}>
+                              {isReversal ? <RotateCcw size={15} /> : (isSale ? <ReceiptText size={15} /> : (isOut ? <ArrowDown size={15} /> : <ArrowUp size={15} />))}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="line-clamp-2 text-[10px] font-black uppercase italic leading-snug text-[#34242b]">{entry.title}</p>
+                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">{timeLabel} · Ticket: {ticketLabel} · {methodLabel} · Cliente: {clientLabel} · Barbero: {barberLabel}</p>
+                            </div>
+                          </div>
+                          <p className="line-clamp-2 text-[9px] font-bold uppercase tracking-[0.06em] text-[#9b6076] max-xl:rounded-2xl max-xl:border max-xl:border-[#f2c1d4] max-xl:bg-[#fff7fb] max-xl:px-3 max-xl:py-2">{detailText}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#426f64] max-xl:hidden">{clientLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#8f2d5b] max-xl:hidden">{barberLabel}</p>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-[#8f2d5b] max-xl:hidden">{userLabel}</p>
+                          <span className={`rounded-full border px-3 py-1.5 text-center text-[8px] font-black uppercase tracking-[0.1em] max-lg:w-fit ${isOpening ? 'border-[#c4dce4] bg-white text-[#4f7b8b]' : (isReversal ? 'border-[#f3b8c8] bg-white text-[#b35a7b]' : (isOut ? 'border-[#f3b8c8] bg-white text-[#b84868]' : 'border-[#cdeadd] bg-white text-[#426f64]'))}`}>
+                            {isOpening ? 'Fondo inicial' : (isReversal ? 'Reverso' : methodLabel)}
+                          </span>
+                          <p className={`text-right text-lg font-black italic max-xl:text-left ${isOut ? 'text-[#b35a7b]' : 'text-[#426f64]'}`}>
+                            {isOut ? '-' : '+'}{formatCurrency(entry.amount)}
+                          </p>
+                          {entry.canCancel ? (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelMovementEntry(entry)}
+                              className="flex min-w-[6.4rem] items-center justify-center gap-2 justify-self-center rounded-xl border border-[#f0a6c3] bg-white px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-[#8f2d5b] transition-all hover:bg-[#fff0f6] active:scale-95 max-xl:justify-self-start"
+                            >
+                              <RotateCcw size={14} /> Anular
+                            </button>
+                          ) : (
+                            <span className="inline-flex min-w-[6.4rem] items-center justify-center justify-self-center rounded-xl border border-[#f2c1d4] bg-[#fff7fb] px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-[#b4899c] max-xl:justify-self-start">
+                              {isOpening ? 'Base' : (isReversal ? 'Reverso' : (entry.isVoidedOriginal ? 'Anulado' : 'Bloqueado'))}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
+      {cashHistoryOpen ? createPortal((
+        <div className="fixed inset-0 z-[236] flex min-h-screen items-center justify-center bg-[#211720]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(96vw,86rem)] flex-col overflow-hidden rounded-[2rem] border border-[#efabc7] bg-gradient-to-br from-white via-[#fff7fb] to-[#ffe3ef] text-[#34242b] shadow-[0_35px_120px_rgba(33,23,32,0.55)]">
+            <div className="border-b border-[#f5cddd] px-5 py-4 md:px-7">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#c24f82]">Control de caja</p>
+                  <h3 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-[#34242b]">Historial de cajas</h3>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cierres, diferencias y usuarios responsables</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashHistorySummaryCollapsed(false);
+                    setCashHistoryOpen(false);
+                  }}
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#8f2d5b] transition-all hover:bg-[#fff0f6]"
+                  aria-label="Cerrar historial de caja"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className={`grid grid-cols-2 gap-3 bg-white/65 px-5 transition-all duration-300 md:grid-cols-4 md:border-b md:border-[#f5cddd] md:px-7 md:py-3 ${cashHistorySummaryCollapsed ? 'max-md:max-h-0 max-md:overflow-hidden max-md:border-b-0 max-md:py-0 max-md:opacity-0' : 'max-md:max-h-[18rem] max-md:border-b max-md:border-[#f5cddd] max-md:py-3 max-md:opacity-100'}`}>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Cajas cerradas</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{cashHistoryRows.length}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Ventas cerradas</p>
+                <p className="mt-1 text-xl font-black italic text-[#c24f82]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.saleTotal, 0))}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">POS / tarjeta</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.cardTotal, 0))}</p>
+              </div>
+              <div className="rounded-[1.3rem] border border-[#f2c1d4] bg-white px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9b6076]">Transferencias</p>
+                <p className="mt-1 text-xl font-black italic text-[#426f64]">{formatCurrency(cashHistoryRows.reduce((total, row) => total + row.transferTotal, 0))}</p>
+              </div>
+            </div>
+
+            <div
+              className="flex-1 overflow-y-auto p-3 custom-scrollbar md:p-5"
+              onScroll={(event) => {
+                if (window.innerWidth >= 768) return;
+                setCashHistorySummaryCollapsed(event.currentTarget.scrollTop > 12);
+              }}
+            >
+              {cashHistoryRows.length === 0 ? (
+                <div className="rounded-[1.8rem] border border-dashed border-[#efabc7] bg-white/70 p-10 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9b6076]">Todavía no hay cajas cerradas</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-[1.8rem] border border-[#f0a6c3] bg-white">
+                  <div className="grid grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] gap-3 border-b border-[#f5cddd] bg-[#fff7fb] px-5 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#9b6076] max-xl:hidden">
+                    <span>Apertura</span>
+                    <span>Cierre</span>
+                    <span className="text-right">Esperado</span>
+                    <span className="text-right">Contado</span>
+                    <span className="text-right">Dif.</span>
+                    <span className="text-right">Ventas</span>
+                    <span>Usuarios</span>
+                    <span className="text-right">Soporte</span>
+                  </div>
+
+                  <div className="divide-y divide-[#f5cddd]">
+                    {cashHistoryRows.map((row) => {
+                      const openedLabel = row.openedAt
+                        ? new Date(row.openedAt).toLocaleString('es-NI', { dateStyle: 'medium', timeStyle: 'short' })
+                        : 'Sin apertura';
+                      const closedLabel = row.closedAt
+                        ? new Date(row.closedAt).toLocaleString('es-NI', { dateStyle: 'medium', timeStyle: 'short' })
+                        : 'Sin cierre';
+                      const balanced = Math.abs(row.difference) < 0.01;
+                      return (
+                        <div key={row.id} className={`grid gap-3 border-l-4 px-5 py-4 text-sm max-xl:grid-cols-1 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_8rem_8rem_8rem_minmax(10rem,1fr)_8rem] xl:items-center ${balanced ? 'border-l-[#72b79b] bg-[#f8fffb]' : 'border-l-[#d65f7f] bg-[#fff6f8]'}`}>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">Apertura</p>
+                            <p className="font-black text-[#34242b]">{openedLabel}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076] xl:hidden">Cierre</p>
+                            <p className="font-black text-[#34242b]">{closedLabel}</p>
+                          </div>
+                          <p className="text-right font-black italic text-[#426f64] max-xl:text-left">{formatCurrency(row.expectedCash)}</p>
+                          <p className="text-right font-black italic text-[#34242b] max-xl:text-left">{formatCurrency(row.countedCash)}</p>
+                          <p className={`text-right font-black italic max-xl:text-left ${balanced ? 'text-[#426f64]' : 'text-[#b35a7b]'}`}>{formatCurrency(row.difference)}</p>
+                          <div className="text-right max-xl:text-left">
+                            <p className="font-black italic text-[#c24f82]">{formatCurrency(row.saleTotal)}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#9b6076]">{row.saleCount} ventas · {row.movementCount} mov.</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#8f2d5b]">Abrió: {row.openedByLabel}</p>
+                            <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#9b6076]">Cerró: {row.closedByLabel}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onPrintCashClosure?.(row)}
+                            className="flex items-center justify-center gap-2 justify-self-end rounded-2xl border border-[#72b79b]/45 bg-[#eef8f4] px-3 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#426f64] transition-all hover:bg-[#dff2eb] active:scale-95 max-xl:justify-self-start"
+                          >
+                            <ReceiptText size={14} /> Ver
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
+      {ticketOpen && cart.length > 0 ? createPortal((
+        <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/75 p-2 backdrop-blur-sm xl:items-center">
+          <div className="max-h-[calc(100vh-0.25rem)] w-full max-w-3xl overflow-hidden rounded-[2rem] border border-[#efabc7] bg-[#fff7fb] text-[#34242b] shadow-[0_30px_120px_rgba(143,45,91,0.28)] xl:max-w-7xl">
+            <div className="flex items-center justify-between gap-4 border-b border-[#f4c6d9] px-6 py-3.5 md:px-8">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/40">
                   <ShoppingBag size={22} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">Ticket de venta</h3>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Aplica promociones guardadas antes de completar la venta</p>
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[#34242b]">Ticket de venta</h3>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Aplica promociones guardadas antes de completar la venta</p>
                 </div>
               </div>
               <button
@@ -500,14 +1780,14 @@ export function POSView({ services, onSale }) {
                   setPromotionPickerOpen(false);
                   setTicketOpen(false);
                 }}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950 text-slate-400 transition-colors hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#efabc7] bg-white text-[#9b6076] transition-colors hover:bg-[#fff0f6] hover:text-[#8f2d5b]"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
-              <div className="max-h-[70vh] overflow-y-auto border-b border-slate-900 p-5 md:p-6 xl:border-b-0 xl:border-r custom-scrollbar">
+            <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_32rem]">
+              <div className="max-h-[calc(100vh-6.25rem)] overflow-y-auto border-b border-[#f4c6d9] bg-white/45 p-4 md:p-5 xl:border-b-0 xl:border-r custom-scrollbar">
                 <div className="space-y-4">
                   {cart.map((item) => (
                     <CartLine key={item.id} item={item} onRemove={removeItem} />
@@ -515,12 +1795,12 @@ export function POSView({ services, onSale }) {
                 </div>
               </div>
 
-              <div className="bg-slate-950 p-5 md:p-6">
-                <div className="mb-6 rounded-[1.8rem] border border-emerald-500/20 bg-black/40 p-4">
+              <div className="flex max-h-[calc(100vh-6.25rem)] flex-col bg-[#fff7fb] p-3.5 md:p-4">
+                <div className="mb-2.5 rounded-[1.25rem] border border-emerald-500/20 bg-white p-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Promociones</p>
-                      <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#9b6076]">
                         {selectedPromotion
                           ? `Aplicada: ${selectedPromotion.name}`
                           : savedPromotions.length > 0
@@ -535,12 +1815,12 @@ export function POSView({ services, onSale }) {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2.5">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setPromotionPickerOpen(true)}
                       disabled={savedPromotions.length === 0}
-                      className={`inline-flex items-center gap-2 rounded-[1.1rem] border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${savedPromotions.length > 0 ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-500/15' : 'cursor-not-allowed border-slate-800 bg-slate-900 text-slate-500 opacity-70'}`}
+                      className={`inline-flex items-center gap-2 rounded-[1rem] border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${savedPromotions.length > 0 ? 'border-[#b9dccd] bg-[#eef8f4] text-[#426f64] hover:border-[#72b79b] hover:bg-[#e2f3ec]' : 'cursor-not-allowed border-[#ead4dd] bg-[#f7edf2] text-[#b4899c] opacity-70'}`}
                     >
                       Elegir promoción
                       <ChevronDown size={16} className="text-current" />
@@ -550,7 +1830,7 @@ export function POSView({ services, onSale }) {
                       <button
                         type="button"
                         onClick={() => setSelectedPromotionId('')}
-                        className="rounded-[1.1rem] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-rose-300 transition-all hover:border-rose-400/30"
+                        className="rounded-[1rem] border border-[#efabc7] bg-[#fff0f6] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] text-[#b35a7b] transition-all hover:border-[#d94f83]"
                       >
                         Quitar
                       </button>
@@ -564,13 +1844,213 @@ export function POSView({ services, onSale }) {
                   ) : null}
                 </div>
 
-                <div className="space-y-3 mb-8 text-white">
-                  <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-base font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span></div>
-                  {selectedPromotion ? <div className="flex justify-between items-center text-white"><span className="text-emerald-300 text-[10px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
-                  <div className="flex justify-between items-center text-white"><span className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-4xl font-black italic tracking-tighter leading-none text-white shadow-[0_0_15px_rgba(99,102,241,0.2)]">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-white px-4 py-2.5 text-[#34242b]">
+                  <div className="flex justify-between items-center"><span className="text-[#9b6076] text-[9px] font-black uppercase tracking-widest leading-none">Subtotal</span><span className="text-sm font-black italic">C$ {subtotal.toLocaleString('es-NI')}</span></div>
+                  {selectedPromotion ? <div className="mt-2 flex justify-between items-center"><span className="text-[#426f64] text-[9px] font-black uppercase tracking-widest leading-none">{selectedPromotion.name}</span><span className="text-sm font-black italic text-[#426f64]">- C$ {promotionDiscount.toLocaleString('es-NI')}</span></div> : null}
+                  <div className="mt-2 flex justify-between items-end border-t border-[#f4c6d9] pt-2"><span className="text-[#9b6076] text-[9px] font-black uppercase tracking-widest leading-none">Monto Total</span><span className="text-3xl font-black italic tracking-tighter leading-none text-[#34242b]">C$ {totalToCharge.toLocaleString('es-NI')}</span></div>
                 </div>
 
-                <button disabled={cart.length === 0} onClick={handleCompleteSale} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 py-6 rounded-[2rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all text-white flex items-center justify-center gap-3"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-[#fff7fb] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Cliente</p>
+                    <label className="flex items-center gap-2 rounded-full border border-[#f2c1d4] bg-white px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-[#8f5d71]">
+                      <input
+                        type="checkbox"
+                        checked={genericClientSale}
+                        onChange={(event) => {
+                          setGenericClientSale(event.target.checked);
+                          if (event.target.checked) {
+                            setSelectedClientId('');
+                            setClientSearch('');
+                            setClientPickerOpen(false);
+                          }
+                        }}
+                        className="h-3 w-3 accent-[#72b79b]"
+                      />
+                      Genérico
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#b07089]" />
+                    <input
+                      type="text"
+                      value={genericClientSale ? 'CLIENTE GENÉRICO' : clientSearch}
+                      disabled={genericClientSale}
+                      onChange={(event) => {
+                        setClientSearch(event.target.value);
+                        setSelectedClientId('');
+                        setGenericClientSale(false);
+                        setClientPickerOpen(true);
+                      }}
+                      onFocus={() => {
+                        if (!genericClientSale) setClientPickerOpen(true);
+                      }}
+                      onBlur={() => {
+                        window.setTimeout(() => setClientPickerOpen(false), 120);
+                      }}
+                      placeholder={selectedClient ? selectedClient.name : 'Buscar cliente por nombre o celular'}
+                      className="w-full rounded-2xl border border-[#f2c1d4] bg-white px-11 py-2.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#34242b] outline-none transition-all placeholder:text-[#b4899c] disabled:opacity-60 focus:border-[#d94f83] focus:shadow-[0_0_0_3px_rgba(217,79,131,0.08)]"
+                    />
+                    {!genericClientSale && (selectedClientId || clientSearch) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedClientId('');
+                          setClientSearch('');
+                          setClientPickerOpen(false);
+                        }}
+                        className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl text-[#b07089] transition-colors hover:bg-[#fff0f6] hover:text-[#8f2d5b]"
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : null}
+
+                    {clientPickerOpen && !genericClientSale ? (
+                      <div className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-56 overflow-y-auto rounded-2xl border border-[#efabc7] bg-white shadow-[0_18px_45px_rgba(143,45,91,0.18)] custom-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClientId('');
+                            setClientSearch('');
+                            setClientPickerOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between gap-3 border-b border-[#f8d8e4] px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.1em] transition-colors hover:bg-[#fff7fb] ${selectedClientId ? 'text-[#9b6076]' : 'bg-[#fff7fb] text-[#8f2d5b]'}`}
+                        >
+                          Sin cliente asignado
+                          {!selectedClientId ? <Check size={14} /> : null}
+                        </button>
+
+                        {filteredTicketClients.length > 0 ? filteredTicketClients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClientId(client.id);
+                              setClientSearch(client.name || client.phone || 'Cliente');
+                              setGenericClientSale(false);
+                              setClientPickerOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between gap-3 border-b border-[#f8d8e4] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#fff7fb] ${String(selectedClientId) === String(client.id) ? 'bg-[#fff0f6]' : 'bg-white'}`}
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate text-[10px] font-black uppercase tracking-[0.1em] text-[#34242b]">{client.name || 'Cliente sin nombre'}</span>
+                              <span className="mt-1 block truncate text-[8px] font-black uppercase tracking-[0.12em] text-[#9b6076]">{client.phone || 'Sin celular'}</span>
+                            </span>
+                            {String(selectedClientId) === String(client.id) ? <Check size={14} className="shrink-0 text-[#d94f83]" /> : null}
+                          </button>
+                        )) : (
+                          <div className="px-4 py-4 text-[9px] font-black uppercase tracking-[0.14em] text-[#b4899c]">
+                            No hay clientes con esa búsqueda.
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mb-2.5 rounded-[1.25rem] border border-[#efabc7] bg-[#fff7fb] p-2.5 shadow-[0_12px_28px_rgba(196,74,126,0.08)]">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Método de pago</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'cash', label: 'Efectivo', icon: DollarSign },
+                      { id: 'card', label: 'Tarjeta', icon: CreditCard },
+                      { id: 'transfer', label: 'Transferencia', icon: Wallet },
+                    ].map((method) => {
+                      const Icon = method.icon;
+                      const active = paymentMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[8px] font-black uppercase tracking-[0.12em] transition-all active:scale-95 ${active ? 'border-[#6eb293] bg-[#72b79b] text-white shadow-[0_10px_20px_rgba(114,183,155,0.24)]' : 'border-[#f2c1d4] bg-white text-[#8f5d71] hover:border-[#d94f83] hover:bg-[#fff0f6] hover:text-[#8f2d5b]'}`}
+                        >
+                          <Icon size={14} />
+                          {method.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {paymentMethod === 'cash' ? (
+                    <div className="mt-2 rounded-[1.2rem] border border-[#f2c1d4] bg-white p-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCashPaymentCurrency('NIO')}
+                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'NIO' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#8f5d71]'}`}
+                        >
+                          Paga C$
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCashPaymentCurrency('USD')}
+                          className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${cashPaymentCurrency === 'USD' ? 'bg-[#72b79b] text-white' : 'border border-[#efabc7] text-[#8f5d71]'}`}
+                        >
+                          Paga US$
+                        </button>
+                      </div>
+
+                      {cashPaymentCurrency === 'NIO' ? (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={nioReceived}
+                            onChange={(event) => setNioReceived(event.target.value)}
+                            placeholder="C$ recibido"
+                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-2.5 text-sm font-black outline-none focus:border-[#d94f83]"
+                          />
+                          <div className={`rounded-2xl border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] ${nioPaymentIsEnough ? 'border-[#72b79b] bg-[#eef8f4] text-[#244f43]' : 'border-[#d94f83] bg-[#fff0f6] text-[#7f274d]'}`}>
+                            <p className="text-[#34242b]">Cliente paga: {formatCurrency(nioReceivedAmount)}</p>
+                            <p className={nioPaymentIsEnough ? 'text-[#2f6f5a]' : 'text-[#c0255a]'}>
+                              {nioPaymentIsEnough ? `Vuelto sugerido: ${formatCurrency(nioChangeNio)}` : `Faltan: ${formatCurrency(Math.max(totalToCharge - nioReceivedAmount, 0))}`}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {cashPaymentCurrency === 'USD' ? (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={usdReceived}
+                            onChange={(event) => setUsdReceived(event.target.value)}
+                            placeholder="US$ recibido"
+                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={saleExchangeRate}
+                            onChange={(event) => setSaleExchangeRate(event.target.value)}
+                            placeholder="Tasa"
+                            className="rounded-2xl border border-[#efabc7] bg-[#fff9fc] px-4 py-3 text-sm font-black outline-none focus:border-[#d94f83]"
+                          />
+                          <div className={`col-span-2 rounded-2xl border px-4 py-3 text-[9px] font-black uppercase tracking-[0.12em] ${usdPaymentIsEnough ? 'border-[#72b79b] bg-[#eef8f4] text-[#244f43]' : 'border-[#d94f83] bg-[#fff0f6] text-[#7f274d]'}`}>
+                            <p className="text-[#34242b]">Recibido equivalente: {formatCurrency(usdReceivedEquivalent)}</p>
+                            <p className={usdPaymentIsEnough ? 'text-[#2f6f5a]' : 'text-[#c0255a]'}>
+                              {usdPaymentIsEnough ? `Vuelto sugerido C$: ${usdChangeNio.toLocaleString('es-NI')}` : 'El monto recibido no cubre el total'}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                {!cashSession ? (
+                  <p className="mb-4 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
+                    Abre caja antes de completar la venta.
+                  </p>
+                ) : null}
+
+                <div className="mt-auto border-t border-[#f4c6d9] pt-3">
+                  <button disabled={cart.length === 0 || !cashSession || !cashPaymentIsEnough} onClick={handleCompleteSale} className="w-full bg-[#d94f83] hover:bg-[#c94a7a] disabled:bg-[#f6d5e2] disabled:text-[#9b6076] disabled:shadow-none py-3.5 rounded-[1.35rem] font-black uppercase italic text-xs shadow-[0_16px_34px_rgba(217,79,131,0.28)] active:scale-95 transition-all text-white flex items-center justify-center gap-3"><Check size={18} strokeWidth={3} /> COMPLETAR VENTA</button>
+                </div>
               </div>
             </div>
           </div>
@@ -647,7 +2127,8 @@ export function POSView({ services, onSale }) {
             </div>
           ) : null}
         </div>
-      ) : null}
+      ), document.body) : null}
     </div>
   );
 }
+

@@ -284,6 +284,10 @@ const toUiPosSale = (row) => ({
   ticketNumber: Number(row.ticket_number ?? row.ticketNumber ?? 0),
   barbershopId: row.barbershop_id || null,
   branchId: row.branch_id || null,
+  cashSessionId: row.cash_session_id || row.cashSessionId || null,
+  paymentMethod: row.payment_method || row.paymentMethod || 'cash',
+  clientId: row.client_id || row.clientId || null,
+  clientName: row.client_name || row.clientName || '',
   rawSubtotal: Number(row.raw_subtotal ?? row.rawSubtotal ?? row.subtotal ?? 0),
   discountTotal: Number(row.discount_total ?? row.discountTotal ?? 0),
   subtotal: Number(row.subtotal || 0),
@@ -294,6 +298,60 @@ const toUiPosSale = (row) => ({
   promotionName: row.promotion_name || row.promotionName || '',
   discountLabel: row.discount_label || row.discountLabel || '',
   notes: row.notes || '',
+  canceledAt: (() => {
+    try {
+      return row.notes ? JSON.parse(row.notes)?.canceledAt || null : null;
+    } catch {
+      return null;
+    }
+  })(),
+  canceledBy: (() => {
+    try {
+      return row.notes ? JSON.parse(row.notes)?.canceledBy || null : null;
+    } catch {
+      return null;
+    }
+  })(),
+  cancellationReason: (() => {
+    try {
+      return row.notes ? JSON.parse(row.notes)?.cancellationReason || '' : '';
+    } catch {
+      return '';
+    }
+  })(),
+  createdBy: row.created_by || null,
+  createdAt: row.created_at,
+});
+
+const toUiCashSession = (row) => ({
+  id: row.id,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  openedBy: row.opened_by || null,
+  closedBy: row.closed_by || null,
+  openedAt: row.opened_at,
+  closedAt: row.closed_at || null,
+  openingAmount: Number(row.opening_amount || 0),
+  closingAmount: Number(row.closing_amount ?? row.counted_cash_amount ?? 0),
+  expectedCashAmount: Number(row.expected_cash_amount || 0),
+  countedCashAmount: Number(row.counted_cash_amount ?? row.closing_amount ?? 0),
+  differenceAmount: Number(row.difference_amount || 0),
+  status: row.status || (row.closed_at ? 'closed' : 'open'),
+  notes: row.notes || '',
+});
+
+const toUiCashMovement = (row) => ({
+  id: row.id,
+  cashSessionId: row.cash_session_id || null,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  type: row.type || 'in',
+  movementKind: row.movement_kind || 'manual',
+  paymentMethod: row.payment_method || 'cash',
+  amount: Number(row.amount || 0),
+  notes: row.notes || '',
+  referenceType: row.reference_type || null,
+  referenceId: row.reference_id || null,
   createdBy: row.created_by || null,
   createdAt: row.created_at,
 });
@@ -568,6 +626,10 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
 const toDbPosSale = (sale, barbershopId, branchId = null, createdBy = null) =>
   withScopeIds({
     id: sale.id,
+    cash_session_id: sale.cashSessionId || null,
+    payment_method: sale.paymentMethod || 'cash',
+    client_id: sale.clientId || null,
+    client_name: sale.clientName || null,
     raw_subtotal: Number(sale.rawSubtotal || sale.subtotal || 0),
     discount_total: Number(sale.discountTotal || 0),
     subtotal: Number(sale.subtotal || 0),
@@ -580,6 +642,20 @@ const toDbPosSale = (sale, barbershopId, branchId = null, createdBy = null) =>
     notes: sale.notes || null,
     created_by: createdBy || sale.createdBy || null,
   }, barbershopId, branchId);
+
+const fetchActiveCashSessionRow = async (barbershopId, branchId) => {
+  const { data, error } = await supabase
+    .from('cash_sessions')
+    .select('*')
+    .eq('barbershop_id', barbershopId)
+    .eq('branch_id', branchId)
+    .eq('status', 'open')
+    .is('closed_at', null)
+    .maybeSingle();
+
+  if (error) throw normalizeError(error, 'No se pudo validar la caja abierta.');
+  return data || null;
+};
 
 const toUiCashAdvance = (row) => ({
   id: row.id,
@@ -813,6 +889,8 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     { data: barbersData, error: barbersError },
     { data: appointmentsData, error: appointmentsError },
     posSalesResult,
+    cashSessionsResult,
+    cashMovementsResult,
     cashAdvancesResult,
     payrollSettlementsResult,
     settlementAppointmentsResult,
@@ -865,6 +943,22 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
         .gte('created_at', `${appointmentsRange.from}T00:00:00`)
         .lte('created_at', `${appointmentsRange.to}T23:59:59.999`)
         .order('created_at', { ascending: true }),
+      scope,
+    ).then((result) => result, (error) => ({ data: [], error })),
+    applyTenantScope(
+      supabase
+        .from('cash_sessions')
+        .select('*')
+        .order('opened_at', { ascending: false })
+        .limit(60),
+      scope,
+    ).then((result) => result, (error) => ({ data: [], error })),
+    applyTenantScope(
+      supabase
+        .from('cash_movements')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(500),
       scope,
     ).then((result) => result, (error) => ({ data: [], error })),
     applyTenantScope(
@@ -936,6 +1030,21 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     console.warn('No se pudieron cargar las ventas de POS para el snapshot principal:', normalizedError);
   } else {
     posSalesData = posSalesResult?.data || [];
+  }
+
+  let cashSessionsData = [];
+  let cashMovementsData = [];
+  let cashLoadError = null;
+  if (cashSessionsResult?.error || cashMovementsResult?.error) {
+    const normalizedError = normalizeError(
+      cashSessionsResult?.error || cashMovementsResult?.error,
+      'No se pudo cargar la caja.',
+    );
+    cashLoadError = normalizedError.message;
+    console.warn('No se pudo cargar la caja para el snapshot principal:', normalizedError);
+  } else {
+    cashSessionsData = cashSessionsResult?.data || [];
+    cashMovementsData = cashMovementsResult?.data || [];
   }
 
   let cashAdvancesData = [];
@@ -1039,6 +1148,8 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     }),
   );
   const posSales = (posSalesData || []).map(toUiPosSale);
+  const cashSessions = (cashSessionsData || []).map(toUiCashSession);
+  const cashMovements = (cashMovementsData || []).map(toUiCashMovement);
   const settlementAppointmentMap = new Map();
   for (const row of settlementAppointmentsData || []) {
     const current = settlementAppointmentMap.get(row.settlement_id) || [];
@@ -1052,11 +1163,14 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     barbers,
     appointments,
     posSales,
+    cashSessions,
+    cashMovements,
     inventoryItems,
     catalogs,
     cashWithdrawals,
     payrollSettlements,
     posSalesLoadError,
+    cashLoadError,
     inventoryLoadError,
     payrollLoadWarnings,
   };
@@ -1795,6 +1909,149 @@ export async function deleteServiceRecord(serviceId) {
   if (error) throw normalizeError(error, 'No se pudo eliminar el servicio.');
 }
 
+export async function openCashSession(payload = {}, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = payload.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = payload.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para abrir caja.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para abrir caja.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const existingSession = await fetchActiveCashSessionRow(resolvedBarbershopId, resolvedBranchId);
+  if (existingSession) {
+    throw normalizeError(null, 'Ya hay una caja abierta para esta sucursal.');
+  }
+
+  const { data, error } = await supabase.rpc('open_cash_session_atomic', {
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+    p_opened_by: currentUserId || null,
+    p_opening_amount: Math.max(Number(payload.openingAmount || 0), 0),
+    p_notes: payload.notes || null,
+  });
+
+  if (error) throw normalizeError(error, 'No se pudo abrir la caja.');
+
+  return {
+    session: toUiCashSession(data.session),
+    movement: toUiCashMovement(data.movement),
+  };
+}
+
+export async function createCashMovement(payload = {}, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = payload.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = payload.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para registrar el movimiento.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para registrar el movimiento.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const sessionRow = payload.cashSessionId
+    ? await supabase
+      .from('cash_sessions')
+      .select('*')
+      .eq('id', payload.cashSessionId)
+      .eq('barbershop_id', resolvedBarbershopId)
+      .eq('branch_id', resolvedBranchId)
+      .eq('status', 'open')
+      .is('closed_at', null)
+      .maybeSingle()
+    : { data: await fetchActiveCashSessionRow(resolvedBarbershopId, resolvedBranchId), error: null };
+  if (sessionRow.error) throw normalizeError(sessionRow.error, 'No se pudo validar la caja abierta.');
+  const cashSessionId = sessionRow.data?.id || null;
+  if (!cashSessionId) throw normalizeError(null, 'Debes abrir caja antes de registrar movimientos.');
+
+  const amount = Math.max(Number(payload.amount || 0), 0);
+  if (amount <= 0) throw normalizeError(null, 'El monto del movimiento debe ser mayor a cero.');
+
+  const movementType = payload.type === 'out' ? 'out' : 'in';
+  const { data, error } = await supabase
+    .from('cash_movements')
+    .insert({
+      cash_session_id: cashSessionId,
+      barbershop_id: resolvedBarbershopId,
+      branch_id: resolvedBranchId,
+      type: movementType,
+      movement_kind: 'manual',
+      payment_method: 'cash',
+      amount,
+      notes: payload.notes || (movementType === 'out' ? 'Salida manual de caja' : 'Entrada manual de caja'),
+      created_by: currentUserId || null,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw normalizeError(error, 'No se pudo registrar el movimiento de caja.');
+  return toUiCashMovement(data);
+}
+
+export async function createCashAuditMovement(payload = {}, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = payload.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = payload.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para registrar auditoría de caja.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para registrar auditoría de caja.');
+  if (!payload.cashSessionId) throw normalizeError(null, 'No se pudo resolver la caja para registrar auditoría.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const amount = Math.max(Number(payload.amount || 0), 0);
+  const { data, error } = await supabase
+    .from('cash_movements')
+    .insert({
+      cash_session_id: payload.cashSessionId,
+      barbershop_id: resolvedBarbershopId,
+      branch_id: resolvedBranchId,
+      type: payload.type === 'out' ? 'out' : 'in',
+      movement_kind: payload.movementKind || 'closing_adjustment',
+      payment_method: payload.paymentMethod || 'cash',
+      amount,
+      notes: payload.notes || 'Movimiento de auditoría',
+      reference_type: payload.referenceType || null,
+      reference_id: payload.referenceId || null,
+      created_by: currentUserId || null,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw normalizeError(error, 'No se pudo registrar el movimiento de auditoría.');
+  return toUiCashMovement(data);
+}
+
+export async function closeCashSession(payload = {}, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = payload.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = payload.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para cerrar caja.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para cerrar caja.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const activeSession = payload.cashSessionId
+    ? { id: payload.cashSessionId }
+    : await fetchActiveCashSessionRow(resolvedBarbershopId, resolvedBranchId);
+  const cashSessionId = activeSession?.id || null;
+  if (!cashSessionId) throw normalizeError(null, 'No hay una caja abierta para cerrar.');
+
+  const { data, error } = await supabase.rpc('close_cash_session_atomic', {
+    p_cash_session_id: cashSessionId,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+    p_closed_by: currentUserId || null,
+    p_counted_cash_amount: Math.max(Number(payload.countedCashAmount ?? payload.closingAmount ?? 0), 0),
+    p_notes: payload.notes || null,
+  });
+
+  if (error) throw normalizeError(error, 'No se pudo cerrar la caja.');
+  return toUiCashSession(data);
+}
+
 export async function upsertAppointments(appointments, services, barbershopId = null, branchId = null, barbers = [], clients = []) {
   assertSupabase();
   if (!appointments?.length) return;
@@ -1815,7 +2072,7 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
   const resolvedBranchId = sale.branchId ?? scope.currentBranchId ?? null;
 
   if (!resolvedBarbershopId) {
-    throw normalizeError(null, 'No se pudo resolver la barber\u00eda para registrar la venta.');
+    throw normalizeError(null, 'No se pudo resolver la barber?a para registrar la venta.');
   }
 
   if (!resolvedBranchId) {
@@ -1824,20 +2081,64 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
 
   await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
 
-  const payload = toDbPosSale(sale, resolvedBarbershopId, resolvedBranchId, currentUserId);
-  const { data, error } = await supabase
-    .from('pos_sales')
-    .insert(payload)
-    .select('*')
-    .single();
+  const activeCashSession = sale.cashSessionId
+    ? await supabase
+      .from('cash_sessions')
+      .select('*')
+      .eq('id', sale.cashSessionId)
+      .eq('barbershop_id', resolvedBarbershopId)
+      .eq('branch_id', resolvedBranchId)
+      .eq('status', 'open')
+      .is('closed_at', null)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) throw normalizeError(error, 'No se pudo validar la caja abierta.');
+        return data;
+      })
+    : await fetchActiveCashSessionRow(resolvedBarbershopId, resolvedBranchId);
+  if (!activeCashSession?.id) {
+    throw normalizeError(null, 'Debes abrir caja antes de registrar ventas.');
+  }
+
+  const payload = toDbPosSale(
+    { ...sale, cashSessionId: activeCashSession.id, paymentMethod: sale.paymentMethod || 'cash' },
+    resolvedBarbershopId,
+    resolvedBranchId,
+    currentUserId,
+  );
+  const { data, error } = await supabase.rpc('register_pos_sale_atomic', {
+    p_sale_id: payload.id || null,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+    p_cash_session_id: activeCashSession.id,
+    p_payment_method: payload.payment_method || 'cash',
+    p_raw_subtotal: Number(payload.raw_subtotal || 0),
+    p_discount_total: Number(payload.discount_total || 0),
+    p_subtotal: Number(payload.subtotal || 0),
+    p_product_total: Number(payload.product_total || 0),
+    p_service_total: Number(payload.service_total || 0),
+    p_items: payload.items || [],
+    p_promotion_id: payload.promotion_id || null,
+    p_promotion_name: payload.promotion_name || null,
+    p_discount_label: payload.discount_label || null,
+    p_notes: payload.notes || null,
+    p_client_id: payload.client_id || null,
+    p_client_name: payload.client_name || null,
+    p_created_by: currentUserId || null,
+  });
 
   if (error) throw normalizeError(error, 'No se pudo registrar la venta de POS.');
+  const persistedSaleId = data.sale?.id || payload.id || sale.id;
   let inventoryConsumption = [];
   let inventoryConsumptionError = null;
   try {
-    inventoryConsumption = await applyInventoryConsumptionForSale(sale, data?.id || sale.id, currentUserId);
+    inventoryConsumption = await applyInventoryConsumptionForSale(
+      { ...sale, cashSessionId: activeCashSession.id },
+      persistedSaleId,
+      currentUserId,
+    );
   } catch (inventoryError) {
-    inventoryConsumptionError = normalizeError(inventoryError, 'La venta se registró, pero no se pudo descontar el inventario.');
+    inventoryConsumptionError = normalizeError(inventoryError, 'La venta se registr?, pero no se pudo descontar el inventario.');
     console.warn('No se pudo descontar inventario de la venta POS:', inventoryConsumptionError);
   }
   const updatedInventoryItems = inventoryConsumption
@@ -1847,19 +2148,107 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
 
   return {
     ...sale,
-    ...toUiPosSale(data),
+    ...toUiPosSale(data.sale),
+    cashMovement: data.movement ? toUiCashMovement(data.movement) : null,
     updatedInventoryItems,
     inventoryConsumptionError: inventoryConsumptionError?.message || null,
-    ticketNumber: Number(data?.ticket_number ?? sale.ticketNumber ?? 0),
+    ticketNumber: Number(data.sale?.ticket_number ?? sale.ticketNumber ?? 0),
   };
 }
 
-export async function deletePosSaleRecord(saleId) {
+export async function deletePosSaleRecord(saleId, currentUserId, scopeOverride = {}, saleScope = {}) {
   assertSupabase();
-  const { error } = await supabase.from('pos_sales').delete().eq('id', saleId);
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = saleScope.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = saleScope.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barber?a para cancelar la venta.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para cancelar la venta.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const { error } = await supabase.rpc('cancel_pos_sale_atomic', {
+    p_sale_id: saleId,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+  });
   if (error) throw normalizeError(error, 'No se pudo cancelar la venta de POS.');
 }
 
+export async function cancelPosSaleWithReversal(sale, reason = '', currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  if (!sale?.id) throw normalizeError(null, 'No se pudo resolver la venta para anular.');
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = sale.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = sale.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barber?a para cancelar la venta.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para cancelar la venta.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const canceledAt = new Date().toISOString();
+  const cancellationPayload = {
+    source: 'cancel_pos_sale',
+    previousNotes: sale.notes || '',
+    canceledAt,
+    canceledBy: currentUserId || null,
+    cancellationReason: reason || 'Sin motivo especificado',
+  };
+
+  const { data: updatedSales, error: saleError } = await supabase
+    .from('pos_sales')
+    .update({ notes: JSON.stringify(cancellationPayload) })
+    .eq('id', sale.id)
+    .eq('barbershop_id', resolvedBarbershopId)
+    .eq('branch_id', resolvedBranchId)
+    .select('*');
+  if (saleError) throw normalizeError(saleError, 'No se pudo marcar la venta como anulada.');
+  const updatedSale = Array.isArray(updatedSales) && updatedSales.length > 0
+    ? toUiPosSale(updatedSales[0])
+    : {
+      ...sale,
+      notes: JSON.stringify(cancellationPayload),
+      canceledAt,
+      canceledBy: currentUserId || null,
+      cancellationReason: reason || 'Sin motivo especificado',
+    };
+
+  const movement = await createCashAuditMovement({
+    cashSessionId: sale.cashSessionId,
+    barbershopId: resolvedBarbershopId,
+    branchId: resolvedBranchId,
+    type: 'out',
+    movementKind: 'sale',
+    paymentMethod: sale.paymentMethod || 'cash',
+    amount: Number(sale.subtotal || 0),
+    notes: `Anulaci?n venta POS #${sale.ticketNumber || ''} - ${reason || 'Sin motivo'}`,
+    referenceType: 'pos_sale_void',
+    referenceId: sale.id,
+    ticketNumber: sale.ticketNumber || 0,
+  }, currentUserId, scopeOverride);
+
+  return {
+    sale: updatedSale,
+    movement,
+  };
+}
+
+export async function deleteCashMovementRecord(movementId, currentUserId, scopeOverride = {}, movementScope = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = movementScope.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = movementScope.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barber?a para anular el movimiento.');
+  if (!resolvedBranchId) throw normalizeError(null, 'No se pudo resolver la sucursal para anular el movimiento.');
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const { error } = await supabase.rpc('cancel_cash_movement_atomic', {
+    p_movement_id: movementId,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+  });
+  if (error) throw normalizeError(error, 'No se pudo anular el movimiento de caja.');
+}
 export async function createCashAdvance(advance, currentUserId, scopeOverride = {}) {
   assertSupabase();
   if (!advance) return null;

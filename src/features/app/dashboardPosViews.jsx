@@ -117,6 +117,33 @@ const CartLine = memo(function CartLine({ item, onRemove }) {
   );
 });
 
+function DenominationGrid({ title, currency, denominations, values, onChange, compact = false }) {
+  return (
+    <div className={`${compact ? 'rounded-[1.25rem] p-2.5' : 'rounded-[1.6rem] p-4'} border border-slate-700 bg-slate-950/80`}>
+      <div className={`${compact ? 'mb-1.5' : 'mb-3'} flex items-center justify-between gap-3`}>
+        <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} font-black uppercase tracking-[0.18em] text-cyan-300`}>{title}</p>
+        <span className={`${compact ? 'px-2 py-0.5 text-[8px]' : 'px-3 py-1 text-[9px]'} rounded-full border border-cyan-400/25 bg-cyan-400/10 font-black uppercase tracking-[0.14em] text-cyan-200`}>{currency}</span>
+      </div>
+      <div className={`grid ${compact ? 'grid-cols-1 gap-1.5' : 'grid-cols-2 gap-2 sm:grid-cols-3'}`}>
+        {denominations.map((denomination) => (
+          <label key={`${currency}-${denomination}`} className={`${compact ? 'rounded-xl px-2 py-1' : 'rounded-2xl px-3 py-2'} grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 border border-slate-700 bg-slate-900/80`}>
+            <span className={`${compact ? 'text-[13.5px]' : 'text-[11px]'} font-black italic text-slate-100`}>{currency} {denomination}</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={values[denomination] || ''}
+              onChange={(event) => onChange(denomination, event.target.value)}
+              className={`${compact ? 'rounded-lg px-1.5 py-0.5 text-sm' : 'rounded-xl px-2 py-2 text-sm'} min-w-0 border border-slate-600 bg-slate-950 text-center font-black text-white outline-none placeholder:text-slate-600 focus:border-indigo-400`}
+              placeholder="0"
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardView({ appointments, clients, onUpdate, onOpenAppointment, barbers, onNewWalkin, onQuickAppointment, onCashWithdrawal, posSales = [] }) {
   const [activeBarber, setActiveBarber] = useState('Global');
   const today = getTodayString();

@@ -1054,7 +1054,9 @@ export const makeId = () => globalThis.crypto?.randomUUID?.() || Math.random().t
 
 export const PROMOTION_CATEGORY = 'Promocion';
 
-export const CATEGORIES = ['Cortes', 'Barba', 'Producto', 'Combo', PROMOTION_CATEGORY];
+export const CATEGORIES = ['Cortes', 'Barba', 'Tratamientos', 'Facial', 'Producto', 'Combo', PROMOTION_CATEGORY];
+export const INVENTORY_PRODUCT_CATEGORIES = ['Reventa', 'Cabello', 'Barba', 'Color', 'Tratamiento', 'Facial', 'Higiene', 'Herramientas', 'Otros'];
+export const PROTECTED_SERVICE_CATEGORIES = ['Producto', 'Combo', PROMOTION_CATEGORY];
 
 export const CATEGORY_LABELS = {
   Cortes: 'Cortes',

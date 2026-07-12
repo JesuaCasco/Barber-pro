@@ -1,4 +1,4 @@
-﻿import React, { Suspense, createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import React, { Suspense, createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   createCashAdvance,
   createManagedUser,
@@ -7,6 +7,7 @@ import {
   assignProfileBarbershop,
   deleteBarberRecord,
   deleteClientRecord,
+  deleteInventoryProduct,
   deletePosSaleRecord,
   deleteServiceRecord,
   fetchAccessControlSnapshot,
@@ -17,11 +18,14 @@ import {
   resetManagedUserPassword,
   replaceUserRoles,
   syncServiceComboItems,
+  syncServiceInventoryUsage,
+  upsertBarbershopCatalog,
   upsertBranch,
   upsertBarbershop,
   upsertAppointments,
   upsertBarbers,
   upsertClients,
+  upsertInventoryProducts,
   upsertServices,
   updateManagedUserProfile,
 } from './lib/barbershopApi';
@@ -89,6 +93,7 @@ import {
   Repeat,
   ArrowRight,
   ShieldCheck,
+  Settings,
 } from 'lucide-react';
 
 import {
@@ -97,6 +102,8 @@ import {
   BARBER_PAYMENT_MODE_OPTIONS,
   BUSINESS_PLANS,
   CATEGORIES,
+  INVENTORY_PRODUCT_CATEGORIES,
+  PROTECTED_SERVICE_CATEGORIES,
   HOURS,
   MOCK_BARBERS,
   LOYALTY_REWARD_VISITS,
@@ -162,6 +169,38 @@ const UiFeedbackContext = createContext({
 
 const useUiFeedback = () => useContext(UiFeedbackContext);
 const AUTH_RUNTIME_CACHE_KEY = 'bp_auth_runtime_cache_v1';
+
+const inventoryProductToService = (item) => ({
+  id: item.serviceId || `inventory:${item.id}`,
+  inventoryItemId: item.id,
+  name: item.productName || item.name || 'Producto sin nombre',
+  price: Number(item.salePrice || 0),
+  category: 'Producto',
+  inventoryCategory: item.productCategory || 'Otros',
+  usageType: item.usageType || 'retail',
+  currentStock: Number(item.currentStock || 0),
+  costPrice: Number(item.costPrice || 0),
+  unitName: item.unitName || 'unidad',
+  sku: item.sku || '',
+  barcode: item.barcode || '',
+  isInventoryProduct: true,
+  items: [],
+  appliesTo: 'General',
+  discountType: 'percentage',
+  discountValue: 0,
+  targetServiceIds: [],
+  isOptional: true,
+});
+
+const mergeInventoryProductIntoServices = (currentServices, item) => {
+  const nextServices = (currentServices || []).filter(
+    (service) => String(service.inventoryItemId || '') !== String(item.id || '')
+      && String(service.id || '') !== String(item.serviceId || ''),
+  );
+
+  if (!['retail', 'both'].includes(item.usageType || 'retail')) return nextServices;
+  return [...nextServices, inventoryProductToService(item)];
+};
 
 const NETWORK_ERROR_PATTERNS = [
   'failed to fetch',
@@ -1602,6 +1641,11 @@ export default function App() {
       },
     ];
   });
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [catalogSettings, setCatalogSettings] = useState({
+    serviceCategories: CATEGORIES,
+    inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
+  });
   
   const [clients, setClients] = useState(() => {
     const saved = localDevStorage?.getItem('bp_dev_clients') || null;
@@ -1740,6 +1784,11 @@ export default function App() {
   const clearScopedOperationalState = () => {
     setAppointments([]);
     setServices([]);
+    setInventoryItems([]);
+    setCatalogSettings({
+      serviceCategories: CATEGORIES,
+      inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
+    });
     setClients([]);
     setBarbers([]);
     setPosSales([]);
@@ -1781,6 +1830,11 @@ export default function App() {
     );
     setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
     setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
+    setInventoryItems(Array.isArray(cached.inventoryItems) ? cached.inventoryItems : []);
+    setCatalogSettings(cached.catalogSettings || {
+      serviceCategories: CATEGORIES,
+      inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
+    });
     setCashWithdrawals(Array.isArray(cached.cashWithdrawals) ? cached.cashWithdrawals : []);
     setPayrollSettlements(Array.isArray(cached.payrollSettlements) ? cached.payrollSettlements : []);
     setOperationalWarnings(Array.isArray(cached.operationalWarnings) ? cached.operationalWarnings : []);
@@ -2006,10 +2060,16 @@ export default function App() {
           setBarbers(snapshot.barbers.map((barber, index) => ensureBarberTheme(barber, index)));
           setAppointments(snapshot.appointments);
           setPosSales(snapshot.posSales || []);
+          setInventoryItems(snapshot.inventoryItems || []);
+          setCatalogSettings({
+            serviceCategories: snapshot.catalogs?.serviceCategories?.length ? snapshot.catalogs.serviceCategories : CATEGORIES,
+            inventoryProductCategories: snapshot.catalogs?.inventoryProductCategories?.length ? snapshot.catalogs.inventoryProductCategories : INVENTORY_PRODUCT_CATEGORIES,
+          });
           setCashWithdrawals(snapshot.cashWithdrawals || []);
           setPayrollSettlements(snapshot.payrollSettlements || []);
           setOperationalWarnings([
             ...(snapshot.posSalesLoadError ? [snapshot.posSalesLoadError] : []),
+            ...(snapshot.inventoryLoadError ? [snapshot.inventoryLoadError] : []),
             ...(snapshot.payrollLoadWarnings || []),
           ]);
           if (snapshot.posSalesLoadError) {
@@ -2017,6 +2077,9 @@ export default function App() {
           }
           if (snapshot.payrollLoadWarnings?.length) {
             notify(`Advertencia de nómina\n\n${snapshot.payrollLoadWarnings.join('\n\n')}`, 'warning');
+          }
+          if (snapshot.inventoryLoadError) {
+            notify(`Advertencia de inventario\n\n${snapshot.inventoryLoadError}`, 'warning');
           }
         }
       } catch (error) {
@@ -2061,6 +2124,8 @@ export default function App() {
       barbers,
       appointments,
       posSales,
+      inventoryItems,
+      catalogSettings,
       cashWithdrawals,
       payrollSettlements,
       operationalWarnings,
@@ -2085,6 +2150,8 @@ export default function App() {
     barbers,
     appointments,
     posSales,
+    inventoryItems,
+    catalogSettings,
     cashWithdrawals,
     payrollSettlements,
     operationalWarnings,
@@ -2491,6 +2558,7 @@ export default function App() {
     { id: 'clientes', label: 'Clientes', icon: Users, allow: isAdmin || isCashier },
     { id: 'barberos', label: 'Barbero', icon: UserCheck, allow: isAdmin },
     { id: 'services', label: 'Servicios', icon: Scissors, allow: isAdmin },
+    { id: 'inventario', label: 'Inventario', icon: Package, allow: isAdmin },
     { id: 'caja', label: 'Venta / POS', icon: ShoppingBag, allow: isAdmin || isCashier },
     { id: 'reportes', label: 'Reportes', icon: BarChart3, allow: isAdmin },
     { id: 'sistema', label: 'Sistema', icon: Layers, allow: isAdmin },
@@ -3512,6 +3580,9 @@ export default function App() {
       ...serviceData,
       price: isPromotion ? 0 : Number(serviceData.price) || 0,
       items: serviceData.category === 'Combo' ? serviceData.items : [],
+      inventoryUsage: ['Combo', 'Promocion', 'Producto'].includes(serviceData.category)
+        ? []
+        : (serviceData.inventoryUsage || []),
       appliesTo: isPromotion ? 'General' : 'Servicio',
       discountType: isPromotion ? (serviceData.discountType || 'percentage') : 'percentage',
       discountValue: normalizedPromotionDiscount,
@@ -3536,8 +3607,88 @@ export default function App() {
       try {
         await upsertServices([savedService], currentBarbershopId);
         await syncServiceComboItems(nextServices);
+        await syncServiceInventoryUsage(savedService, session?.user?.id, superAdminScopeOverride);
       } catch (error) {
         handleSyncError(error, 'No pude guardar el servicio en Supabase.');
+      }
+    }
+  };
+
+  const handleSaveInventoryProduct = async (product) => {
+    const normalizedProduct = {
+      ...product,
+      id: product.id || makeId(),
+      barbershopId: product.barbershopId || currentBarbershopId || null,
+      branchId: product.branchId ?? currentBranchId ?? null,
+      productName: String(product.productName || product.name || '').trim(),
+      name: String(product.productName || product.name || '').trim(),
+      productCategory: product.productCategory || 'Otros',
+      usageType: product.usageType || 'retail',
+      unitName: product.unitName || 'unidad',
+      currentStock: Number(product.currentStock || 0),
+      minStock: Number(product.minStock || 0),
+      costPrice: Number(product.costPrice || 0),
+      salePrice: Number(product.salePrice || 0),
+      isActive: product.isActive ?? true,
+    };
+
+    if (!normalizedProduct.productName) {
+      notify('Ingresa el nombre del producto.', 'warning');
+      return;
+    }
+
+    try {
+      const savedProducts = hasSupabaseConfig && bootstrapCompletedRef.current && session?.user?.id
+        ? await upsertInventoryProducts([normalizedProduct], session.user.id, superAdminScopeOverride)
+        : [normalizedProduct];
+      const savedProduct = savedProducts[0] || normalizedProduct;
+
+      setInventoryItems((prev) => {
+        const exists = prev.some((item) => String(item.id) === String(savedProduct.id));
+        return exists
+          ? prev.map((item) => String(item.id) === String(savedProduct.id) ? savedProduct : item)
+          : [...prev, savedProduct];
+      });
+      setServices((prev) => mergeInventoryProductIntoServices(prev, savedProduct));
+      notify('Producto de inventario guardado.', 'success');
+    } catch (error) {
+      handleSyncError(error, 'No pude guardar el producto de inventario en Supabase.');
+    }
+  };
+
+  const handleDeleteInventoryProduct = async (productId) => {
+    const confirmed = await confirmAction({
+      title: 'Desactivar producto',
+      message: 'El producto saldrá del inventario activo y de la caja.',
+      confirmLabel: 'Desactivar',
+    });
+    if (!confirmed) return;
+
+    try {
+      if (hasSupabaseConfig && bootstrapCompletedRef.current) {
+        await deleteInventoryProduct(productId);
+      }
+      setInventoryItems((prev) => prev.filter((item) => String(item.id) !== String(productId)));
+      setServices((prev) => prev.filter((service) => String(service.inventoryItemId || '') !== String(productId)));
+      notify('Producto desactivado.', 'success');
+    } catch (error) {
+      handleSyncError(error, 'No pude desactivar el producto de inventario en Supabase.');
+    }
+  };
+
+  const handleSaveCatalogSettings = async (catalogKey, values) => {
+    const stateKey = catalogKey === 'service_categories' ? 'serviceCategories' : 'inventoryProductCategories';
+    const protectedValues = catalogKey === 'service_categories' ? PROTECTED_SERVICE_CATEGORIES : [];
+    const nextValues = Array.from(new Set([...(values || []), ...protectedValues].map((value) => String(value || '').trim()).filter(Boolean)));
+
+    setCatalogSettings((prev) => ({ ...prev, [stateKey]: nextValues }));
+
+    if (hasSupabaseConfig && bootstrapCompletedRef.current && session?.user?.id) {
+      try {
+        const savedValues = await upsertBarbershopCatalog(catalogKey, nextValues, session.user.id, superAdminScopeOverride);
+        setCatalogSettings((prev) => ({ ...prev, [stateKey]: savedValues }));
+      } catch (error) {
+        handleSyncError(error, 'No pude guardar el catálogo en Supabase.');
       }
     }
   };
@@ -3675,8 +3826,10 @@ export default function App() {
     const rawSubtotal = Number(saleDraft?.rawSubtotal) || normalizedItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
     const discountTotal = Number(saleDraft?.discountTotal || 0);
     const subtotal = Number(saleDraft?.subtotal) || Math.max(rawSubtotal - discountTotal, 0);
-    const productTotal = subtotal;
-    const serviceTotal = 0;
+    const productTotal = normalizedItems
+      .filter((item) => item.category === 'Producto')
+      .reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 0)), 0);
+    const serviceTotal = Math.max(subtotal - productTotal, 0);
     const nextLocalTicketNumber = (posSales || []).reduce(
       (max, sale) => Math.max(max, Number(sale.ticketNumber || 0)),
       0,
@@ -3691,6 +3844,8 @@ export default function App() {
         category: item.category,
         price: Number(item.price) || 0,
         qty: Number(item.qty) || 0,
+        inventoryItemId: item.inventoryItemId || null,
+        inventoryUsage: Array.isArray(item.inventoryUsage) ? item.inventoryUsage : [],
       })),
       rawSubtotal,
       discountTotal,
@@ -3733,6 +3888,19 @@ export default function App() {
     try {
       const persistedSale = await createPosSale(saleRecord, session.user.id, superAdminScopeOverride);
       setPosSales((prev) => prev.map((sale) => String(sale.id) === String(saleRecord.id) ? persistedSale : sale));
+      if (persistedSale.updatedInventoryItems?.length) {
+        setInventoryItems((prev) => prev.map((item) => {
+          const updated = persistedSale.updatedInventoryItems.find((nextItem) => String(nextItem.id) === String(item.id));
+          return updated || item;
+        }));
+        setServices((prev) => persistedSale.updatedInventoryItems.reduce(
+          (nextServices, item) => mergeInventoryProductIntoServices(nextServices, item),
+          prev,
+        ));
+      }
+      if (persistedSale.inventoryConsumptionError) {
+        notify(persistedSale.inventoryConsumptionError, 'warning');
+      }
       setSelectedData((prev) => ({
         ...prev,
         posSaleReceipt: {
@@ -4011,7 +4179,17 @@ export default function App() {
               }}
             />
           )}
-          {activeTab === 'services' && <ServicesView services={services} onAdd={(cat) => { setSelectedData({...selectedData, service: { category: cat }}); setModals({...modals, service: true}); }} onEdit={(s) => { setSelectedData({...selectedData, service: s}); setModals({...modals, service: true}); }} onDelete={handleDeleteService} />}
+          {activeTab === 'services' && <ServicesView services={services} serviceCategories={catalogSettings.serviceCategories} onSaveCatalog={(values) => handleSaveCatalogSettings('service_categories', values)} onAdd={(cat) => { setSelectedData({...selectedData, service: { category: cat }}); setModals({...modals, service: true}); }} onEdit={(s) => { setSelectedData({...selectedData, service: s}); setModals({...modals, service: true}); }} onDelete={handleDeleteService} onManageInventory={() => setActiveTab('inventario')} />}
+          {activeTab === 'inventario' && (
+            <InventoryView
+              inventoryItems={inventoryItems}
+              productCategories={catalogSettings.inventoryProductCategories}
+              onSaveCatalog={(values) => handleSaveCatalogSettings('inventory_product_categories', values)}
+              onGoToProducts={() => setActiveTab('services')}
+              onSaveProduct={handleSaveInventoryProduct}
+              onDeleteProduct={handleDeleteInventoryProduct}
+            />
+          )}
           {activeTab === 'caja' && <POSView services={services} onSale={handleRegisterPosSale} />}
           {activeTab === 'reportes' && (
             <ReportsView
@@ -4054,7 +4232,7 @@ export default function App() {
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
       {modals.clientDetail && <ClientDetailModal client={selectedData.client} clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onClose={() => setModals({...modals, clientDetail: false})} onEdit={() => { setModals({...modals, clientDetail: false, client: true}); }} onDelete={() => handleDeleteClient(selectedData.client.id)} onNewApt={() => { setModals({...modals, clientDetail: false, appointment: true}); setSelectedData({...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: selectedData.client } }); }} />}
       {modals.finalize && <FinalizeModal onClose={() => setModals({...modals, finalize: false})} onConfirm={(ex) => selectedData.finalize?.isQuickDirectSale ? handleConfirmQuickDirectSale(ex) : handleUpdateStatus(selectedData.finalize.id, 'Finalizada', ex)} services={services} clients={clients} initial={selectedData.finalize} />}
-      {modals.service && <ServiceEditorModal services={services} onClose={() => setModals({...modals, service: false})} onSave={handleSaveService} initial={selectedData.service} />}
+      {modals.service && <ServiceEditorModal services={services} inventoryItems={inventoryItems} serviceCategoryOptions={catalogSettings.serviceCategories} inventoryProductCategories={catalogSettings.inventoryProductCategories} onClose={() => setModals({...modals, service: false})} onSave={handleSaveService} initial={selectedData.service} />}
       {modals.paymentReceipt && <PaymentReceiptModal data={selectedData.paymentReceipt} onClose={() => setModals({...modals, paymentReceipt: false})} onConfirmPayment={handleConfirmPayment} confirmAction={confirmAction} />}
       {modals.posSaleReceipt && <PosSaleReceiptModal data={selectedData.posSaleReceipt} onClose={() => setModals({...modals, posSaleReceipt: false})} onCancelSale={handleCancelPosSale} confirmAction={confirmAction} />}
       {modals.staffSettlement && <StaffSettlementModal data={selectedData.staffSettlement} onClose={() => setModals({...modals, staffSettlement: false})} onConfirmSettlement={handleConfirmStaffSettlement} confirmAction={confirmAction} />}
@@ -4385,8 +4563,98 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   );
 }
 
-function ServicesView({ services, onAdd, onEdit, onDelete }) {
+function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = [], onSave, onClose }) {
+  const [items, setItems] = useState(values);
+  const [newValue, setNewValue] = useState('');
+  const protectedSet = useMemo(() => new Set(protectedValues), [protectedValues]);
+
+  const addItem = () => {
+    const value = newValue.trim();
+    if (!value) return;
+    setItems((prev) => Array.from(new Set([...prev, value])));
+    setNewValue('');
+  };
+
+  const removeItem = (value) => {
+    if (protectedSet.has(value)) return;
+    setItems((prev) => prev.filter((item) => item !== value));
+  };
+
+  return (
+    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-[#24181f]/75 p-3 backdrop-blur-md no-print">
+      <div className="flex h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-[1.8rem] border border-[#ee9fbc] bg-white shadow-[0_30px_90px_rgba(52,31,42,0.35)]">
+        <div className="flex items-center justify-between gap-4 border-b border-[#f2c1d4] bg-[#fff7fb] px-6 py-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Configuración de catálogo</p>
+            <h3 className="mt-1 text-2xl font-black uppercase italic tracking-tighter text-[#302530]">{title}</h3>
+            <p className="mt-2 text-[11px] font-bold text-[#856a75]">{subtitle}</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#ee9fbc] bg-white text-[#9b6076] hover:bg-[#fff7fb]">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+            <input
+              value={newValue}
+              onChange={(event) => setNewValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addItem();
+                }
+              }}
+              className="w-full rounded-2xl border border-[#ee9fbc] bg-[#fff7fb] px-5 py-4 text-sm font-black uppercase text-[#302530] outline-none focus:border-[#d94f83]"
+              placeholder="Nueva categoría"
+            />
+            <button type="button" onClick={addItem} className="rounded-2xl bg-[#d94f83] px-7 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(217,79,131,0.22)]">
+              Agregar
+            </button>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => {
+              const isProtected = protectedSet.has(item);
+              return (
+                <div key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-[#f2c1d4] bg-white px-4 py-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black uppercase italic text-[#302530]">{item}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-[#856a75]">{isProtected ? 'Sistema' : 'Editable'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item)}
+                    disabled={isProtected}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isProtected ? 'border-[#e8d8df] text-[#c9aebb]' : 'border-[#ee9fbc] text-[#d94f83] hover:bg-[#fff7fb]'}`}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-[#f2c1d4] bg-white px-6 py-4 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className="rounded-2xl border border-[#ee9fbc] bg-white px-7 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-[#9b6076]">
+            Cancelar
+          </button>
+          <button type="button" onClick={() => onSave?.(items)} className="rounded-2xl bg-[#6fb89b] px-8 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(111,184,155,0.22)]">
+            Guardar catálogo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog, onAdd, onEdit, onDelete, onManageInventory }) {
   const [activeCategory, setActiveCategory] = useState('Cortes');
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const visibleCategories = useMemo(() => Array.from(new Set([...(serviceCategories || CATEGORIES), ...PROTECTED_SERVICE_CATEGORIES])), [serviceCategories]);
+  const effectiveActiveCategory = visibleCategories.includes(activeCategory) ? activeCategory : visibleCategories[0] || 'Cortes';
   const getIcon = (cat, size = 32) => {
     switch(cat) {
       case 'Cortes': return <Scissors size={size} />;
@@ -4449,7 +4717,7 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
       price: 'text-fuchsia-300 group-hover:text-fuchsia-100',
     },
   };
-  const filteredServices = useMemo(() => (services || []).filter(s => s.category === activeCategory), [services, activeCategory]);
+  const filteredServices = useMemo(() => (services || []).filter(s => s.category === effectiveActiveCategory), [services, effectiveActiveCategory]);
 
   return (
     <div className="p-4 md:p-10 space-y-6 md:space-y-12 h-full animate-in fade-in text-white no-print">
@@ -4458,12 +4726,16 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">Menú de servicios</h3>
           <p className="mobile-simplify-subtitle text-[10px] text-indigo-400 font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Gestión Maestra de Catálogo</p>
         </div>
-        <button onClick={() => onAdd(activeCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {activeCategory === 'Promocion' ? 'Nueva Promoción' : 'Nuevo Servicio'}</button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button onClick={() => setIsCatalogOpen(true)} className="w-full sm:w-auto border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase italic flex items-center justify-center gap-2 transition-all hover:bg-cyan-400/20"><Settings size={16} /> Catálogos</button>
+          {onManageInventory && <button onClick={onManageInventory} className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase italic flex items-center justify-center gap-2 transition-all hover:bg-emerald-400/20"><Package size={16} /> Inventario</button>}
+          <button onClick={() => onAdd(effectiveActiveCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {effectiveActiveCategory === 'Promocion' ? 'Nueva Promoción' : effectiveActiveCategory === 'Producto' ? 'Nuevo Producto' : 'Nuevo Servicio'}</button>
+        </div>
       </div>
       <div className="grid w-full grid-cols-2 gap-2.5 p-3 bg-black/80 border border-slate-800 rounded-[2.5rem] text-white shadow-[inset_0_0_24px_rgba(15,23,42,0.85)] sm:flex sm:flex-wrap sm:items-center sm:w-fit">
-        {CATEGORIES.map((cat) => {
+        {visibleCategories.map((cat) => {
           const theme = categoryThemes[cat] || categoryThemes.Cortes;
-          const isActive = activeCategory === cat;
+          const isActive = effectiveActiveCategory === cat;
           return (
             <button
               key={cat}
@@ -4519,11 +4791,391 @@ function ServicesView({ services, onAdd, onEdit, onDelete }) {
           </div>
           );
         })}
-        <div onClick={() => onAdd(activeCategory)} className={`relative overflow-hidden border-4 border-dashed rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer group min-h-[260px] md:min-h-[320px] text-white hover:-translate-y-1 ${categoryThemes[activeCategory]?.idle || categoryThemes.Cortes.idle}`}><div className={`absolute inset-8 rounded-[2rem] opacity-15 blur-2xl transition-all group-hover:opacity-30 ${categoryThemes[activeCategory]?.dot || categoryThemes.Cortes.dot}`} /><div className="relative w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-all"><Plus size={28} /></div><p className="relative font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-center">{activeCategory === 'Promocion' ? 'Añadir promoción' : `Añadir a ${CATEGORY_LABELS[activeCategory] || activeCategory}`}</p></div>
+        <div onClick={() => onAdd(effectiveActiveCategory)} className={`relative overflow-hidden border-4 border-dashed rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer group min-h-[260px] md:min-h-[320px] text-white hover:-translate-y-1 ${categoryThemes[effectiveActiveCategory]?.idle || categoryThemes.Cortes.idle}`}><div className={`absolute inset-8 rounded-[2rem] opacity-15 blur-2xl transition-all group-hover:opacity-30 ${categoryThemes[effectiveActiveCategory]?.dot || categoryThemes.Cortes.dot}`} /><div className="relative w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-all"><Plus size={28} /></div><p className="relative font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-center">{effectiveActiveCategory === 'Promocion' ? 'Añadir promoción' : `Añadir a ${CATEGORY_LABELS[effectiveActiveCategory] || effectiveActiveCategory}`}</p></div>
       </div>
+      {isCatalogOpen && (
+        <CatalogSettingsModal
+          title="Catálogos de servicios"
+          subtitle="Configura las categorías operativas de la barbería."
+          values={visibleCategories}
+          protectedValues={PROTECTED_SERVICE_CATEGORIES}
+          onSave={async (values) => {
+            await onSaveCatalog?.(values);
+            setIsCatalogOpen(false);
+          }}
+          onClose={() => setIsCatalogOpen(false)}
+        />
+      )}
     </div>
   );
 }
+
+function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PRODUCT_CATEGORIES, onSaveCatalog, onGoToProducts, onSaveProduct, onDeleteProduct }) {
+  const emptyForm = {
+    productName: '',
+    productCategory: 'Reventa',
+    usageType: 'retail',
+    currentStock: '',
+    minStock: '',
+    maxStock: '',
+    costPrice: '',
+    salePrice: '',
+    unitName: 'unidad',
+    sku: '',
+    notes: '',
+  };
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const visibleProductCategories = useMemo(() => Array.from(new Set(productCategories?.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES)), [productCategories]);
+  const usageOptions = [
+    { value: 'retail', label: 'Reventa', helper: 'Se vende en caja' },
+    { value: 'internal', label: 'Insumo', helper: 'Se usa en servicios' },
+    { value: 'both', label: 'Ambos', helper: 'Se vende y se usa' },
+  ];
+  const activeItems = useMemo(
+    () => (inventoryItems || []).filter((item) => item.isActive !== false),
+    [inventoryItems],
+  );
+  const filteredItems = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return activeItems;
+    return activeItems.filter((item) => [
+      item.productName,
+      item.name,
+      item.productCategory,
+      item.sku,
+      item.usageType,
+    ].some((value) => String(value || '').toLowerCase().includes(term)));
+  }, [activeItems, search]);
+  const stockProducts = activeItems.filter((item) => item.trackStock !== false);
+  const sellableProducts = activeItems.filter((item) => ['retail', 'both'].includes(item.usageType || 'retail'));
+  const internalProducts = activeItems.filter((item) => ['internal', 'both'].includes(item.usageType || 'retail'));
+  const totalStockUnits = activeItems.reduce((sum, item) => sum + Number(item.currentStock || 0), 0);
+  const inventoryCostValue = activeItems.reduce(
+    (sum, item) => sum + (Number(item.currentStock || 0) * Number(item.costPrice || 0)),
+    0,
+  );
+  const inventoryCards = [
+    {
+      id: 'products',
+      label: 'Productos',
+      value: activeItems.length,
+      helper: `${sellableProducts.length} para venta directa`,
+      icon: Package,
+      tone: 'text-[#d94f83]',
+      bg: 'bg-[#fff7fb]',
+      border: 'border-[#ee9fbc]',
+    },
+    {
+      id: 'stock',
+      label: 'Stock controlado',
+      value: stockProducts.length,
+      helper: `${totalStockUnits.toLocaleString('es-NI')} unidades registradas`,
+      icon: Layers,
+      tone: 'text-[#4f8674]',
+      bg: 'bg-[#edf7f2]',
+      border: 'border-[#b7d8c7]',
+    },
+    {
+      id: 'cost',
+      label: 'Costo inventario',
+      value: `C$ ${inventoryCostValue.toLocaleString('es-NI')}`,
+      helper: `${internalProducts.length} insumos para servicios`,
+      icon: Repeat,
+      tone: 'text-[#856a75]',
+      bg: 'bg-white',
+      border: 'border-[#f2c1d4]',
+    },
+  ];
+
+  const openNewProduct = () => {
+    setEditingProduct(null);
+    setForm(emptyForm);
+    setIsProductModalOpen(true);
+  };
+
+  const openEditProduct = (product) => {
+    setEditingProduct(product);
+    setForm({
+      ...emptyForm,
+      ...product,
+      productName: product.productName || product.name || '',
+      currentStock: product.currentStock ?? '',
+      minStock: product.minStock ?? '',
+      maxStock: product.maxStock ?? '',
+      costPrice: product.costPrice ?? '',
+      salePrice: product.salePrice ?? product.price ?? '',
+      productCategory: product.productCategory || 'Reventa',
+      usageType: product.usageType || 'retail',
+      unitName: product.unitName || 'unidad',
+      sku: product.sku || '',
+      notes: product.notes || '',
+    });
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+    setForm(emptyForm);
+  };
+
+  const updateForm = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSaveProduct?.({
+      ...editingProduct,
+      ...form,
+      productName: form.productName,
+      name: form.productName,
+    });
+    closeProductModal();
+  };
+
+  const getUsageLabel = (usageType) => usageOptions.find((option) => option.value === usageType)?.label || 'Reventa';
+  const getMargin = (item) => Number(item.salePrice || 0) - Number(item.costPrice || 0);
+
+  return (
+    <div className="p-4 md:p-10 space-y-6 md:space-y-8 h-full animate-in fade-in text-[#302530] no-print">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none text-[#302530]">Inventario</h3>
+          <p className="text-[10px] text-[#d94f83] font-black uppercase mt-2 italic tracking-[0.2em] leading-none">Productos, stock, costo y rentabilidad</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={() => setIsCatalogModalOpen(true)}
+            className="w-full sm:w-auto border border-[#ee9fbc] bg-white text-[#9b6076] px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-[#fff7fb]"
+          >
+            <Settings size={18} />
+            Catálogos
+          </button>
+          <button
+            type="button"
+            onClick={openNewProduct}
+            className="w-full sm:w-auto bg-[#d94f83] hover:bg-[#c83f75] text-white px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] shadow-[0_14px_30px_rgba(217,79,131,0.22)] flex items-center justify-center gap-3 transition-all active:scale-95"
+          >
+            <Plus size={18} />
+            Nuevo producto
+          </button>
+          <button
+            type="button"
+            onClick={onGoToProducts}
+            className="w-full sm:w-auto border border-[#ee9fbc] bg-white text-[#9b6076] px-7 py-4 rounded-[1.4rem] font-black text-[10px] uppercase italic tracking-[0.16em] flex items-center justify-center gap-3 transition-all hover:bg-[#fff7fb]"
+          >
+            <Package size={18} />
+            Ver venta
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        {inventoryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div key={card.id} className={`rounded-[1.7rem] border ${card.border} ${card.bg} p-6 shadow-[0_18px_44px_rgba(122,77,94,0.10)]`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#856a75]">{card.label}</p>
+                  <p className={`mt-4 text-3xl font-black italic tracking-tighter leading-none ${card.tone}`}>{card.value}</p>
+                  <p className="mt-3 text-[11px] font-bold text-[#856a75]">{card.helper}</p>
+                </div>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${card.border} bg-white ${card.tone}`}>
+                  <Icon size={22} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <section>
+        <section className="rounded-[2rem] border border-[#ee9fbc] bg-white overflow-hidden shadow-[0_18px_44px_rgba(122,77,94,0.10)]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#f2c1d4] bg-[#fff7fb] px-5 md:px-7 py-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Catálogo maestro</p>
+              <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-[#302530]">Productos de inventario</h4>
+            </div>
+            <div className="relative w-full md:w-[320px]">
+              <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b6076]" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 pr-11 text-xs font-black text-[#302530] outline-none" placeholder="Buscar producto..." />
+            </div>
+          </div>
+
+          {filteredItems.length > 0 ? (
+            <div className="overflow-x-auto custom-scrollbar">
+              <div className="min-w-[940px]">
+                <div className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-[#f2c1d4] text-[9px] font-black uppercase tracking-[0.16em] text-[#856a75]">
+                  <span>Producto</span>
+                  <span>Uso</span>
+                  <span>Categoría</span>
+                  <span>Stock</span>
+                  <span>Costo</span>
+                  <span>Venta</span>
+                  <span>Acción</span>
+                </div>
+                <div className="divide-y divide-[#f7d7e2]">
+                  {filteredItems.map((item) => {
+                    const margin = getMargin(item);
+                    const isLowStock = Number(item.minStock || 0) > 0 && Number(item.currentStock || 0) <= Number(item.minStock || 0);
+                    return (
+                      <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
+                        <div>
+                          <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-[#302530]">{item.productName || item.name}</p>
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#9b6076]">{item.sku || 'Sin SKU'} · Margen C$ {margin.toLocaleString('es-NI')}</p>
+                        </div>
+                        <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${
+                          item.usageType === 'internal'
+                            ? 'border-[#e7c97d] bg-[#fff8df] text-[#9b7516]'
+                            : item.usageType === 'both'
+                              ? 'border-[#b7d8c7] bg-[#edf7f2] text-[#4f8674]'
+                              : 'border-[#f2c1d4] bg-[#fff7fb] text-[#9b6076]'
+                        }`}>{getUsageLabel(item.usageType)}</span>
+                        <span className="w-fit rounded-full border border-[#b7d8c7] bg-[#edf7f2] px-3 py-1.5 text-[9px] font-black uppercase text-[#4f8674]">{item.productCategory || 'Otros'}</span>
+                        <span className={`text-base font-black italic ${isLowStock ? 'text-[#d94f83]' : 'text-[#4f8674]'}`}>{Number(item.currentStock || 0).toLocaleString('es-NI')}</span>
+                        <p className="text-sm font-black italic text-[#856a75]">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
+                        <p className="text-sm font-black italic text-[#4f8674]">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => openEditProduct(item)} className="rounded-xl border border-[#ee9fbc] px-3 py-2 text-[9px] font-black uppercase text-[#d94f83] hover:bg-[#fff7fb]">
+                            Editar
+                          </button>
+                          <button type="button" onClick={() => onDeleteProduct?.(item.id)} className="rounded-xl border border-[#f2c1d4] px-3 py-2 text-[#9b6076] hover:bg-[#fff7fb]" aria-label="Desactivar producto">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-6 py-14 text-center">
+              <Package size={36} className="mx-auto mb-4 text-[#d94f83]" />
+              <p className="text-sm font-black uppercase italic text-[#302530]">No hay productos de inventario</p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#856a75]">Crea productos con stock, costo y precio para activar la venta e iniciar rentabilidad</p>
+            </div>
+          )}
+        </section>
+      </section>
+
+      {isProductModalOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#24181f]/75 p-4 backdrop-blur-md">
+          <form onSubmit={handleSubmit} className="w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[1.8rem] border border-[#ee9fbc] bg-white shadow-[0_28px_80px_rgba(52,31,42,0.35)] custom-scrollbar">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[#f2c1d4] bg-[#fff7fb]/95 px-5 md:px-7 py-5 backdrop-blur">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d94f83]">Producto</p>
+                <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-[#302530]">{editingProduct ? 'Editar inventario' : 'Nuevo producto'}</h4>
+              </div>
+              <button type="button" onClick={closeProductModal} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#ee9fbc] bg-white text-[#9b6076] transition-all hover:bg-[#fff7fb]" aria-label="Cerrar producto">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_310px] gap-5 p-5 md:p-7">
+              <div className="space-y-4">
+                <label className="block space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Nombre</span>
+                  <input value={form.productName} onChange={(event) => updateForm('productName', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-[#fff7fb] px-4 py-3 text-sm font-black text-[#302530] outline-none focus:border-[#d94f83]" placeholder="Ej. Shampoo hidratante" />
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Categoría</span>
+                    <select value={form.productCategory} onChange={(event) => updateForm('productCategory', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black uppercase text-[#302530] outline-none">
+                      {visibleProductCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Unidad</span>
+                    <input value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black text-[#302530] outline-none" placeholder="unidad, ml, gr" />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {usageOptions.map((option) => (
+                    <button
+                      type="button"
+                      key={option.value}
+                      onClick={() => updateForm('usageType', option.value)}
+                      className={`rounded-2xl border px-3 py-3 text-left transition-all ${form.usageType === option.value ? 'border-[#6fb89b] bg-[#e8f6ef] text-[#2f6f61]' : 'border-[#ee9fbc] bg-white text-[#9b6076]'}`}
+                    >
+                      <span className="block text-[10px] font-black uppercase">{option.label}</span>
+                      <span className="mt-1 block text-[8px] font-bold uppercase leading-tight opacity-80">{option.helper}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <label className="block space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Notas de costo o uso</span>
+                  <textarea value={form.notes} onChange={(event) => updateForm('notes', event.target.value)} className="min-h-[96px] w-full resize-none rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-bold text-[#302530] outline-none" placeholder="Ej. Se usa para keratina, rinde 10 servicios..." />
+                </label>
+              </div>
+
+              <div className="space-y-4 rounded-[1.5rem] border border-[#f2c1d4] bg-[#fff7fb] p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Stock</span>
+                    <input type="number" min="0" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="0" />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Mínimo</span>
+                    <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="0" />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Costo compra</span>
+                    <input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => updateForm('costPrice', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="C$ 0" />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">Precio venta</span>
+                    <input type="number" min="0" step="0.01" value={form.salePrice} onChange={(event) => updateForm('salePrice', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-sm font-black text-[#302530] outline-none" placeholder="C$ 0" />
+                  </label>
+                </div>
+
+                <label className="block space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9b6076]">SKU / código interno</span>
+                  <input value={form.sku} onChange={(event) => updateForm('sku', event.target.value)} className="w-full rounded-2xl border border-[#ee9fbc] bg-white px-4 py-3 text-xs font-black text-[#302530] outline-none" placeholder="Opcional" />
+                </label>
+
+                <div className="rounded-2xl border border-[#b7d8c7] bg-[#edf7f2] p-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#4f8674]">Margen estimado</p>
+                  <p className="mt-2 text-2xl font-black italic text-[#2f6f61]">
+                    C$ {(Number(form.salePrice || 0) - Number(form.costPrice || 0)).toLocaleString('es-NI')}
+                  </p>
+                </div>
+
+                <button type="submit" className="w-full rounded-2xl bg-[#6fb89b] px-5 py-4 text-[11px] font-black uppercase italic tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(111,184,155,0.24)]">
+                  {editingProduct ? 'Guardar cambios' : 'Crear producto'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+      {isCatalogModalOpen && (
+        <CatalogSettingsModal
+          title="Clasificaciones de productos"
+          subtitle="Define las categorías del inventario. Estas opciones alimentan productos, insumos y filtros."
+          values={visibleProductCategories}
+          onClose={() => setIsCatalogModalOpen(false)}
+          onSave={(values) => {
+            onSaveCatalog?.(values);
+            setIsCatalogModalOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 
 function BarbersView({ barbers, appointments, branches, currentBarbershopId, currentBranchId, canChooseBranch, onSave, onDelete, onGoToNomina, onCashWithdrawal }) {
   const { notify } = useUiFeedback();
@@ -7450,6 +8102,8 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     </div>
   );
 }
+
+
 
 
 

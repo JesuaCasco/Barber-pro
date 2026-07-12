@@ -57,6 +57,10 @@ const addDays = (date, days) => {
 };
 const OPERATIONAL_APPOINTMENTS_PAST_DAYS = 365;
 const OPERATIONAL_APPOINTMENTS_FUTURE_DAYS = 45;
+const DEFAULT_CATALOGS = {
+  service_categories: ['Cortes', 'Barba', 'Tratamientos', 'Facial', 'Producto', 'Combo', 'Promocion'],
+  inventory_product_categories: ['Reventa', 'Cabello', 'Barba', 'Color', 'Tratamiento', 'Facial', 'Higiene', 'Herramientas', 'Otros'],
+};
 const getOperationalAppointmentsRange = () => ({
   from: formatDateOnly(addDays(new Date(), -OPERATIONAL_APPOINTMENTS_PAST_DAYS)),
   to: formatDateOnly(addDays(new Date(), OPERATIONAL_APPOINTMENTS_FUTURE_DAYS)),
@@ -108,6 +112,13 @@ const normalizeError = (error, fallback) => {
   }
 
   return new Error(fixMojibakeText(error.message || fallback));
+};
+
+const normalizeCatalogValues = (values = [], fallback = []) => {
+  const normalized = (Array.isArray(values) ? values : [])
+    .map((value) => fixMojibakeText(value).trim())
+    .filter(Boolean);
+  return Array.from(new Set([...(normalized.length ? normalized : fallback)]));
 };
 
 const settleQuery = async (query, fallbackData = []) => {
@@ -208,17 +219,64 @@ const toUiBarber = (row) => ({
   isActive: row.is_active ?? true,
 });
 
-const toUiService = (row, comboMap) => ({
+const toUiService = (row, comboMap, usageMap = new Map()) => ({
   id: row.id,
   name: row.name,
   price: Number(row.price || 0),
   category: row.category,
   items: comboMap.get(row.id) || [],
+  inventoryUsage: usageMap.get(row.id) || [],
   appliesTo: row.applies_to || 'General',
   discountType: row.discount_type || 'percentage',
   discountValue: Number(row.discount_value || 0),
   targetServiceIds: Array.isArray(row.target_service_ids) ? row.target_service_ids : [],
   isOptional: row.is_optional ?? true,
+});
+
+const toUiInventoryItem = (row) => ({
+  id: row.id,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  serviceId: row.service_id || null,
+  name: row.product_name || row.name || 'Producto sin nombre',
+  productName: row.product_name || row.name || 'Producto sin nombre',
+  productCategory: row.product_category || 'Otros',
+  usageType: row.usage_type || 'retail',
+  sku: row.sku || '',
+  barcode: row.barcode || '',
+  unitName: row.unit_name || 'unidad',
+  trackStock: row.track_stock ?? true,
+  minStock: Number(row.min_stock || 0),
+  maxStock: row.max_stock == null ? null : Number(row.max_stock),
+  costPrice: Number(row.cost_price || 0),
+  salePrice: Number(row.sale_price || 0),
+  currentStock: Number(row.current_stock || 0),
+  notes: row.notes || '',
+  isActive: row.is_active ?? true,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const inventoryItemToProductService = (item) => ({
+  id: item.serviceId || `inventory:${item.id}`,
+  inventoryItemId: item.id,
+  name: item.productName || item.name || 'Producto sin nombre',
+  price: Number(item.salePrice || 0),
+  category: 'Producto',
+  inventoryCategory: item.productCategory || 'Otros',
+  usageType: item.usageType || 'retail',
+  currentStock: Number(item.currentStock || 0),
+  costPrice: Number(item.costPrice || 0),
+  unitName: item.unitName || 'unidad',
+  sku: item.sku || '',
+  barcode: item.barcode || '',
+  isInventoryProduct: true,
+  items: [],
+  appliesTo: 'General',
+  discountType: 'percentage',
+  discountValue: 0,
+  targetServiceIds: [],
+  isOptional: true,
 });
 
 const toUiPosSale = (row) => ({
@@ -417,6 +475,28 @@ const toDbService = (service, barbershopId) => ({
   branch_id: null,
 });
 
+const toDbInventoryProduct = (product, barbershopId, branchId = null, currentUserId = null) =>
+  withScopeIds({
+    id: product.id,
+    service_id: product.serviceId || null,
+    product_name: product.productName || product.name,
+    product_category: product.productCategory || 'Otros',
+    usage_type: product.usageType || 'retail',
+    sku: product.sku || null,
+    barcode: product.barcode || null,
+    unit_name: product.unitName || 'unidad',
+    track_stock: product.trackStock !== false,
+    min_stock: Number(product.minStock || 0),
+    max_stock: product.maxStock === '' || product.maxStock == null ? null : Number(product.maxStock),
+    cost_price: Number(product.costPrice || 0),
+    sale_price: Number(product.salePrice || product.price || 0),
+    current_stock: Number(product.currentStock || 0),
+    notes: product.notes || null,
+    is_active: product.isActive ?? true,
+    created_by: product.id ? undefined : currentUserId || null,
+    updated_by: currentUserId || null,
+  }, barbershopId, branchId);
+
 const toDbBarbershop = (barbershop) => ({
   id: barbershop.id,
   name: barbershop.name,
@@ -578,6 +658,114 @@ const getComboRows = (services = []) =>
 
 const getComboRowKey = (comboServiceId, itemServiceId) => `${comboServiceId}::${itemServiceId}`;
 
+const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+
+const combineInventoryConsumptions = (consumptions = []) => {
+  const byItem = new Map();
+
+  for (const consumption of consumptions) {
+    if (!consumption.inventoryItemId) continue;
+    const key = String(consumption.inventoryItemId);
+    const current = byItem.get(key) || {
+      ...consumption,
+      quantity: 0,
+      sources: [],
+    };
+    current.quantity += Number(consumption.quantity || 0);
+    current.sources.push(...(consumption.sources || []));
+    byItem.set(key, current);
+  }
+
+  return Array.from(byItem.values()).filter((consumption) => consumption.quantity > 0);
+};
+
+const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) => {
+  const items = Array.isArray(sale?.items) ? sale.items : [];
+  if (!items.length) return [];
+
+  const serviceIdsNeedingUsage = items
+    .filter((item) => item.category !== 'Producto' && isUuid(item.id) && !(Array.isArray(item.inventoryUsage) && item.inventoryUsage.length))
+    .map((item) => item.id);
+
+  let usageRows = [];
+  if (serviceIdsNeedingUsage.length) {
+    const { data, error } = await supabase
+      .from('service_inventory_usage')
+      .select('*')
+      .eq('is_active', true)
+      .in('service_id', serviceIdsNeedingUsage);
+    if (error) throw normalizeError(error, 'No se pudieron leer los insumos de los servicios.');
+    usageRows = data || [];
+  }
+
+  const usageByService = new Map();
+  for (const row of usageRows) {
+    const current = usageByService.get(row.service_id) || [];
+    usageByService.set(row.service_id, [
+      ...current,
+      {
+        inventoryItemId: row.inventory_item_id,
+        quantity: Number(row.quantity || 0),
+      },
+    ]);
+  }
+
+  const consumptions = [];
+  for (const item of items) {
+    const qty = Number(item.qty || 1);
+    if (item.category === 'Producto' && item.inventoryItemId) {
+      consumptions.push({
+        inventoryItemId: item.inventoryItemId,
+        reason: 'sale',
+        quantity: qty,
+        unitPrice: Number(item.price || 0),
+        sources: [{ type: 'product', itemId: item.id, name: item.name, qty }],
+      });
+      continue;
+    }
+
+    const itemUsage = Array.isArray(item.inventoryUsage) && item.inventoryUsage.length
+      ? item.inventoryUsage
+      : usageByService.get(item.id) || [];
+
+    for (const usage of itemUsage) {
+      consumptions.push({
+        inventoryItemId: usage.inventoryItemId,
+        reason: 'service_use',
+        quantity: Number(usage.quantity || 0) * qty,
+        unitPrice: Number(item.price || 0),
+        sources: [{ type: 'service', serviceId: item.id, name: item.name, qty }],
+      });
+    }
+  }
+
+  const combinedConsumptions = combineInventoryConsumptions(consumptions);
+  const results = [];
+
+  for (const consumption of combinedConsumptions) {
+    const { data, error } = await supabase.rpc('register_inventory_movement_atomic', {
+      p_inventory_item_id: consumption.inventoryItemId,
+      p_movement_type: 'out',
+      p_reason: consumption.reason || 'service_use',
+      p_quantity: Number(consumption.quantity || 0),
+      p_unit_cost: null,
+      p_unit_price: consumption.unitPrice || null,
+      p_reference_type: 'pos_sale',
+      p_reference_id: posSaleId,
+      p_cash_session_id: sale.cashSessionId || null,
+      p_pos_sale_id: posSaleId,
+      p_purchase_id: null,
+      p_notes: consumption.reason === 'sale' ? 'Salida automática por venta de producto' : 'Salida automática por servicio cobrado',
+      p_metadata: { sources: consumption.sources || [] },
+      p_created_by: currentUserId || null,
+    });
+    if (error) throw normalizeError(error, 'No se pudo descontar el inventario automáticamente.');
+    results.push(data);
+  }
+
+  return results;
+};
+
 const resolveUserScope = async (currentUserId, scopeOverride = {}) => {
   if (!currentUserId) return { isSuperAdmin: false, currentBarbershopId: null, currentBranchId: null };
 
@@ -628,6 +816,9 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     cashAdvancesResult,
     payrollSettlementsResult,
     settlementAppointmentsResult,
+    inventoryItemsResult,
+    serviceInventoryUsageResult,
+    catalogsResult,
   ] = await Promise.all([
     applyTenantScope(
       supabase
@@ -697,6 +888,36 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
         .order('created_at', { ascending: true }),
       scope,
     ).then((result) => result, (error) => ({ data: [], error })),
+    settleQuery(
+      applyTenantScope(
+        supabase
+          .from('inventory_items')
+          .select('*')
+          .eq('is_active', true)
+          .order('product_name', { ascending: true }),
+        scope,
+        { includeLegacyBarbershopRows: true },
+      ),
+      [],
+    ),
+    settleQuery(
+      supabase
+        .from('service_inventory_usage')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      [],
+    ),
+    settleQuery(
+      applyTenantScope(
+        supabase
+          .from('barbershop_catalogs')
+          .select('*')
+          .in('catalog_key', ['service_categories', 'inventory_product_categories']),
+        scope,
+        { branchColumn: null },
+      ),
+      [],
+    ),
   ]);
 
   if (servicesError) throw normalizeError(servicesError, 'No se pudieron cargar los servicios.');
@@ -743,6 +964,30 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     settlementAppointmentsData = settlementAppointmentsResult?.data || [];
   }
 
+  let inventoryItemsData = [];
+  let inventoryLoadError = null;
+  if (inventoryItemsResult?.error) {
+    const normalizedError = normalizeError(inventoryItemsResult.error, 'No se pudo cargar inventario.');
+    inventoryLoadError = normalizedError.message;
+    console.warn('No se pudo cargar inventario:', normalizedError);
+  } else {
+    inventoryItemsData = inventoryItemsResult?.data || [];
+  }
+
+  let serviceInventoryUsageData = [];
+  if (serviceInventoryUsageResult?.error) {
+    console.warn('No se pudo cargar la configuración de insumos por servicio:', serviceInventoryUsageResult.error);
+  } else {
+    serviceInventoryUsageData = serviceInventoryUsageResult?.data || [];
+  }
+
+  let catalogsData = [];
+  if (catalogsResult?.error) {
+    console.warn('No se pudieron cargar catálogos configurables:', catalogsResult.error);
+  } else {
+    catalogsData = catalogsResult?.data || [];
+  }
+
   const scopedServiceIds = new Set((servicesData || []).map((row) => row.id));
   const comboMap = new Map();
   for (const row of comboItemsData || []) {
@@ -751,7 +996,39 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     comboMap.set(row.combo_service_id, [...current, row.item_service_id]);
   }
 
-  const services = (servicesData || []).map((row) => toUiService(row, comboMap));
+  const usageMap = new Map();
+  for (const row of serviceInventoryUsageData || []) {
+    if (scopedServiceIds.size && !scopedServiceIds.has(row.service_id)) continue;
+    const current = usageMap.get(row.service_id) || [];
+    usageMap.set(row.service_id, [
+      ...current,
+      {
+        id: row.id,
+        inventoryItemId: row.inventory_item_id,
+        quantity: Number(row.quantity || 0),
+      },
+    ]);
+  }
+
+  const inventoryItems = (inventoryItemsData || []).map(toUiInventoryItem);
+  const inventoryServiceIds = new Set(
+    inventoryItems
+      .map((item) => item.serviceId)
+      .filter(Boolean)
+      .map(String),
+  );
+  const baseServices = (servicesData || [])
+    .filter((row) => row.category !== 'Producto' || !inventoryServiceIds.has(String(row.id)))
+    .map((row) => toUiService(row, comboMap, usageMap));
+  const inventoryProductServices = inventoryItems
+    .filter((item) => ['retail', 'both'].includes(item.usageType || 'retail'))
+    .map(inventoryItemToProductService);
+  const services = [...baseServices, ...inventoryProductServices];
+  const catalogMap = new Map((catalogsData || []).map((row) => [row.catalog_key, row.values]));
+  const catalogs = {
+    serviceCategories: normalizeCatalogValues(catalogMap.get('service_categories'), DEFAULT_CATALOGS.service_categories),
+    inventoryProductCategories: normalizeCatalogValues(catalogMap.get('inventory_product_categories'), DEFAULT_CATALOGS.inventory_product_categories),
+  };
   const clients = (clientsData || []).map(toUiClient);
   const barbers = (barbersData || []).map(toUiBarber);
   const appointments = (appointmentsData || []).map((row) =>
@@ -775,9 +1052,12 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     barbers,
     appointments,
     posSales,
+    inventoryItems,
+    catalogs,
     cashWithdrawals,
     payrollSettlements,
     posSalesLoadError,
+    inventoryLoadError,
     payrollLoadWarnings,
   };
 }
@@ -1382,6 +1662,60 @@ export async function upsertServices(services, barbershopId = null) {
   if (error) throw normalizeError(error, 'No se pudieron guardar los servicios.');
 }
 
+export async function upsertInventoryProducts(products, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  if (!products?.length) return [];
+
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = scope.currentBarbershopId || products.find((product) => product.barbershopId)?.barbershopId || null;
+  const resolvedBranchId = scope.currentBranchId ?? products.find((product) => product.branchId !== undefined)?.branchId ?? null;
+
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para guardar el producto.');
+
+  const rows = products.map((product) => {
+    const row = toDbInventoryProduct(product, resolvedBarbershopId, product.branchId ?? resolvedBranchId, currentUserId);
+    return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined));
+  });
+
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .upsert(rows, { onConflict: 'id' })
+    .select('*');
+  if (error) throw normalizeError(error, 'No se pudieron guardar los productos de inventario.');
+
+  return (data || []).map(toUiInventoryItem);
+}
+
+export async function upsertBarbershopCatalog(catalogKey, values, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = scope.currentBarbershopId || null;
+  if (!resolvedBarbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para guardar el catálogo.');
+
+  const normalizedValues = normalizeCatalogValues(values, DEFAULT_CATALOGS[catalogKey] || []);
+  const { data, error } = await supabase
+    .from('barbershop_catalogs')
+    .upsert({
+      barbershop_id: resolvedBarbershopId,
+      catalog_key: catalogKey,
+      values: normalizedValues,
+    }, { onConflict: 'barbershop_id,catalog_key' })
+    .select('*')
+    .single();
+
+  if (error) throw normalizeError(error, 'No se pudo guardar el catálogo.');
+  return normalizeCatalogValues(data?.values, normalizedValues);
+}
+
+export async function deleteInventoryProduct(productId) {
+  assertSupabase();
+  const { error } = await supabase
+    .from('inventory_items')
+    .update({ is_active: false })
+    .eq('id', productId);
+  if (error) throw normalizeError(error, 'No se pudo desactivar el producto de inventario.');
+}
+
 export async function syncServiceComboItems(services) {
   assertSupabase();
   const scopedServices = services || [];
@@ -1418,6 +1752,41 @@ export async function syncServiceComboItems(services) {
       .eq('item_service_id', row.item_service_id);
     if (deleteError) throw normalizeError(deleteError, 'No se pudieron depurar los combos obsoletos.');
   }
+}
+
+export async function syncServiceInventoryUsage(service, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  if (!service?.id) return;
+
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const barbershopId = scope.currentBarbershopId || service.barbershopId || null;
+  if (!barbershopId) throw normalizeError(null, 'No se pudo resolver la barbería para guardar los insumos del servicio.');
+
+  const { error: deleteError } = await supabase
+    .from('service_inventory_usage')
+    .delete()
+    .eq('service_id', service.id);
+  if (deleteError) throw normalizeError(deleteError, 'No se pudo limpiar la configuración anterior de insumos.');
+
+  const rows = (service.inventoryUsage || [])
+    .map((usage) => ({
+      barbershop_id: barbershopId,
+      branch_id: usage.branchId || null,
+      service_id: service.id,
+      inventory_item_id: usage.inventoryItemId,
+      quantity: Number(usage.quantity || 0),
+      is_active: true,
+      created_by: currentUserId || null,
+      updated_by: currentUserId || null,
+    }))
+    .filter((row) => row.inventory_item_id && row.quantity > 0);
+
+  if (!rows.length) return;
+
+  const { error: insertError } = await supabase
+    .from('service_inventory_usage')
+    .insert(rows);
+  if (insertError) throw normalizeError(insertError, 'No se pudieron guardar los insumos del servicio.');
 }
 
 export async function deleteServiceRecord(serviceId) {
@@ -1463,9 +1832,24 @@ export async function createPosSale(sale, currentUserId, scopeOverride = {}) {
     .single();
 
   if (error) throw normalizeError(error, 'No se pudo registrar la venta de POS.');
+  let inventoryConsumption = [];
+  let inventoryConsumptionError = null;
+  try {
+    inventoryConsumption = await applyInventoryConsumptionForSale(sale, data?.id || sale.id, currentUserId);
+  } catch (inventoryError) {
+    inventoryConsumptionError = normalizeError(inventoryError, 'La venta se registró, pero no se pudo descontar el inventario.');
+    console.warn('No se pudo descontar inventario de la venta POS:', inventoryConsumptionError);
+  }
+  const updatedInventoryItems = inventoryConsumption
+    .map((result) => result?.item)
+    .filter(Boolean)
+    .map(toUiInventoryItem);
+
   return {
     ...sale,
     ...toUiPosSale(data),
+    updatedInventoryItems,
+    inventoryConsumptionError: inventoryConsumptionError?.message || null,
     ticketNumber: Number(data?.ticket_number ?? sale.ticketNumber ?? 0),
   };
 }

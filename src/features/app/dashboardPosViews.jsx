@@ -10,6 +10,7 @@ import {
   Clock,
   CreditCard,
   DollarSign,
+  Loader2,
   Plus,
   ListChecks,
   ReceiptText,
@@ -490,6 +491,8 @@ export function POSView({
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [genericClientSale, setGenericClientSale] = useState(false);
   const [openingModalSuppressed, setOpeningModalSuppressed] = useState(false);
+  const [openingBusy, setOpeningBusy] = useState(false);
+  const [openingFeedback, setOpeningFeedback] = useState('');
   const [openingBreakdown, setOpeningBreakdown] = useState({
     nioBills: {},
     nioCoins: {},
@@ -1029,22 +1032,39 @@ export function POSView({
   };
 
   const handleOpenCash = async () => {
-    const result = await onOpenCashSession?.({
-      openingAmount: openingTotals.total,
-      notes: JSON.stringify({
-        source: 'Apertura desde caja POS',
-        nioBills: openingBreakdown.nioBills,
-        nioCoins: openingBreakdown.nioCoins,
-        usdBills: openingBreakdown.usdBills,
-        exchangeRate: openingTotals.exchangeRate,
-        nioTotal: openingTotals.nioTotal,
-        usdTotal: openingTotals.usdTotal,
-        convertedUsdTotal: openingTotals.convertedUsdTotal,
-      }),
-    });
-    if (result) {
-      setOpeningBreakdown({ nioBills: {}, nioCoins: {}, usdBills: {} });
-      setOpeningModalSuppressed(false);
+    if (openingBusy) return;
+    setOpeningBusy(true);
+    setOpeningFeedback('Abriendo caja...');
+    const slowTimer = window.setTimeout(() => {
+      setOpeningFeedback('La apertura sigue esperando respuesta de Supabase. No cierres esta pantalla todavía.');
+    }, 8000);
+
+    try {
+      const result = await onOpenCashSession?.({
+        openingAmount: openingTotals.total,
+        notes: JSON.stringify({
+          source: 'Apertura desde caja POS',
+          nioBills: openingBreakdown.nioBills,
+          nioCoins: openingBreakdown.nioCoins,
+          usdBills: openingBreakdown.usdBills,
+          exchangeRate: openingTotals.exchangeRate,
+          nioTotal: openingTotals.nioTotal,
+          usdTotal: openingTotals.usdTotal,
+          convertedUsdTotal: openingTotals.convertedUsdTotal,
+        }),
+      });
+      if (result) {
+        setOpeningBreakdown({ nioBills: {}, nioCoins: {}, usdBills: {} });
+        setOpeningFeedback('');
+        setOpeningModalSuppressed(true);
+      } else {
+        setOpeningFeedback('No se pudo abrir la caja. Revisa si hay una alerta del sistema o si la sucursal está activa.');
+      }
+    } catch (error) {
+      setOpeningFeedback(error?.message || 'No se pudo abrir la caja.');
+    } finally {
+      window.clearTimeout(slowTimer);
+      setOpeningBusy(false);
     }
   };
 
@@ -1402,12 +1422,18 @@ export function POSView({
                     </div>
                   </div>
                 </div>
+                {openingFeedback ? (
+                  <div className="rounded-[1.25rem] border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-[9px] font-black uppercase leading-relaxed tracking-[0.14em] text-cyan-100">
+                    {openingFeedback}
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleOpenCash}
-                  className="flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-[#059669] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_35px_rgba(114,183,155,0.32)] transition-all hover:bg-[#047857] active:scale-95"
+                  disabled={openingBusy}
+                  className="flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-[#059669] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_35px_rgba(114,183,155,0.32)] transition-all hover:bg-[#047857] active:scale-95 disabled:cursor-wait disabled:bg-slate-700 disabled:text-slate-300 disabled:shadow-none"
                 >
-                  <Wallet size={18} /> Abrir caja
+                  {openingBusy ? <Loader2 size={18} className="animate-spin" /> : <Wallet size={18} />} {openingBusy ? 'Abriendo...' : 'Abrir caja'}
                 </button>
               </div>
             </div>

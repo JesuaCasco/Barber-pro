@@ -4092,12 +4092,12 @@ export default function App() {
 
   const handleOpenCashSession = async ({ openingAmount = 0, notes = '' } = {}) => {
     if (!currentBarbershopId) {
-      notify('No se puede abrir caja porque no hay una barberÃ­a activa.', 'error');
-      return null;
+      notify('No se puede abrir caja porque no hay una barbería activa.', 'error');
+      throw new Error('No se puede abrir caja porque no hay una barbería activa.');
     }
     if (!currentBranchId) {
       notify('Debes seleccionar una sucursal antes de abrir caja.', 'warning');
-      return null;
+      throw new Error('Debes seleccionar una sucursal antes de abrir caja.');
     }
     if (activeCashSession) {
       notify('Ya hay una caja abierta en esta sucursal.', 'warning');
@@ -4152,7 +4152,7 @@ export default function App() {
       return result.session;
     } catch (error) {
       handleSyncError(error, 'No pude abrir la caja.');
-      return null;
+      throw error;
     }
   };
 

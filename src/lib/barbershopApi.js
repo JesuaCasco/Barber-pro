@@ -764,8 +764,12 @@ const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) 
   if (!items.length) return [];
 
   const serviceIdsNeedingUsage = items
-    .filter((item) => item.category !== 'Producto' && isUuid(item.id) && !(Array.isArray(item.inventoryUsage) && item.inventoryUsage.length))
-    .map((item) => item.id);
+    .map((item) => ({
+      ...item,
+      resolvedServiceId: item.serviceId || item.id,
+    }))
+    .filter((item) => item.category !== 'Producto' && isUuid(item.resolvedServiceId) && !(Array.isArray(item.inventoryUsage) && item.inventoryUsage.length))
+    .map((item) => item.resolvedServiceId);
 
   let usageRows = [];
   if (serviceIdsNeedingUsage.length) {
@@ -806,7 +810,7 @@ const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) 
 
     const itemUsage = Array.isArray(item.inventoryUsage) && item.inventoryUsage.length
       ? item.inventoryUsage
-      : usageByService.get(item.id) || [];
+      : usageByService.get(item.serviceId || item.id) || [];
 
     for (const usage of itemUsage) {
       consumptions.push({
@@ -814,7 +818,7 @@ const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) 
         reason: 'service_use',
         quantity: Number(usage.quantity || 0) * qty,
         unitPrice: Number(item.price || 0),
-        sources: [{ type: 'service', serviceId: item.id, name: item.name, qty }],
+        sources: [{ type: 'service', serviceId: item.serviceId || item.id, name: item.name, qty }],
       });
     }
   }

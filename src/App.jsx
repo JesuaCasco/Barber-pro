@@ -2961,10 +2961,14 @@ const [activeTab, setActiveTab] = useState('dashboard');
           String(service.id || '') === String(item.id || '')
           || String(service.name || '').toLowerCase() === String(item.name || '').toLowerCase()
         ));
+        const resolvedInventoryUsage = Array.isArray(item.inventoryUsage) && item.inventoryUsage.length
+          ? item.inventoryUsage
+          : (matchedService?.inventoryUsage || []);
         return {
-          id: item.id,
+          id: item.id || matchedService?.id || item.serviceId || null,
+          serviceId: item.serviceId || matchedService?.id || (item.category !== 'Producto' ? item.id : null) || null,
           inventoryItemId: item.inventoryItemId || matchedService?.inventoryItemId || null,
-          inventoryUsage: item.inventoryUsage || matchedService?.inventoryUsage || [],
+          inventoryUsage: resolvedInventoryUsage,
           name: item.name,
           category: item.category || matchedService?.category || 'Servicio',
           price: Number(item.price) || 0,
@@ -4191,6 +4195,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
       ticketNumber: nextLocalTicketNumber,
       items: normalizedItems.map((item) => ({
         id: item.id,
+        serviceId: item.serviceId || (item.category !== 'Producto' ? item.id : null) || null,
         name: item.name,
         category: item.category,
         price: Number(item.price) || 0,

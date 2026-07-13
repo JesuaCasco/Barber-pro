@@ -106,6 +106,16 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
     const serviceNames = billItems.map((item) => item.name).join(' + ');
     onConfirm({
       serviceName: serviceNames,
+      items: billItems.map((item) => ({
+        id: item.id,
+        serviceId: item.serviceId || item.id || null,
+        inventoryItemId: item.inventoryItemId || null,
+        inventoryUsage: Array.isArray(item.inventoryUsage) ? item.inventoryUsage : [],
+        name: item.name,
+        category: item.category,
+        price: Number(item.price || 0),
+        qty: Number(item.qty || 1) || 1,
+      })),
       price: total,
       rating,
       grossAmount: subtotal,

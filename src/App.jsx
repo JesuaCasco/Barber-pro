@@ -237,6 +237,8 @@ const inventoryProductToService = (item) => ({
   currentStock: Number(item.currentStock || 0),
   costPrice: Number(item.costPrice || 0),
   unitName: item.unitName || 'unidad',
+  presentationName: item.presentationName || 'unidad',
+  unitsPerPresentation: Number(item.unitsPerPresentation || 1),
   sku: item.sku || '',
   barcode: item.barcode || '',
   isInventoryProduct: true,
@@ -3786,6 +3788,8 @@ const [activeTab, setActiveTab] = useState('dashboard');
       productCategory: product.productCategory || 'Otros',
       usageType: product.usageType || 'retail',
       unitName: product.unitName || 'unidad',
+      presentationName: product.presentationName || 'unidad',
+      unitsPerPresentation: Math.max(1, Number(product.unitsPerPresentation || 1)),
       currentStock: Number(product.currentStock || 0),
       minStock: Number(product.minStock || 0),
       costPrice: Number(product.costPrice || 0),
@@ -5342,8 +5346,12 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
     minStock: '',
     maxStock: '',
     costPrice: '',
+    presentationCost: '',
     salePrice: '',
     unitName: 'unidad',
+    presentationName: 'unidad',
+    unitsPerPresentation: '1',
+    stockPresentations: '',
     sku: '',
     notes: '',
   };
@@ -5430,10 +5438,14 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       minStock: product.minStock ?? '',
       maxStock: product.maxStock ?? '',
       costPrice: product.costPrice ?? '',
+      presentationCost: Number(product.costPrice || 0) * Number(product.unitsPerPresentation || 1),
       salePrice: product.salePrice ?? product.price ?? '',
       productCategory: product.productCategory || 'Reventa',
       usageType: product.usageType || 'retail',
       unitName: product.unitName || 'unidad',
+      presentationName: product.presentationName || 'unidad',
+      unitsPerPresentation: product.unitsPerPresentation ?? 1,
+      stockPresentations: Number(product.unitsPerPresentation || 1) > 0 ? Number(product.currentStock || 0) / Number(product.unitsPerPresentation || 1) : product.currentStock ?? '',
       sku: product.sku || '',
       notes: product.notes || '',
     });
@@ -5446,7 +5458,20 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
     setForm(emptyForm);
   };
 
-  const updateForm = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const updateForm = (field, value) => setForm((prev) => {
+    const next = { ...prev, [field]: value };
+    if (field === 'stockPresentations' || field === 'unitsPerPresentation') {
+      const presentations = Number(field === 'stockPresentations' ? value : next.stockPresentations || 0);
+      const unitsPerPresentation = Math.max(1, Number(field === 'unitsPerPresentation' ? value : next.unitsPerPresentation || 1));
+      next.currentStock = presentations > 0 ? String(presentations * unitsPerPresentation) : next.currentStock;
+      if (Number(next.presentationCost || 0) > 0) next.costPrice = String(Number(next.presentationCost || 0) / unitsPerPresentation);
+    }
+    if (field === 'presentationCost') {
+      const unitsPerPresentation = Math.max(1, Number(next.unitsPerPresentation || 1));
+      next.costPrice = Number(value || 0) > 0 ? String(Number(value || 0) / unitsPerPresentation) : next.costPrice;
+    }
+    return next;
+  });
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -5532,11 +5557,12 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
 
           {filteredItems.length > 0 ? (
             <div className="overflow-x-auto custom-scrollbar">
-              <div className="min-w-[940px]">
-                <div className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+              <div className="min-w-[1080px]">
+                <div className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
                   <span>Producto</span>
                   <span>Uso</span>
                   <span>Categor铆a</span>
+                  <span>Presentaci贸n</span>
                   <span>Stock</span>
                   <span>Costo</span>
                   <span>Venta</span>
@@ -5547,7 +5573,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                     const margin = getMargin(item);
                     const isLowStock = Number(item.minStock || 0) > 0 && Number(item.currentStock || 0) <= Number(item.minStock || 0);
                     return (
-                      <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
+                      <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
                         <div>
                           <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-white">{item.productName || item.name}</p>
                           <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{item.sku || 'Sin SKU'} 路 Margen C$ {margin.toLocaleString('es-NI')}</p>
@@ -5560,6 +5586,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                               : 'border-slate-700 bg-slate-900 text-slate-300'
                         }`}>{getUsageLabel(item.usageType)}</span>
                         <span className="w-fit rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-[9px] font-black uppercase text-emerald-300">{item.productCategory || 'Otros'}</span>
+                        <span className="text-[10px] font-black uppercase text-slate-300">{item.presentationName || 'unidad'} x {Number(item.unitsPerPresentation || 1).toLocaleString('es-NI')}</span>
                         <span className={`text-base font-black italic ${isLowStock ? 'text-cyan-300' : 'text-emerald-300'}`}>{Number(item.currentStock || 0).toLocaleString('es-NI')}</span>
                         <p className="text-sm font-black italic text-slate-400">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
                         <p className="text-sm font-black italic text-emerald-300">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
@@ -5615,8 +5642,21 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                     </select>
                   </label>
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Unidad</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Como se mide</span>
                     <input value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="unidad, ml, gr" />
+                  </label>
+                </div>
+
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Presentaci贸n</span>
+                    <input value={form.presentationName} onChange={(event) => updateForm('presentationName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="caja, paquete, frasco" />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Contiene</span>
+                    <input type="number" min="1" step="0.01" value={form.unitsPerPresentation} onChange={(event) => updateForm('unitsPerPresentation', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="100" />
+                    <span className="block text-[8px] font-bold uppercase text-slate-500">{form.unitName || 'unidad'} por {form.presentationName || 'presentaci贸n'}</span>
                   </label>
                 </div>
 
@@ -5641,21 +5681,27 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
               </div>
 
               <div className="space-y-4 rounded-[1.5rem] border border-slate-800 bg-slate-900/70 p-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Stock</span>
-                    <input type="number" min="0" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Stock en presentaciones</span>
+                    <input type="number" min="0" step="0.01" value={form.stockPresentations} onChange={(event) => updateForm('stockPresentations', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="Ej. 1 caja" />
                   </label>
-                  <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">M铆nimo</span>
-                    <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
-                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block space-y-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Stock medido</span>
+                      <input type="number" min="0" step="0.01" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">M铆nimo</span>
+                      <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo compra</span>
-                    <input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => updateForm('costPrice', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo presentaci髇</span>
+                    <input type="number" min="0" step="0.01" value={form.presentationCost} onChange={(event) => updateForm('presentationCost', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" />
                   </label>
                   <label className="block space-y-2">
                     <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Precio venta</span>
@@ -5669,7 +5715,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                 </label>
 
                 <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Margen estimado</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Presentaci贸n</p>
+                  <p className="mt-1 text-[10px] font-black uppercase text-slate-300">{form.presentationName || 'unidad'} x {Number(form.unitsPerPresentation || 1).toLocaleString('es-NI')} {form.unitName || 'unidad'}</p>
+                  <p className="mt-4 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Margen estimado</p>
                   <p className="mt-2 text-2xl font-black italic text-emerald-300">
                     C$ {(Number(form.salePrice || 0) - Number(form.costPrice || 0)).toLocaleString('es-NI')}
                   </p>

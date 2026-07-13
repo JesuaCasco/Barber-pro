@@ -248,16 +248,15 @@ const inventoryProductToService = (item) => ({
   isOptional: true,
 });
 
-const mergeInventoryProductIntoServices = (currentServices, item) => {
-  const nextServices = (currentServices || []).filter(
-    (service) => String(service.inventoryItemId || '') !== String(item.id || '')
-      && String(service.id || '') !== String(item.serviceId || ''),
-  );
 
-  if (!['retail', 'both'].includes(item.usageType || 'retail')) return nextServices;
-  return [...nextServices, inventoryProductToService(item)];
-};
+const buildInventoryProductServices = (inventoryItems = []) => (inventoryItems || [])
+  .filter((item) => item?.isActive !== false && ['retail', 'both'].includes(item?.usageType || 'retail'))
+  .map(inventoryProductToService);
 
+const buildServiceMenuItems = (services = [], inventoryItems = []) => [
+  ...(services || []).filter((service) => service?.category !== 'Producto'),
+  ...buildInventoryProductServices(inventoryItems),
+];
 const NETWORK_ERROR_PATTERNS = [
   'failed to fetch',
   'load failed',
@@ -1690,6 +1689,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
     serviceCategories: CATEGORIES,
     inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
   });
+  const serviceMenuItems = useMemo(() => buildServiceMenuItems(services, inventoryItems), [services, inventoryItems]);
   
   const [clients, setClients] = useState(() => {
     const saved = localDevStorage?.getItem('bp_dev_clients') || null;
@@ -3810,7 +3810,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
           ? prev.map((item) => String(item.id) === String(savedProduct.id) ? savedProduct : item)
           : [...prev, savedProduct];
       });
-      setServices((prev) => mergeInventoryProductIntoServices(prev, savedProduct));
       notify('Producto de inventario guardado.', 'success');
     } catch (error) {
       handleSyncError(error, 'No pude guardar el producto de inventario en Supabase.');
@@ -4273,10 +4272,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
           const updated = persistedSale.updatedInventoryItems.find((nextItem) => String(nextItem.id) === String(item.id));
           return updated || item;
         }));
-        setServices((prev) => persistedSale.updatedInventoryItems.reduce(
-          (nextServices, item) => mergeInventoryProductIntoServices(nextServices, item),
-          prev,
-        ));
       }
       if (persistedSale.inventoryConsumptionError) {
         notify(persistedSale.inventoryConsumptionError, 'warning');
@@ -4483,7 +4478,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }));
     setModals((prev) => ({ ...prev, quickAppointment: true }));
   };
-
   if (loading) return (
     <div className="h-dvh min-h-dvh flex flex-col items-center justify-center bg-black gap-4 text-white">
       <Loader2 className="animate-spin text-indigo-500" size={48} />
@@ -4681,7 +4675,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
               }}
             />
           )}
-          {activeTab === 'services' && <ServicesView services={services} serviceCategories={catalogSettings.serviceCategories} onSaveCatalog={(values) => handleSaveCatalogSettings('service_categories', values)} onAdd={(cat) => { setSelectedData({...selectedData, service: { category: cat }}); setModals({...modals, service: true}); }} onEdit={(s) => { setSelectedData({...selectedData, service: s}); setModals({...modals, service: true}); }} onDelete={handleDeleteService} onManageInventory={() => setActiveTab('inventario')} />}
+          {activeTab === 'services' && <ServicesView services={serviceMenuItems} serviceCategories={catalogSettings.serviceCategories} onSaveCatalog={(values) => handleSaveCatalogSettings('service_categories', values)} onAdd={(cat) => { if (cat === 'Producto') { setActiveTab('inventario'); return; } setSelectedData({...selectedData, service: { category: cat }}); setModals({...modals, service: true}); }} onEdit={(s) => { if (s?.category === 'Producto') { setActiveTab('inventario'); return; } setSelectedData({...selectedData, service: s}); setModals({...modals, service: true}); }} onDelete={handleDeleteService} onDeleteProduct={handleDeleteInventoryProduct} onManageInventory={() => setActiveTab('inventario')} />}
           {activeTab === 'inventario' && (
             <InventoryView
               inventoryItems={inventoryItems}
@@ -5179,7 +5173,7 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
 }
 
 
-function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog, onAdd, onEdit, onDelete, onManageInventory }) {
+function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog, onAdd, onEdit, onDelete, onDeleteProduct, onManageInventory }) {
   const [activeCategory, setActiveCategory] = useState('Cortes');
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const visibleCategories = useMemo(() => Array.from(new Set([...(serviceCategories || CATEGORIES), ...PROTECTED_SERVICE_CATEGORIES])), [serviceCategories]);
@@ -5258,7 +5252,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
         <div className="flex flex-col sm:flex-row gap-3">
           <button onClick={() => setIsCatalogOpen(true)} className="w-full sm:w-auto border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase italic flex items-center justify-center gap-2 transition-all hover:bg-cyan-400/20"><Settings size={16} /> Catálogos</button>
           {onManageInventory && <button onClick={onManageInventory} className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase italic flex items-center justify-center gap-2 transition-all hover:bg-emerald-400/20"><Package size={16} /> Inventario</button>}
-          <button onClick={() => onAdd(effectiveActiveCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {effectiveActiveCategory === 'Promocion' ? 'Nueva Promoción' : effectiveActiveCategory === 'Producto' ? 'Nuevo Producto' : 'Nuevo Servicio'}</button>
+          <button onClick={() => onAdd(effectiveActiveCategory)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black text-[10px] md:text-xs uppercase italic shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 transition-all active:scale-95 group text-white"><Plus size={20} className="group-hover:rotate-90 transition-transform" /> {effectiveActiveCategory === 'Promocion' ? 'Nueva Promoción' : effectiveActiveCategory === 'Producto' ? 'Nuevo en inventario' : 'Nuevo Servicio'}</button>
         </div>
       </div>
       <div className="grid w-full grid-cols-2 gap-2.5 p-3 bg-black/80 border border-slate-800 rounded-[2.5rem] text-white shadow-[inset_0_0_24px_rgba(15,23,42,0.85)] sm:flex sm:flex-wrap sm:items-center sm:w-fit">
@@ -5289,7 +5283,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
           <div key={s.id} onClick={() => onEdit(s)} className={`group bg-slate-900/90 border border-slate-800 rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 transition-all duration-300 cursor-pointer relative shadow-2xl overflow-hidden flex flex-col justify-between min-h-[260px] md:min-h-[320px] text-white hover:-translate-y-1 ${theme.card}`}>
             <div className={`absolute -right-8 -top-8 w-36 h-36 rounded-full blur-3xl transition-all duration-500 ${theme.haze}`}></div>
             <div className={`absolute left-8 right-8 top-0 h-px opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${theme.dot}`}></div>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="absolute top-5 md:top-8 right-5 md:right-8 text-slate-600 hover:text-rose-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 text-white"><Trash2 size={18}/></button>
+            <button onClick={(e) => { e.stopPropagation(); if (s.category === 'Producto' && s.inventoryItemId) { onDeleteProduct?.(s.inventoryItemId); } else { onDelete(s.id); } }} className="absolute top-5 md:top-8 right-5 md:right-8 text-slate-600 hover:text-rose-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 text-white"><Trash2 size={18}/></button>
             <div className="relative text-white">
               <div className={`w-14 h-14 md:w-16 md:h-16 bg-black rounded-2xl flex items-center justify-center mb-6 md:mb-8 border shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${theme.icon}`}>{getIcon(s.category)}</div>
               <h4 className="text-xl md:text-2xl font-black uppercase italic leading-tight tracking-tighter transition-colors text-white">{s.name}</h4>
@@ -5320,7 +5314,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
           </div>
           );
         })}
-        <div onClick={() => onAdd(effectiveActiveCategory)} className={`relative overflow-hidden border-4 border-dashed rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer group min-h-[260px] md:min-h-[320px] text-white hover:-translate-y-1 ${categoryThemes[effectiveActiveCategory]?.idle || categoryThemes.Cortes.idle}`}><div className={`absolute inset-8 rounded-[2rem] opacity-15 blur-2xl transition-all group-hover:opacity-30 ${categoryThemes[effectiveActiveCategory]?.dot || categoryThemes.Cortes.dot}`} /><div className="relative w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-all"><Plus size={28} /></div><p className="relative font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-center">{effectiveActiveCategory === 'Promocion' ? 'Añadir promoción' : `Añadir a ${CATEGORY_LABELS[effectiveActiveCategory] || effectiveActiveCategory}`}</p></div>
+        <div onClick={() => onAdd(effectiveActiveCategory)} className={`relative overflow-hidden border-4 border-dashed rounded-[2.2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer group min-h-[260px] md:min-h-[320px] text-white hover:-translate-y-1 ${categoryThemes[effectiveActiveCategory]?.idle || categoryThemes.Cortes.idle}`}><div className={`absolute inset-8 rounded-[2rem] opacity-15 blur-2xl transition-all group-hover:opacity-30 ${categoryThemes[effectiveActiveCategory]?.dot || categoryThemes.Cortes.dot}`} /><div className="relative w-14 h-14 md:w-16 md:h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-all"><Plus size={28} /></div><p className="relative font-black uppercase italic text-[10px] md:text-xs tracking-widest leading-none text-center">{effectiveActiveCategory === 'Promocion' ? 'Añadir promoción' : effectiveActiveCategory === 'Producto' ? 'Añadir en inventario' : `Añadir a ${CATEGORY_LABELS[effectiveActiveCategory] || effectiveActiveCategory}`}</p></div>
       </div>
       {isCatalogOpen && (
         <CatalogSettingsModal

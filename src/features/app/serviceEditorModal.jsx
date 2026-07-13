@@ -151,8 +151,8 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
   const estimatedMargin = Math.max(Number(formData.price || 0) - supplyCost, 0);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[#24181f]/80 p-4 backdrop-blur-xl animate-in fade-in text-[#302530] no-print">
-      <div className="relative w-full max-w-7xl min-h-[70vh] max-h-[96vh] overflow-hidden rounded-[2rem] border border-[#ee9fbc] bg-white shadow-[0_30px_90px_rgba(52,31,42,0.38)] animate-in zoom-in-95 flex flex-col">
+    <div className="barber-service-editor fixed inset-0 z-[300] flex items-center justify-center bg-[#24181f]/80 p-4 backdrop-blur-xl animate-in fade-in text-[#302530] no-print">
+      <div className="barber-service-panel relative w-full max-w-7xl min-h-[70vh] max-h-[96vh] overflow-hidden rounded-[2rem] border border-[#ee9fbc] bg-white shadow-[0_30px_90px_rgba(52,31,42,0.38)] animate-in zoom-in-95 flex flex-col">
         <div className="flex items-center justify-between gap-4 border-b border-[#f2c1d4] bg-[#fff7fb] px-5 md:px-8 py-5">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#d94f83] text-white shadow-[0_14px_30px_rgba(217,79,131,0.25)]">
@@ -492,8 +492,8 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
         )}
 
         {isSupplyConfigOpen && (
-          <div className="fixed inset-0 z-[340] flex items-center justify-center bg-[#24181f]/75 p-3 backdrop-blur-md">
-            <div className="flex h-[94vh] w-[98vw] max-w-[1600px] flex-col overflow-hidden rounded-[1.6rem] border border-[#8fd6cf] bg-white shadow-[0_30px_90px_rgba(23,91,86,0.32)] animate-in zoom-in-95">
+          <div className="barber-supply-config fixed inset-0 z-[340] flex items-center justify-center bg-[#24181f]/75 p-3 backdrop-blur-md">
+            <div className="barber-supply-panel flex h-[94vh] w-[98vw] max-w-[1600px] flex-col overflow-hidden rounded-[1.6rem] border border-[#8fd6cf] bg-white shadow-[0_30px_90px_rgba(23,91,86,0.32)] animate-in zoom-in-95">
               <div className="flex items-center justify-between gap-4 border-b border-[#c6ebe6] bg-[#ecfbf8] px-5 md:px-7 py-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2f8f88]">Configuracion de servicio</p>

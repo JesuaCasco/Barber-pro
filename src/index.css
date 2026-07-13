@@ -32,3 +32,138 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #334155; /* slate-700 */
 }
+
+/* BarberPro dark neon surfaces migrated from SalonPro light palette */
+.barber-cash-panel {
+  border-color: rgba(103, 232, 249, 0.28) !important;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.18), transparent 34%),
+    linear-gradient(135deg, #020617 0%, #071126 52%, #020617 100%) !important;
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(103, 232, 249, 0.12) !important;
+}
+
+.barber-cash-movements .bg-white\/75,
+.barber-cash-movements .bg-white\/85,
+.barber-cash-movements .bg-\[\#f3f9fb\],
+.barber-cash-movements .bg-\[\#fff3f7\],
+.barber-cash-movements .bg-\[\#fff6f8\],
+.barber-cash-movements .bg-\[\#f8fffb\] {
+  background: rgba(15, 23, 42, 0.92) !important;
+}
+
+.barber-cash-movements .border-\[\#1e293b\],
+.barber-cash-movements .border-\[\#334155\],
+.barber-cash-movements .border-\[\#475569\] {
+  border-color: rgba(71, 85, 105, 0.78) !important;
+}
+
+.barber-cash-movements .text-\[\#302530\],
+.barber-cash-movements .text-\[\#4f7b8b\],
+.barber-cash-movements .text-\[\#b84868\] {
+  color: #e2e8f0 !important;
+}
+
+.barber-cash-movements input {
+  background: #020617 !important;
+  border-color: rgba(103, 232, 249, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+.barber-service-panel,
+.barber-supply-panel {
+  border-color: rgba(103, 232, 249, 0.32) !important;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.18), transparent 32%),
+    linear-gradient(135deg, #020617 0%, #071126 54%, #020617 100%) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(103, 232, 249, 0.12) !important;
+}
+
+.barber-service-editor .bg-white,
+.barber-service-editor .bg-\[\#fff7fb\],
+.barber-service-editor .bg-\[\#edf7f2\],
+.barber-service-editor .bg-\[\#ecfbf8\],
+.barber-service-editor .bg-\[\#f3fffd\],
+.barber-service-editor .bg-\[\#f8fffd\],
+.barber-supply-config .bg-white,
+.barber-supply-config .bg-\[\#fff7fb\],
+.barber-supply-config .bg-\[\#ecfbf8\],
+.barber-supply-config .bg-\[\#f3fffd\],
+.barber-supply-config .bg-\[\#f8fffd\] {
+  background: rgba(15, 23, 42, 0.92) !important;
+}
+
+.barber-service-editor .border-\[\#ee9fbc\],
+.barber-service-editor .border-\[\#f2c1d4\],
+.barber-service-editor .border-\[\#b7d8c7\],
+.barber-service-editor .border-\[\#8fd6cf\],
+.barber-service-editor .border-\[\#c6ebe6\],
+.barber-supply-config .border-\[\#ee9fbc\],
+.barber-supply-config .border-\[\#f2c1d4\],
+.barber-supply-config .border-\[\#8fd6cf\],
+.barber-supply-config .border-\[\#c6ebe6\] {
+  border-color: rgba(103, 232, 249, 0.32) !important;
+}
+
+.barber-service-editor .text-\[\#302530\],
+.barber-service-editor .text-\[\#856a75\],
+.barber-service-editor .text-\[\#58716e\],
+.barber-service-editor .text-\[\#9b6076\],
+.barber-supply-config .text-\[\#302530\],
+.barber-supply-config .text-\[\#856a75\],
+.barber-supply-config .text-\[\#58716e\],
+.barber-supply-config .text-\[\#9b6076\] {
+  color: #e2e8f0 !important;
+}
+
+.barber-service-editor .text-\[\#d94f83\],
+.barber-supply-config .text-\[\#d94f83\],
+.barber-service-editor .text-\[\#2f8f88\],
+.barber-supply-config .text-\[\#2f8f88\],
+.barber-service-editor .text-\[\#4f8674\],
+.barber-supply-config .text-\[\#4f8674\] {
+  color: #67e8f9 !important;
+}
+
+.barber-service-editor .text-\[\#2f6f61\],
+.barber-supply-config .text-\[\#2f6f61\] {
+  color: #34d399 !important;
+}
+
+.barber-service-editor .bg-\[\#d94f83\],
+.barber-service-editor .bg-\[\#2fb7ae\],
+.barber-supply-config .bg-\[\#2fb7ae\] {
+  background: linear-gradient(135deg, #4f46e5, #06b6d4) !important;
+  color: #ffffff !important;
+}
+
+.barber-service-editor .hover\:bg-\[\#c83f75\]:hover,
+.barber-service-editor .hover\:bg-\[\#259f98\]:hover,
+.barber-supply-config .hover\:bg-\[\#259f98\]:hover {
+  background: linear-gradient(135deg, #4338ca, #0891b2) !important;
+}
+
+.barber-service-editor input,
+.barber-service-editor select,
+.barber-supply-config input,
+.barber-supply-config select {
+  background: #020617 !important;
+  border-color: rgba(103, 232, 249, 0.34) !important;
+  color: #f8fafc !important;
+}
+
+.barber-service-editor input::placeholder,
+.barber-supply-config input::placeholder {
+  color: #64748b !important;
+}
+
+.barber-service-editor button,
+.barber-supply-config button {
+  border-color: rgba(103, 232, 249, 0.28);
+}
+
+.barber-service-editor .shadow-\[0_16px_34px_rgba\(217\,79\,131\,0\.25\)\],
+.barber-service-editor .shadow-\[0_14px_30px_rgba\(217\,79\,131\,0\.25\)\],
+.barber-service-editor .shadow-\[0_16px_34px_rgba\(47\,183\,174\,0\.28\)\] {
+  box-shadow: 0 18px 38px rgba(6, 182, 212, 0.22) !important;
+}

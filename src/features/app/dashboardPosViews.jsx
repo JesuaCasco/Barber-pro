@@ -1537,8 +1537,8 @@ export function POSView({
       ), document.body) : null}
 
       {movementsModalOpen && cashSession ? createPortal((
-        <div className="fixed inset-0 z-[235] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
-          <div className="flex max-h-[calc(100vh-1rem)] w-full max-w-[min(98vw,100rem)] flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
+        <div className="barber-cash-movements fixed inset-0 z-[235] flex min-h-screen items-center justify-center bg-[#020617]/85 p-3 backdrop-blur-xl md:p-5">
+          <div className="barber-cash-panel flex max-h-[calc(100vh-1rem)] w-full max-w-[min(98vw,100rem)] flex-col overflow-hidden rounded-[2rem] border border-[#475569] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-[#f8fafc] shadow-[0_35px_120px_rgba(0,0,0,0.7)]">
             <div className="border-b border-[#1e293b] px-5 py-4 md:px-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>

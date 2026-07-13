@@ -162,8 +162,6 @@ const accessUiFallback = (
 );
 
 const STANDARD_CLIENT_NAME = 'Cliente estándar';
-const CASH_WITHDRAWALS_STORAGE_KEY = 'bp_cash_withdrawals_v1';
-const PAYROLL_SETTLEMENTS_STORAGE_KEY = 'bp_payroll_settlements_v1';
 const CASH_WITHDRAWAL_QUICK_AMOUNTS = [10, 20, 50, 100, 200, 300, 400, 500];
 
 const UiFeedbackContext = createContext({
@@ -1621,19 +1619,7 @@ export default function App() {
     [],
   );
 
-  const readRuntimeCache = React.useCallback(() => {
-    if (typeof window === 'undefined') return null;
-
-    try {
-      const raw = window.localStorage.getItem(AUTH_RUNTIME_CACHE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (error) {
-      console.error('No se pudo leer el cache local de BarberPro:', error);
-      return null;
-    }
-  }, []);
-
-  const [activeTab, setActiveTab] = useState('dashboard');
+const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1732,26 +1718,8 @@ export default function App() {
     const saved = localDevStorage?.getItem('bp_dev_cash_movements') || null;
     return saved ? JSON.parse(saved) : [];
   });
-  const [cashWithdrawals, setCashWithdrawals] = useState(() => {
-    if (typeof window === 'undefined' || hasSupabaseConfig) return [];
-    try {
-      const saved = window.localStorage.getItem(CASH_WITHDRAWALS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error('No se pudieron leer los retiros de caja locales:', error);
-      return [];
-    }
-  });
-  const [payrollSettlements, setPayrollSettlements] = useState(() => {
-    if (typeof window === 'undefined' || hasSupabaseConfig) return [];
-    try {
-      const saved = window.localStorage.getItem(PAYROLL_SETTLEMENTS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error('No se pudo leer el historial local de pagos:', error);
-      return [];
-    }
-  });
+  const [cashWithdrawals, setCashWithdrawals] = useState([]);
+  const [payrollSettlements, setPayrollSettlements] = useState([]);
   
   const [viewDate, setViewDate] = useState(getTodayString());
   const bootstrapCompletedRef = useRef(false);
@@ -1880,53 +1848,13 @@ export default function App() {
   const restoreRuntimeCache = React.useCallback((userId) => {
     if (!userId || cacheRestoreAttemptedRef.current) return false;
 
-    if (hasSupabaseConfig) {
-      cacheRestoreAttemptedRef.current = true;
-      hydratedFromCacheRef.current = false;
-      bootstrapCompletedRef.current = false;
-      return false;
-    }
-
-    const cached = readRuntimeCache();
-    if (!cached || String(cached.userId || '') !== String(userId)) {
-      cacheRestoreAttemptedRef.current = true;
-      hydratedFromCacheRef.current = false;
-      return false;
-    }
-
-    setServices(Array.isArray(cached.services) ? cached.services : []);
-    setClients(
-      Array.isArray(cached.clients)
-        ? cached.clients.map((client) => ({ ...client, phone: formatPhoneNumber(client.phone || '') }))
-        : [],
-    );
-    setBarbers(
-      Array.isArray(cached.barbers)
-        ? cached.barbers.map((barber, index) => ensureBarberTheme(barber, index))
-        : [],
-    );
-    setAppointments(Array.isArray(cached.appointments) ? cached.appointments : []);
-    setPosSales(Array.isArray(cached.posSales) ? cached.posSales : []);
-    setCashSessions(Array.isArray(cached.cashSessions) ? cached.cashSessions : []);
-    setCashMovements(Array.isArray(cached.cashMovements) ? cached.cashMovements : []);
-    setInventoryItems(Array.isArray(cached.inventoryItems) ? cached.inventoryItems : []);
-    setCatalogSettings(cached.catalogSettings || {
-      serviceCategories: CATEGORIES,
-      inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
-    });
-    setCashWithdrawals(Array.isArray(cached.cashWithdrawals) ? cached.cashWithdrawals : []);
-    setPayrollSettlements(Array.isArray(cached.payrollSettlements) ? cached.payrollSettlements : []);
-    setOperationalWarnings(Array.isArray(cached.operationalWarnings) ? cached.operationalWarnings : []);
-    setClientDirectoryData(cached.clientDirectoryData || { clients: [], appointments: [], barbers: [] });
-    setClientDirectoryLoaded(Boolean(cached.clientDirectoryLoaded));
-    setClientDirectoryWarnings(Array.isArray(cached.clientDirectoryWarnings) ? cached.clientDirectoryWarnings : []);
-    setSuperAdminViewBarbershopId(cached.superAdminViewBarbershopId || '');
-
-    hydratedFromCacheRef.current = true;
+    // Datos operativos reales no deben restaurarse desde localStorage. Supabase
+    // es la fuente de verdad; el navegador solo conserva preferencias de UI.
     cacheRestoreAttemptedRef.current = true;
-    bootstrapCompletedRef.current = true;
-    return true;
-  }, [readRuntimeCache]);
+    hydratedFromCacheRef.current = false;
+    bootstrapCompletedRef.current = false;
+    return false;
+  }, []);
 
   useEffect(() => () => {
     if (feedbackTimerRef.current) {
@@ -1972,22 +1900,6 @@ export default function App() {
     if (!useBrowserCache) return;
     localDevStorage?.setItem('bp_dev_cash_movements', JSON.stringify(cashMovements));
   }, [cashMovements, useBrowserCache, localDevStorage]);
-  useEffect(() => {
-    if (typeof window === 'undefined' || hasSupabaseConfig) return;
-    try {
-      window.localStorage.setItem(CASH_WITHDRAWALS_STORAGE_KEY, JSON.stringify(cashWithdrawals));
-    } catch (error) {
-      console.error('No se pudieron guardar los retiros de caja locales:', error);
-    }
-  }, [cashWithdrawals]);
-  useEffect(() => {
-    if (typeof window === 'undefined' || hasSupabaseConfig) return;
-    try {
-      window.localStorage.setItem(PAYROLL_SETTLEMENTS_STORAGE_KEY, JSON.stringify(payrollSettlements));
-    } catch (error) {
-      console.error('No se pudo guardar el historial local de pagos:', error);
-    }
-  }, [payrollSettlements]);
   useEffect(() => {
     if (!useBrowserCache) return;
     localDevStorage?.removeItem('bp_dev_revenue');
@@ -2212,26 +2124,13 @@ export default function App() {
 
     const runtimeCache = {
       userId: sessionUserId,
-      services,
-      clients,
-      barbers,
-      appointments,
-      posSales,
-      cashSessions,
-      cashMovements,
-      inventoryItems,
-      catalogSettings,
-      cashWithdrawals,
-      payrollSettlements,
-      operationalWarnings,
-      clientDirectoryData,
-      clientDirectoryLoaded,
-      clientDirectoryWarnings,
       superAdminViewBarbershopId,
       savedAt: new Date().toISOString(),
     };
 
     try {
+      window.localStorage.removeItem('bp_cash_withdrawals_v1');
+      window.localStorage.removeItem('bp_payroll_settlements_v1');
       window.localStorage.setItem(AUTH_RUNTIME_CACHE_KEY, JSON.stringify(runtimeCache));
     } catch (error) {
       console.error('No se pudo guardar el cache local de BarberPro:', error);
@@ -2240,21 +2139,6 @@ export default function App() {
     return undefined;
   }, [
     sessionUserId,
-    services,
-    clients,
-    barbers,
-    appointments,
-    posSales,
-    cashSessions,
-    cashMovements,
-    inventoryItems,
-    catalogSettings,
-    cashWithdrawals,
-    payrollSettlements,
-    operationalWarnings,
-    clientDirectoryData,
-    clientDirectoryLoaded,
-    clientDirectoryWarnings,
     superAdminViewBarbershopId,
   ]);
 

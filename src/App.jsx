@@ -1132,7 +1132,7 @@ function SystemView({
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Código</p>
-                            <p className="mt-1 font-bold text-slate-300">{branch.code || 'Sin código'}</p>
+                            <p className="mt-1 font-bold text-slate-300">{branch.code || 'Sin codigo'}</p>
                           </div>
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Ciudad</p>
@@ -1184,7 +1184,7 @@ function SystemView({
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-300">
-                            {branch.code || 'Sin código'}
+                            {branch.code || 'Sin codigo'}
                           </p>
                         </div>
                         <div>
@@ -1342,7 +1342,7 @@ function SystemView({
                         type="password"
                         value={newUser.password}
                         onChange={(e) => setNewUser((prev) => ({ ...prev, password: e.target.value }))}
-                        placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
+                        placeholder={`Minimo ${PASSWORD_MIN_LENGTH} caracteres`}
                         className="w-full bg-black border border-slate-800 rounded-[1.4rem] px-6 py-4 text-sm font-bold text-white outline-none focus:border-indigo-500 italic"
                       />
                     </div>
@@ -1583,7 +1583,7 @@ function SystemView({
                     return false;
                   }}
                   nextLabel="Nueva contraseña temporal"
-                  nextPlaceholder="Mínimo 6 caracteres"
+                  nextPlaceholder="Minimo 6 caracteres"
                   initialNextPassword=""
                   initialConfirmPassword=""
                   nextInputType="password"
@@ -4776,7 +4776,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
           }}
           onSubmit={handleChangeOwnPassword}
           nextLabel="Nueva contraseña"
-          nextPlaceholder="Mínimo 6 caracteres"
+          nextPlaceholder="Minimo 6 caracteres"
           lockOpen={Boolean(session?.user?.user_metadata?.must_change_password)}
         />
         </Suspense>
@@ -5366,6 +5366,28 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
     { value: 'internal', label: 'Insumo', helper: 'Se usa en servicios' },
     { value: 'both', label: 'Ambos', helper: 'Se vende y se usa' },
   ];
+  const inventoryUnitOptions = [
+    'unidad',
+    'ml',
+    'litro',
+    'gr',
+    'kg',
+    'pieza',
+    'par',
+    'servicio',
+  ];
+  const inventoryPresentationOptions = [
+    'unidad',
+    'caja',
+    'paquete',
+    'bolsa',
+    'frasco',
+    'botella',
+    'galon',
+    'rollo',
+    'display',
+  ];
+  const formatCatalogOption = (value) => String(value || '').replace(/_/g, ' ').toUpperCase();
   const activeItems = useMemo(
     () => (inventoryItems || []).filter((item) => item.isActive !== false),
     [inventoryItems],
@@ -5561,8 +5583,8 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                 <div className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
                   <span>Producto</span>
                   <span>Uso</span>
-                  <span>Categoría</span>
-                  <span>Presentación</span>
+                  <span>Categoria</span>
+                  <span>Presentacion</span>
                   <span>Stock</span>
                   <span>Costo</span>
                   <span>Venta</span>
@@ -5636,27 +5658,31 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Categoría</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Categoria</span>
                     <select value={form.productCategory} onChange={(event) => updateForm('productCategory', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black uppercase text-white outline-none">
                       {visibleProductCategories.map((category) => <option key={category} value={category}>{category}</option>)}
                     </select>
                   </label>
                   <label className="block space-y-2">
                     <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Como se mide</span>
-                    <input value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="unidad, ml, gr" />
+                    <select value={form.unitName} onChange={(event) => updateForm('unitName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black uppercase text-white outline-none">
+                      {inventoryUnitOptions.map((option) => <option key={option} value={option}>{formatCatalogOption(option)}</option>)}
+                    </select>
                   </label>
                 </div>
 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Presentación</span>
-                    <input value={form.presentationName} onChange={(event) => updateForm('presentationName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="caja, paquete, frasco" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Presentacion</span>
+                    <select value={form.presentationName} onChange={(event) => updateForm('presentationName', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black uppercase text-white outline-none">
+                      {inventoryPresentationOptions.map((option) => <option key={option} value={option}>{formatCatalogOption(option)}</option>)}
+                    </select>
                   </label>
                   <label className="block space-y-2">
                     <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Contiene</span>
                     <input type="number" min="1" step="0.01" value={form.unitsPerPresentation} onChange={(event) => updateForm('unitsPerPresentation', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="100" />
-                    <span className="block text-[8px] font-bold uppercase text-slate-500">{form.unitName || 'unidad'} por {form.presentationName || 'presentación'}</span>
+                    <span className="block text-[8px] font-bold uppercase text-slate-500">{form.unitName || 'unidad'} por {form.presentationName || 'presentacion'}</span>
                   </label>
                 </div>
 
@@ -5692,7 +5718,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                       <input type="number" min="0" step="0.01" value={form.currentStock} onChange={(event) => updateForm('currentStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
                     </label>
                     <label className="block space-y-2">
-                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Mínimo</span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Minimo</span>
                       <input type="number" min="0" value={form.minStock} onChange={(event) => updateForm('minStock', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="0" />
                     </label>
                   </div>
@@ -5700,8 +5726,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
 
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo presentaci�n</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo presentacion</span>
                     <input type="number" min="0" step="0.01" value={form.presentationCost} onChange={(event) => updateForm('presentationCost', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" />
+                    <span className="block text-[8px] font-bold uppercase text-slate-500">Costo unitario: C$ {Number(form.costPrice || 0).toLocaleString('es-NI')}</span>
                   </label>
                   <label className="block space-y-2">
                     <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Precio venta</span>
@@ -5710,12 +5737,12 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">SKU / código interno</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">SKU / codigo interno</span>
                   <input value={form.sku} onChange={(event) => updateForm('sku', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-xs font-black text-white outline-none" placeholder="Opcional" />
                 </label>
 
                 <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Presentación</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Presentacion</p>
                   <p className="mt-1 text-[10px] font-black uppercase text-slate-300">{form.presentationName || 'unidad'} x {Number(form.unitsPerPresentation || 1).toLocaleString('es-NI')} {form.unitName || 'unidad'}</p>
                   <p className="mt-4 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Margen estimado</p>
                   <p className="mt-2 text-2xl font-black italic text-emerald-300">

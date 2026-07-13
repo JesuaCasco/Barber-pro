@@ -4309,12 +4309,26 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }
   };
 
-  const handleCancelPosSale = async (saleId, reason = '') => {
+  const handleCancelPosSale = async (saleId, reason = '', options = {}) => {
     if (!saleId) return false;
     const saleToCancel = (posSales || []).find((sale) => String(sale.id) === String(saleId));
     if (!saleToCancel || saleToCancel.canceledAt) return false;
     const canceledAt = new Date().toISOString();
     const cancellationReason = reason || 'Sin motivo especificado';
+    const saleItems = Array.isArray(saleToCancel.items) ? saleToCancel.items : [];
+    const saleHasInventoryImpact = saleItems.some((item) => (
+      (item.category === 'Producto' && item.inventoryItemId)
+      || (item.category !== 'Producto' && (
+        (Array.isArray(item.inventoryUsage) && item.inventoryUsage.length > 0)
+        || item.serviceId
+        || item.id
+      ))
+    ));
+    const shouldRestoreInventory = Object.prototype.hasOwnProperty.call(options || {}, 'restoreInventory')
+      ? Boolean(options.restoreInventory)
+      : (saleHasInventoryImpact
+        ? window.confirm('Si esta anulacion fue por error y los productos o insumos NO se usaron, presiona Aceptar para devolverlos al inventario. Si los insumos si se gastaron, presiona Cancelar.')
+        : false);
     const reversalMovement = {
       id: makeId(),
       cashSessionId: saleToCancel.cashSessionId || activeCashSession?.id || null,
@@ -4351,12 +4365,22 @@ const [activeTab, setActiveTab] = useState('dashboard');
         cancellationReason,
         session.user.id,
         superAdminScopeOverride,
+        { restoreInventory: shouldRestoreInventory },
       );
       setPosSales((prev) => prev.map((sale) => String(sale.id) === String(saleId) ? result.sale : sale));
       setCashMovements((prev) => [...prev, result.movement]);
+      if (Array.isArray(result.updatedInventoryItems) && result.updatedInventoryItems.length) {
+        setInventoryItems((prev) => prev.map((item) => (
+          result.updatedInventoryItems.find((updated) => String(updated.id) === String(item.id)) || item
+        )));
+      }
       setModals((prev) => ({ ...prev, posSaleReceipt: false }));
       setSelectedData((prev) => ({ ...prev, posSaleReceipt: null }));
-      notify('Venta anulada con reverso de caja.', 'success');
+      if (result.inventoryRestorationError) {
+        notify(result.inventoryRestorationError, 'warning');
+      } else {
+        notify(shouldRestoreInventory ? 'Venta anulada y inventario devuelto.' : 'Venta anulada con reverso de caja.', 'success');
+      }
       return true;
     } catch (error) {
       handleSyncError(error, 'No pude cancelar la venta de POS en Supabase.');

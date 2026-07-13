@@ -759,7 +759,7 @@ const combineInventoryConsumptions = (consumptions = []) => {
   return Array.from(byItem.values()).filter((consumption) => consumption.quantity > 0);
 };
 
-const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) => {
+const resolveInventoryConsumptionsForSale = async (sale) => {
   const items = Array.isArray(sale?.items) ? sale.items : [];
   if (!items.length) return [];
 
@@ -823,7 +823,11 @@ const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) 
     }
   }
 
-  const combinedConsumptions = combineInventoryConsumptions(consumptions);
+  return combineInventoryConsumptions(consumptions);
+};
+
+const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) => {
+  const combinedConsumptions = await resolveInventoryConsumptionsForSale(sale);
   const results = [];
 
   for (const consumption of combinedConsumptions) {
@@ -844,6 +848,36 @@ const applyInventoryConsumptionForSale = async (sale, posSaleId, currentUserId) 
       p_created_by: currentUserId || null,
     });
     if (error) throw normalizeError(error, 'No se pudo descontar el inventario automáticamente.');
+    results.push(data);
+  }
+
+  return results;
+};
+
+const restoreInventoryForCancelledSale = async (sale, reason, currentUserId) => {
+  const combinedConsumptions = await resolveInventoryConsumptionsForSale(sale);
+  const results = [];
+
+  for (const consumption of combinedConsumptions) {
+    const { data, error } = await supabase.rpc('register_inventory_movement_atomic', {
+      p_inventory_item_id: consumption.inventoryItemId,
+      p_movement_type: 'in',
+      p_reason: consumption.reason === 'sale' ? 'sale_void' : 'service_use_void',
+      p_quantity: Number(consumption.quantity || 0),
+      p_unit_cost: null,
+      p_unit_price: consumption.unitPrice || null,
+      p_reference_type: 'pos_sale_void',
+      p_reference_id: sale.id || null,
+      p_cash_session_id: sale.cashSessionId || null,
+      p_pos_sale_id: sale.id || null,
+      p_purchase_id: null,
+      p_notes: consumption.reason === 'sale'
+        ? `Devolucion automatica por anulacion de venta${reason ? `: ${reason}` : ''}`
+        : `Devolucion de insumos por anulacion de servicio${reason ? `: ${reason}` : ''}`,
+      p_metadata: { sources: consumption.sources || [], cancellationReason: reason || '' },
+      p_created_by: currentUserId || null,
+    });
+    if (error) throw normalizeError(error, 'No se pudo devolver el inventario automaticamente.');
     results.push(data);
   }
 
@@ -2182,7 +2216,7 @@ export async function deletePosSaleRecord(saleId, currentUserId, scopeOverride =
   if (error) throw normalizeError(error, 'No se pudo cancelar la venta de POS.');
 }
 
-export async function cancelPosSaleWithReversal(sale, reason = '', currentUserId, scopeOverride = {}) {
+export async function cancelPosSaleWithReversal(sale, reason = '', currentUserId, scopeOverride = {}, options = {}) {
   assertSupabase();
   if (!sale?.id) throw normalizeError(null, 'No se pudo resolver la venta para anular.');
   const scope = await resolveUserScope(currentUserId, scopeOverride);
@@ -2200,6 +2234,7 @@ export async function cancelPosSaleWithReversal(sale, reason = '', currentUserId
     canceledAt,
     canceledBy: currentUserId || null,
     cancellationReason: reason || 'Sin motivo especificado',
+    inventoryRestored: Boolean(options?.restoreInventory),
   };
 
   const { data: updatedSales, error: saleError } = await supabase
@@ -2234,9 +2269,31 @@ export async function cancelPosSaleWithReversal(sale, reason = '', currentUserId
     ticketNumber: sale.ticketNumber || 0,
   }, currentUserId, scopeOverride);
 
+  let inventoryRestoration = [];
+  let inventoryRestorationError = null;
+  if (options?.restoreInventory) {
+    try {
+      inventoryRestoration = await restoreInventoryForCancelledSale(
+        { ...sale, barbershopId: resolvedBarbershopId, branchId: resolvedBranchId },
+        reason,
+        currentUserId,
+      );
+    } catch (inventoryError) {
+      inventoryRestorationError = normalizeError(inventoryError, 'La venta se anulo, pero no se pudo devolver el inventario.');
+      console.warn('No se pudo devolver inventario por anulacion de venta POS:', inventoryRestorationError);
+    }
+  }
+
+  const updatedInventoryItems = inventoryRestoration
+    .map((result) => result?.item)
+    .filter(Boolean)
+    .map(toUiInventoryItem);
+
   return {
     sale: updatedSale,
     movement,
+    updatedInventoryItems,
+    inventoryRestorationError: inventoryRestorationError?.message || null,
   };
 }
 

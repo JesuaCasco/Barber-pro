@@ -381,10 +381,26 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
   );
 }
 
+const TEXT_REPAIR_REPLACEMENTS = [
+  [/\u00c3\u00a1/g, 'á'], [/\u00c3\u00a9/g, 'é'], [/\u00c3\u00ad/g, 'í'], [/\u00c3\u00b3/g, 'ó'], [/\u00c3\u00ba/g, 'ú'],
+  [/\u00c3\u00b1/g, 'ñ'], [/\u00c3\u00bc/g, 'ü'],
+  [/\u00c3\u0081/g, 'Á'], [/\u00c3\u0089/g, 'É'], [/\u00c3\u008d/g, 'Í'], [/\u00c3\u0093/g, 'Ó'], [/\u00c3\u009a/g, 'Ú'],
+  [/\u00c3\u0091/g, 'Ñ'], [/\u00c3\u009c/g, 'Ü'],
+  [/\u00c2\u00bf/g, '¿'], [/\u00c2\u00a1/g, '¡'], [/\u00c2\u00b7/g, '·'],
+];
+
+const repairDisplayText = (value = '') => {
+  let text = `${value ?? ''}`;
+  TEXT_REPAIR_REPLACEMENTS.forEach(([pattern, replacement]) => {
+    text = text.replace(pattern, replacement);
+  });
+  return text;
+};
+
 const summarizeMovementItems = (items = []) => {
   if (!Array.isArray(items) || items.length === 0) return 'Sin detalle guardado';
   return items
-    .map((item) => `${item.name || 'Item'} x${Number(item.qty || 1)}`)
+    .map((item) => `${repairDisplayText(item.name || 'Item')} x${Number(item.qty || 1)}`)
     .join(' · ');
 };
 
@@ -417,10 +433,10 @@ const parseJsonNote = (value) => {
 
 const getNoteLabel = (value, fallback = '') => {
   const parsed = parseJsonNote(value);
-  return parsed?.label || parsed?.source || fallback || value || '';
+  return repairDisplayText(parsed?.label || parsed?.source || fallback || value || '');
 };
 
-const getUniqueLabels = (values = []) => [...new Set(values.filter(Boolean))];
+const getUniqueLabels = (values = []) => [...new Set(values.filter(Boolean).map(repairDisplayText))];
 
 const getSaleIncomeType = (sale) => {
   const items = Array.isArray(sale.items) ? sale.items : [];
@@ -772,12 +788,12 @@ export function POSView({
         id: `sale-${sale.id}`,
         rawId: sale.id,
         kind: 'sale',
-        title: incomeType,
-        detail: itemCount > 1 ? `${itemCount} ítems cobrados` : (firstItem?.name || 'Cobro'),
+        title: repairDisplayText(incomeType),
+        detail: repairDisplayText(itemCount > 1 ? `${itemCount} ítems cobrados` : (firstItem?.name || 'Cobro')),
         sourceDetail: summarizeSaleMovementSource(sale),
         incomeType,
-        clientLabel: getSaleClientLabel(sale),
-        barberLabel: getSaleBarberLabel(sale),
+        clientLabel: repairDisplayText(getSaleClientLabel(sale)),
+        barberLabel: repairDisplayText(getSaleBarberLabel(sale)),
         method: sale.paymentMethod || 'cash',
         amount: Number(sale.subtotal || 0),
         productTotal: Number(sale.productTotal || 0),
@@ -815,7 +831,7 @@ export function POSView({
           rawId: movement.id,
           kind: movement.movementKind || 'manual',
           type: movement.type || 'in',
-          title: movement.referenceType === 'pos_sale_void'
+          title: repairDisplayText(movement.referenceType === 'pos_sale_void'
             ? `Anulación de venta${ticketLabel ? ` #${ticketLabel}` : ''}`
             : (movement.referenceType === 'cash_movement_void'
               ? 'Anulación de movimiento'
@@ -825,8 +841,8 @@ export function POSView({
                   ? (movement.notes || 'Venta sin detalle')
                   : (isPayrollPayment
                     ? 'Pago de nómina'
-                    : movementLabel)))),
-          detail: movement.referenceType?.includes('void')
+                    : movementLabel))))),
+          detail: repairDisplayText(movement.referenceType?.includes('void')
             ? 'Reverso / auditoría'
             : (movement.movementKind === 'opening'
               ? 'Fondo inicial'
@@ -834,8 +850,8 @@ export function POSView({
                 ? 'Venta registrada en caja'
                 : (isPayrollPayment
                   ? 'Salida por pago al equipo'
-                  : (movement.type === 'out' ? 'Salida de efectivo' : 'Entrada de efectivo')))),
-          sourceDetail: movement.referenceType?.includes('void')
+                  : (movement.type === 'out' ? 'Salida de efectivo' : 'Entrada de efectivo'))))),
+          sourceDetail: repairDisplayText(movement.referenceType?.includes('void')
             ? (movement.notes || 'Reverso de auditoría')
             : (movement.movementKind === 'opening'
               ? 'Fondo inicial de caja'
@@ -843,7 +859,7 @@ export function POSView({
                 ? 'Sin detalle guardado'
                 : (isPayrollPayment
                   ? 'Pago de nómina'
-                  : movementLabel))),
+                  : movementLabel)))),
           method: movement.paymentMethod || 'cash',
           amount: Number(movement.amount || 0),
           ticketNumber,
@@ -851,7 +867,7 @@ export function POSView({
           referenceType: movement.referenceType || null,
           referenceId: movement.referenceId || null,
           clientLabel: '-',
-          barberLabel: payrollBarberLabel || '-',
+          barberLabel: repairDisplayText(payrollBarberLabel || '-'),
           createdBy: movement.createdBy || null,
           createdAt: movement.createdAt,
           isVoidedOriginal: voidedReferenceIds.has(String(movement.id)),
@@ -1641,9 +1657,9 @@ export function POSView({
                       const timeLabel = entry.createdAt
                         ? new Date(entry.createdAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })
                         : '--:--';
-                      const detailText = entry.sourceDetail || entry.detail;
-                      const clientLabel = entry.clientLabel || entry.clientName || '-';
-                      const barberLabel = entry.barberLabel || '-';
+                      const detailText = repairDisplayText(entry.sourceDetail || entry.detail);
+                      const clientLabel = repairDisplayText(entry.clientLabel || entry.clientName || '-');
+                      const barberLabel = repairDisplayText(entry.barberLabel || '-');
                       const ticketLabel = formatTicketNumber(entry.ticketNumber) || '-';
                       const userLabel = resolveUserName(entry.createdBy);
                       const rowTone = isOpening

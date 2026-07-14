@@ -6732,15 +6732,41 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
     )),
     [posSales, effectiveReportBranchId],
   );
+  const activeScopedPosSales = useMemo(
+    () => scopedPosSales.filter((sale) => !sale.canceledAt),
+    [scopedPosSales],
+  );
+  const voidedScopedAppointmentIds = useMemo(() => new Set(
+    scopedPosSales
+      .filter((sale) => sale.canceledAt)
+      .flatMap((sale) => (Array.isArray(sale.items) ? sale.items : []))
+      .map((item) => item.appointmentId)
+      .filter(Boolean)
+      .map((appointmentId) => String(appointmentId)),
+  ), [scopedPosSales]);
   const unresolvedLegacyPosSalesCount = useMemo(
     () => (posSales || []).filter((sale) => !sale.barbershopId || !sale.branchId).length,
     [posSales],
   );
+  const globalVoidedAppointmentIds = useMemo(() => new Set(
+    (posSales || [])
+      .filter((sale) => sale.canceledAt)
+      .flatMap((sale) => (Array.isArray(sale.items) ? sale.items : []))
+      .map((item) => item.appointmentId)
+      .filter(Boolean)
+      .map((appointmentId) => String(appointmentId)),
+  ), [posSales]);
   const globalFinished = useMemo(
-    () => (appointments || []).filter((appointment) => appointment.status === 'Finalizada'),
-    [appointments],
+    () => (appointments || []).filter((appointment) => (
+      appointment.status === 'Finalizada'
+      && !globalVoidedAppointmentIds.has(String(appointment.id))
+    )),
+    [appointments, globalVoidedAppointmentIds],
   );
-  const finished = useMemo(() => scopedAppointments.filter(a => a.status === 'Finalizada'), [scopedAppointments]);
+  const finished = useMemo(() => scopedAppointments.filter((appointment) => (
+    appointment.status === 'Finalizada'
+    && !voidedScopedAppointmentIds.has(String(appointment.id))
+  )), [scopedAppointments, voidedScopedAppointmentIds]);
   const finishedRevenueTotal = useMemo(
     () => finished.reduce((acc, appointment) => acc + (parseInt(appointment.price) || 0), 0),
     [finished],
@@ -6783,12 +6809,12 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
     [effectiveSalesRange.end, effectiveSalesRange.start, finished],
   );
   const periodPosSales = useMemo(
-    () => scopedPosSales.filter((sale) => {
+    () => activeScopedPosSales.filter((sale) => {
       if (!sale?.createdAt) return false;
       const saleDate = formatLocalDateYmd(new Date(sale.createdAt));
       return saleDate >= effectiveSalesRange.start && saleDate <= effectiveSalesRange.end;
     }),
-    [effectiveSalesRange.end, effectiveSalesRange.start, scopedPosSales],
+    [activeScopedPosSales, effectiveSalesRange.end, effectiveSalesRange.start],
   );
   const total = useMemo(
     () => periodFinished.reduce((acc, appointment) => acc + (parseInt(appointment.price) || 0), 0),
@@ -6800,12 +6826,12 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
   );
   const totalCombinedRevenue = total + totalProductRevenue;
   const productReportPosSales = useMemo(
-    () => scopedPosSales.filter((sale) => {
+    () => activeScopedPosSales.filter((sale) => {
       if (!sale?.createdAt) return false;
       const saleDate = formatLocalDateYmd(new Date(sale.createdAt));
       return saleDate >= effectiveProductRange.start && saleDate <= effectiveProductRange.end;
     }),
-    [effectiveProductRange.end, effectiveProductRange.start, scopedPosSales],
+    [activeScopedPosSales, effectiveProductRange.end, effectiveProductRange.start],
   );
   const productCatalogByName = useMemo(() => {
     const map = new Map();

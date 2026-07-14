@@ -4754,7 +4754,8 @@ const [activeTab, setActiveTab] = useState('dashboard');
               services={services}
               branches={availableBranches}
               currentBranchId={currentBranchId}
-              posSales={activePosSales}
+              posSales={posSales}
+              cashMovements={cashMovements}
             />
           )}
           {activeTab === 'sistema' && (
@@ -6683,7 +6684,7 @@ const formatRangeLabel = (start, end) => {
   return `${startLabel} a ${endLabel}`;
 };
 
-function ReportsView({ appointments, clients, barbers, services = [], branches = [], currentBranchId = null, posSales = [] }) {
+function ReportsView({ appointments, clients, barbers, services = [], branches = [], currentBranchId = null, posSales = [], cashMovements = [] }) {
   const [reportTab, setReportTab] = useState('ventas'); 
   const [salesPeriod, setSalesPeriod] = useState('week'); 
   const [productRangePreset, setProductRangePreset] = useState('month');
@@ -6724,6 +6725,15 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
     }),
     [appointments, effectiveReportBranchId, barbersById],
   );
+  const voidedSaleIds = useMemo(() => new Set(
+    (cashMovements || [])
+      .filter((movement) => movement.referenceType === 'pos_sale_void' && movement.referenceId)
+      .map((movement) => String(movement.referenceId)),
+  ), [cashMovements]);
+  const isSaleVoided = useCallback(
+    (sale) => Boolean(sale?.canceledAt || voidedSaleIds.has(String(sale?.id || ''))),
+    [voidedSaleIds],
+  );
   const scopedPosSales = useMemo(
     () => (posSales || []).filter((sale) => (
       effectiveReportBranchId === 'all'
@@ -6733,29 +6743,29 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
     [posSales, effectiveReportBranchId],
   );
   const activeScopedPosSales = useMemo(
-    () => scopedPosSales.filter((sale) => !sale.canceledAt),
-    [scopedPosSales],
+    () => scopedPosSales.filter((sale) => !isSaleVoided(sale)),
+    [isSaleVoided, scopedPosSales],
   );
   const voidedScopedAppointmentIds = useMemo(() => new Set(
     scopedPosSales
-      .filter((sale) => sale.canceledAt)
+      .filter((sale) => isSaleVoided(sale))
       .flatMap((sale) => (Array.isArray(sale.items) ? sale.items : []))
       .map((item) => item.appointmentId)
       .filter(Boolean)
       .map((appointmentId) => String(appointmentId)),
-  ), [scopedPosSales]);
+  ), [isSaleVoided, scopedPosSales]);
   const unresolvedLegacyPosSalesCount = useMemo(
     () => (posSales || []).filter((sale) => !sale.barbershopId || !sale.branchId).length,
     [posSales],
   );
   const globalVoidedAppointmentIds = useMemo(() => new Set(
     (posSales || [])
-      .filter((sale) => sale.canceledAt)
+      .filter((sale) => isSaleVoided(sale))
       .flatMap((sale) => (Array.isArray(sale.items) ? sale.items : []))
       .map((item) => item.appointmentId)
       .filter(Boolean)
       .map((appointmentId) => String(appointmentId)),
-  ), [posSales]);
+  ), [isSaleVoided, posSales]);
   const globalFinished = useMemo(
     () => (appointments || []).filter((appointment) => (
       appointment.status === 'Finalizada'

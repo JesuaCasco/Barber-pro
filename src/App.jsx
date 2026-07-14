@@ -4866,7 +4866,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
         )
       )}
       {confirmState && (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
           <div className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
             <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">
               {confirmState.title}

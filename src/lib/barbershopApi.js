@@ -2364,24 +2364,70 @@ export async function createCashAdvanceWithMovement(advance, currentUserId, scop
 
   await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
 
-  const { data, error } = await supabase.rpc('create_cash_advance_with_movement', {
-    p_advance_id: advance.id,
-    p_barbershop_id: resolvedBarbershopId,
-    p_branch_id: resolvedBranchId,
-    p_barber_id: advance.barberId,
-    p_barber_name: advance.barberName || '',
-    p_amount: Number(advance.amount || 0),
-    p_note: advance.note || null,
-    p_advance_date: advance.date || formatDateOnly(new Date()),
-    p_created_by: currentUserId || advance.createdBy || null,
-    p_cash_session_id: advance.cashSessionId || null,
-  });
+  const amount = Math.max(Number(advance.amount || 0), 0);
+  if (amount <= 0) {
+    throw normalizeError(null, 'El monto del adelanto debe ser mayor a cero.');
+  }
 
-  if (error) throw normalizeError(error, 'No se pudo registrar el adelanto y la salida de caja.');
+  const sessionRow = advance.cashSessionId
+    ? await supabase
+      .from('cash_sessions')
+      .select('*')
+      .eq('id', advance.cashSessionId)
+      .eq('barbershop_id', resolvedBarbershopId)
+      .eq('branch_id', resolvedBranchId)
+      .eq('status', 'open')
+      .is('closed_at', null)
+      .maybeSingle()
+    : { data: await fetchActiveCashSessionRow(resolvedBarbershopId, resolvedBranchId), error: null };
+
+  if (sessionRow.error) throw normalizeError(sessionRow.error, 'No se pudo validar la caja abierta.');
+  const cashSessionId = sessionRow.data?.id || null;
+  if (!cashSessionId) throw normalizeError(null, 'Debes abrir caja antes de registrar un adelanto.');
+
+  const payload = toDbCashAdvance(advance, resolvedBarbershopId, resolvedBranchId, currentUserId);
+  const { data: advanceData, error: advanceError } = await supabase
+    .from('barber_cash_advances')
+    .insert(payload)
+    .select('*')
+    .single();
+
+  if (advanceError) throw normalizeError(advanceError, 'No se pudo registrar el adelanto.');
+
+  const notes = `Adelanto a barbero - ${advance.barberName || 'Barbero'}${advance.note ? ` - ${advance.note}` : ''}`;
+  const { data: movementData, error: movementError } = await supabase
+    .from('cash_movements')
+    .insert({
+      cash_session_id: cashSessionId,
+      barbershop_id: resolvedBarbershopId,
+      branch_id: resolvedBranchId,
+      type: 'out',
+      movement_kind: 'manual',
+      movement_type: 'retiro',
+      payment_method: 'cash',
+      amount,
+      notes,
+      description: notes,
+      reference_type: 'cash_advance',
+      reference_id: advanceData.id,
+      created_by: currentUserId || advance.createdBy || null,
+    })
+    .select('*')
+    .single();
+
+  if (movementError) {
+    await supabase
+      .from('barber_cash_advances')
+      .delete()
+      .eq('id', advanceData.id)
+      .eq('barbershop_id', resolvedBarbershopId);
+
+    throw normalizeError(movementError, 'No se pudo registrar la salida de caja del adelanto.');
+  }
 
   return {
-    advance: data?.advance ? toUiCashAdvance(data.advance) : null,
-    movement: data?.movement ? toUiCashMovement(data.movement) : null,
+    advance: toUiCashAdvance(advanceData),
+    movement: toUiCashMovement(movementData),
   };
 }
 

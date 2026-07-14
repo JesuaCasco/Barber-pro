@@ -382,11 +382,11 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
 }
 
 const TEXT_REPAIR_REPLACEMENTS = [
-  [/\u00c3\u00a1/g, 'á'], [/\u00c3\u00a9/g, 'é'], [/\u00c3\u00ad/g, 'í'], [/\u00c3\u00b3/g, 'ó'], [/\u00c3\u00ba/g, 'ú'],
-  [/\u00c3\u00b1/g, 'ñ'], [/\u00c3\u00bc/g, 'ü'],
-  [/\u00c3\u0081/g, 'Á'], [/\u00c3\u0089/g, 'É'], [/\u00c3\u008d/g, 'Í'], [/\u00c3\u0093/g, 'Ó'], [/\u00c3\u009a/g, 'Ú'],
-  [/\u00c3\u0091/g, 'Ñ'], [/\u00c3\u009c/g, 'Ü'],
-  [/\u00c2\u00bf/g, '¿'], [/\u00c2\u00a1/g, '¡'], [/\u00c2\u00b7/g, '·'],
+  [/\u00c3\u00a1/g, '\u00e1'], [/\u00c3\u00a9/g, '\u00e9'], [/\u00c3\u00ad/g, '\u00ed'], [/\u00c3\u00b3/g, '\u00f3'], [/\u00c3\u00ba/g, '\u00fa'],
+  [/\u00c3\u00b1/g, '\u00f1'], [/\u00c3\u00bc/g, '\u00fc'],
+  [/\u00c3\u0081/g, '\u00c1'], [/\u00c3\u0089/g, '\u00c9'], [/\u00c3\u008d/g, '\u00cd'], [/\u00c3\u0093/g, '\u00d3'], [/\u00c3\u009a/g, '\u00da'],
+  [/\u00c3\u0091/g, '\u00d1'], [/\u00c3\u009c/g, '\u00dc'],
+  [/\u00c2\u00bf/g, '\u00bf'], [/\u00c2\u00a1/g, '\u00a1'], [/\u00c2\u00b7/g, '\u00b7'],
 ];
 
 const repairDisplayText = (value = '') => {
@@ -394,14 +394,22 @@ const repairDisplayText = (value = '') => {
   TEXT_REPAIR_REPLACEMENTS.forEach(([pattern, replacement]) => {
     text = text.replace(pattern, replacement);
   });
-  return text;
+
+  return text
+    .replace(/anulaci[?\uFFFD]n/gi, (match) => (match === match.toUpperCase() ? 'ANULACI\u00d3N' : 'Anulaci\u00f3n'))
+    .replace(/promoci[?\uFFFD]n/gi, (match) => (match === match.toUpperCase() ? 'PROMOCI\u00d3N' : 'Promoci\u00f3n'))
+    .replace(/n[?\uFFFD]mina/gi, (match) => (match === match.toUpperCase() ? 'N\u00d3MINA' : 'n\u00f3mina'))
+    .replace(/auditor[?\uFFFD]a/gi, (match) => (match === match.toUpperCase() ? 'AUDITOR\u00cdA' : 'auditor\u00eda'))
+    .replace(/(Ã­tems|ÃƒÂ­tems|[?\uFFFD]tems)/gi, (match) => (match === match.toUpperCase() ? '\u00cdTEMS' : '\u00edtems'))
+    .replace(/u[?\uFFFD]as/gi, (match) => (match === match.toUpperCase() ? 'U\u00d1AS' : 'u\u00f1as'))
+    .replace(/dise[?\uFFFD]o/gi, (match) => (match === match.toUpperCase() ? 'DISE\u00d1O' : 'dise\u00f1o'));
 };
 
 const summarizeMovementItems = (items = []) => {
   if (!Array.isArray(items) || items.length === 0) return 'Sin detalle guardado';
   return items
     .map((item) => `${repairDisplayText(item.name || 'Item')} x${Number(item.qty || 1)}`)
-    .join(' · ');
+    .join(' \u00b7 ');
 };
 
 const SERVICE_INCOME_LABELS = {

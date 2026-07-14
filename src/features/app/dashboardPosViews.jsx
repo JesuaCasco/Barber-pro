@@ -831,8 +831,12 @@ export function POSView({
         const ticketLabel = formatTicketNumber(ticketNumber);
         const movementLabel = getNoteLabel(movement.notes, movement.type === 'out' ? 'Salida manual' : 'Entrada manual');
         const isPayrollPayment = movement.movementKind === 'payroll_payment';
+        const isCashAdvance = movement.movementKind === 'cash_advance' || movement.referenceType === 'cash_advance';
         const payrollBarberLabel = isPayrollPayment
           ? String(movement.notes || '').replace(/^Pago de n[oó]mina\s*-\s*/i, '').trim()
+          : '';
+        const advanceBarberLabel = isCashAdvance
+          ? String(movement.notes || '').replace(/^Adelanto a barbero\s*-\s*/i, '').split(' - ')[0].trim()
           : '';
         return {
           id: `movement-${movement.id}`,
@@ -858,7 +862,9 @@ export function POSView({
                 ? 'Venta registrada en caja'
                 : (isPayrollPayment
                   ? 'Salida por pago al equipo'
-                  : (movement.type === 'out' ? 'Salida de efectivo' : 'Entrada de efectivo'))))),
+                  : (isCashAdvance
+                    ? 'Salida por adelanto'
+                    : (movement.type === 'out' ? 'Salida de efectivo' : 'Entrada de efectivo')))))),
           sourceDetail: repairDisplayText(movement.referenceType?.includes('void')
             ? (movement.notes || 'Reverso de auditoría')
             : (movement.movementKind === 'opening'
@@ -875,7 +881,7 @@ export function POSView({
           referenceType: movement.referenceType || null,
           referenceId: movement.referenceId || null,
           clientLabel: '-',
-          barberLabel: repairDisplayText(payrollBarberLabel || '-'),
+          barberLabel: repairDisplayText(payrollBarberLabel || advanceBarberLabel || '-'),
           createdBy: movement.createdBy || null,
           createdAt: movement.createdAt,
           isVoidedOriginal: voidedReferenceIds.has(String(movement.id)),

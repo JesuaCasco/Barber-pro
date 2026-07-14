@@ -2011,6 +2011,7 @@ export async function createCashMovement(payload = {}, currentUserId, scopeOverr
   if (amount <= 0) throw normalizeError(null, 'El monto del movimiento debe ser mayor a cero.');
 
   const movementType = payload.type === 'out' ? 'out' : 'in';
+  const movementKind = payload.movementKind || 'manual';
   const { data, error } = await supabase
     .from('cash_movements')
     .insert({
@@ -2018,10 +2019,12 @@ export async function createCashMovement(payload = {}, currentUserId, scopeOverr
       barbershop_id: resolvedBarbershopId,
       branch_id: resolvedBranchId,
       type: movementType,
-      movement_kind: 'manual',
-      payment_method: 'cash',
+      movement_kind: movementKind,
+      payment_method: payload.paymentMethod || 'cash',
       amount,
       notes: payload.notes || (movementType === 'out' ? 'Salida manual de caja' : 'Entrada manual de caja'),
+      reference_type: payload.referenceType || null,
+      reference_id: payload.referenceId || null,
       created_by: currentUserId || null,
     })
     .select('*')
@@ -2341,6 +2344,45 @@ export async function createCashAdvance(advance, currentUserId, scopeOverride = 
 
   if (error) throw normalizeError(error, 'No se pudo registrar el adelanto.');
   return toUiCashAdvance(data);
+}
+
+export async function createCashAdvanceWithMovement(advance, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  if (!advance) return { advance: null, movement: null };
+
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const resolvedBarbershopId = advance.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = advance.branchId ?? scope.currentBranchId ?? null;
+
+  if (!resolvedBarbershopId) {
+    throw normalizeError(null, 'No se pudo resolver la barberia para registrar el adelanto.');
+  }
+
+  if (!resolvedBranchId) {
+    throw normalizeError(null, 'No se pudo resolver la sucursal para registrar el adelanto.');
+  }
+
+  await validateBranchBelongsToBarbershop(resolvedBarbershopId, resolvedBranchId);
+
+  const { data, error } = await supabase.rpc('create_cash_advance_with_movement', {
+    p_advance_id: advance.id,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+    p_barber_id: advance.barberId,
+    p_barber_name: advance.barberName || '',
+    p_amount: Number(advance.amount || 0),
+    p_note: advance.note || null,
+    p_advance_date: advance.date || formatDateOnly(new Date()),
+    p_created_by: currentUserId || advance.createdBy || null,
+    p_cash_session_id: advance.cashSessionId || null,
+  });
+
+  if (error) throw normalizeError(error, 'No se pudo registrar el adelanto y la salida de caja.');
+
+  return {
+    advance: data?.advance ? toUiCashAdvance(data.advance) : null,
+    movement: data?.movement ? toUiCashMovement(data.movement) : null,
+  };
 }
 
 export async function createPayrollSettlements(settlements = [], currentUserId, scopeOverride = {}) {

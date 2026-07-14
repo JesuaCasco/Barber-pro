@@ -3,7 +3,7 @@ import {
   closeCashSession,
   cancelPosSaleWithReversal,
   createCashAuditMovement,
-  createCashAdvance,
+  createCashAdvanceWithMovement,
   createCashMovement,
   createManagedUser,
   createPosSale,
@@ -3666,6 +3666,11 @@ const [activeTab, setActiveTab] = useState('dashboard');
       return;
     }
 
+    if (!activeCashSession) {
+      notify('Debes abrir caja antes de entregar un adelanto.', 'warning');
+      return;
+    }
+
     const now = new Date().toISOString();
     const withdrawal = {
       id: makeId(),
@@ -3677,20 +3682,45 @@ const [activeTab, setActiveTab] = useState('dashboard');
       createdAt: now,
       barbershopId: currentBarbershopId || null,
       branchId: currentBranchId || barber.branchId || null,
+      cashSessionId: activeCashSession.id,
       settledAt: null,
     };
 
     try {
-      const savedWithdrawal = hasSupabaseConfig && bootstrapCompletedRef.current && session?.user?.id
-        ? await createCashAdvance(withdrawal, session.user.id, superAdminScopeOverride)
-        : withdrawal;
+      let savedWithdrawal = withdrawal;
+      let savedMovement = null;
+
+      if (hasSupabaseConfig && bootstrapCompletedRef.current && session?.user?.id) {
+        const result = await createCashAdvanceWithMovement(withdrawal, session.user.id, superAdminScopeOverride);
+        savedWithdrawal = result.advance || withdrawal;
+        savedMovement = result.movement || null;
+      } else {
+        savedMovement = {
+          id: makeId(),
+          cashSessionId: activeCashSession.id,
+          barbershopId: currentBarbershopId,
+          branchId: currentBranchId,
+          type: 'out',
+          movementKind: 'cash_advance',
+          paymentMethod: 'cash',
+          amount: parsedAmount,
+          notes: `Adelanto a barbero - ${barber.name}${withdrawal.note ? ` - ${withdrawal.note}` : ''}`,
+          referenceType: 'cash_advance',
+          referenceId: withdrawal.id,
+          createdBy: session?.user?.id || null,
+          createdAt: now,
+        };
+      }
 
       setCashWithdrawals((prev) => [...prev, savedWithdrawal]);
+      if (savedMovement) {
+        setCashMovements((prev) => [...prev, savedMovement]);
+      }
       setSelectedData((prev) => ({ ...prev, cashWithdrawal: null }));
       setModals((prev) => ({ ...prev, cashWithdrawal: false }));
       notify(`Adelanto registrado: C$ ${parsedAmount.toLocaleString()} para ${barber.name}.`, 'success');
     } catch (error) {
-      handleSyncError(error, 'No pude guardar el adelanto en Supabase.');
+      handleSyncError(error, 'No pude guardar el adelanto y la salida de caja en Supabase.');
     }
   };
 

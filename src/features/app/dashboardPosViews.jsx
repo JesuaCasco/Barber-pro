@@ -320,7 +320,7 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                         <div className="flex min-w-0 flex-1 flex-col justify-center">
                           <div className="min-w-0">
                             <p className="text-[16px] font-black uppercase italic text-white tracking-normal leading-tight group-hover:text-indigo-400 transition-colors whitespace-nowrap">
-                              {index + 1}-{client?.name || appointment.clientName || 'Cliente estándar'}
+                              {index + 1}-{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}
                             </p>
                           </div>
                           <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
@@ -367,7 +367,7 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                 <div key={activity.id} className="bg-black/50 border border-white/5 p-4 rounded-2xl flex items-center gap-4 group text-white">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black italic border border-white/10 ${activity.status === 'Finalizada' ? 'bg-emerald-500/20 text-emerald-400' : (activity.status === 'En Corte' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400')}`}>{activityClient?.name?.[0] || '?'}</div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{activityClient?.name || activity.clientName || 'Cliente estándar'}</p>
+                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{activityClient?.name || activity.clientName || 'Cliente gen\u00e9rico'}</p>
                     <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 leading-none">{activity.status} - {activity.service || 'Servicio'}</p>
                   </div>
                   <span className="text-[8px] font-black text-slate-600 uppercase italic whitespace-nowrap">{new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -1164,7 +1164,7 @@ export function POSView({
   const handleCompleteSale = async () => {
     if (paymentMethod === 'cash' && !cashPaymentIsEnough) return;
     const saleClientName = genericClientSale
-      ? 'Cliente genérico'
+      ? 'Cliente gen\u00e9rico'
       : (selectedClient?.name || '');
     const paymentMeta = paymentMethod === 'cash'
       ? (cashPaymentCurrency === 'USD' ? {

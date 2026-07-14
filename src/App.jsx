@@ -161,7 +161,7 @@ const accessUiFallback = (
   </div>
 );
 
-const STANDARD_CLIENT_NAME = 'Cliente estándar';
+const GENERIC_CLIENT_NAME = 'Cliente gen\u00e9rico';
 const CASH_WITHDRAWAL_QUICK_AMOUNTS = [10, 20, 50, 100, 200, 300, 400, 500];
 
 const UiFeedbackContext = createContext({
@@ -2599,42 +2599,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }
   }, [clientDirectoryLoaded, sessionUserId, superAdminScopeOverride]);
 
-  const ensureStandardClient = useCallback(async () => {
-    const existingClient = (clients || []).find((client) => (
-      String(client.name || '').trim().toLowerCase() === STANDARD_CLIENT_NAME.toLowerCase()
-    ));
-
-    if (existingClient) return existingClient;
-
-    const now = new Date().toISOString();
-    const standardClient = {
-      id: makeId(),
-      name: STANDARD_CLIENT_NAME,
-      phone: '',
-      notes: 'Cliente genérico usado por agendación rápida.',
-      points: 0,
-      createdAt: now,
-      completedVisits: 0,
-      totalSpent: 0,
-      lastVisitAt: null,
-      favoriteBarberId: null,
-      favoriteBarberName: '',
-      favoriteServiceName: '',
-      statsUpdatedAt: null,
-    };
-
-    setClients((prev) => (
-      prev.some((client) => String(client.name || '').trim().toLowerCase() === STANDARD_CLIENT_NAME.toLowerCase())
-        ? prev
-        : [...prev, standardClient]
-    ));
-
-    if (hasSupabaseConfig && bootstrapCompletedRef.current) {
-      await upsertClients([standardClient], currentBarbershopId);
-    }
-
-    return standardClient;
-  }, [clients, currentBarbershopId]);
 
   const getReservationAlertKey = (appointment) => (
     `${String(appointment?.id || '')}:${standardizeDate(appointment?.date || '')}:${String(appointment?.time || '')}`
@@ -2886,26 +2850,13 @@ const [activeTab, setActiveTab] = useState('dashboard');
       return;
     }
 
-    let resolvedClientId = apt.clientId || null;
-    let clientsForAppointmentSync = clients;
-
-    if (!resolvedClientId) {
-      try {
-        const standardClient = await ensureStandardClient();
-        resolvedClientId = standardClient.id;
-        clientsForAppointmentSync = clients.some((client) => String(client.id) === String(standardClient.id))
-          ? clients
-          : [...clients, standardClient];
-      } catch (error) {
-        handleSyncError(error, 'No pude preparar el cliente estándar para guardar el turno.');
-        return;
-      }
-    }
+    const resolvedClientId = apt.clientId || null;
+    const clientsForAppointmentSync = clients;
 
     const updatedAppointment = {
       ...apt,
       clientId: resolvedClientId,
-      clientName: apt.clientName || STANDARD_CLIENT_NAME,
+      clientName: apt.clientName || (!resolvedClientId ? GENERIC_CLIENT_NAME : undefined),
       status,
       service: extra ? extra.serviceName : apt.service,
       price: extra ? extra.price : apt.price,
@@ -2977,12 +2928,12 @@ const [activeTab, setActiveTab] = useState('dashboard');
           appointmentId: updatedAppointment.id,
           barberId: updatedAppointment.barberId || null,
           barberName: appointmentBarber?.name || updatedAppointment.barberName || '',
-          clientName: appointmentClient?.name || updatedAppointment.clientName || STANDARD_CLIENT_NAME,
+          clientName: appointmentClient?.name || updatedAppointment.clientName || GENERIC_CLIENT_NAME,
         };
       };
       const serviceSaleRecord = await handleRegisterPosSale({
         clientId: updatedAppointment.clientId || null,
-        clientName: appointmentClient?.name || updatedAppointment.clientName || STANDARD_CLIENT_NAME,
+        clientName: appointmentClient?.name || updatedAppointment.clientName || GENERIC_CLIENT_NAME,
         items: Array.isArray(extra.items) && extra.items.length
           ? extra.items.map(normalizeChargedItem)
           : [normalizeChargedItem({
@@ -3459,12 +3410,13 @@ const [activeTab, setActiveTab] = useState('dashboard');
   };
 
   const handleSaveAppointment = async (aptData, clientData) => {
-    let finalClientId = clientData.id;
+    const skipClientRegistration = Boolean(clientData?.skipRegistration);
+    let finalClientId = skipClientRegistration ? null : clientData.id;
     const now = new Date().toISOString();
     const normalizedPhone = formatPhoneNumber(clientData.phone || '');
     let createdClient = null;
 
-    if (clientData.isNew) {
+    if (!skipClientRegistration && clientData.isNew) {
       const duplicateClient = findClientByPhone(clients, normalizedPhone);
       if (duplicateClient) {
         notify(`Este número ya pertenece a ${duplicateClient.name}. Selecciona ese cliente existente.`, 'warning');
@@ -3494,6 +3446,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
       id: makeId(),
       ...aptData,
       clientId: finalClientId,
+      clientName: skipClientRegistration ? GENERIC_CLIENT_NAME : undefined,
       type: aptData.type || 'reserva',
       durationMinutes: Number(aptData.durationMinutes) > 0 ? Number(aptData.durationMinutes) : 30,
       status: 'Confirmada',
@@ -3520,20 +3473,11 @@ const [activeTab, setActiveTab] = useState('dashboard');
   const handleSaveQuickAppointment = async (aptData) => {
     const now = new Date().toISOString();
     const selectedBarber = barbers.find((barber) => String(barber.id) === String(aptData.barberId));
-    let standardClient;
-
-    try {
-      standardClient = await ensureStandardClient();
-    } catch (error) {
-      handleSyncError(error, 'No pude preparar el cliente estándar para guardar el turno rápido.');
-      return;
-    }
-
     const newApt = {
       id: makeId(),
       ...aptData,
-      clientId: standardClient.id,
-      clientName: STANDARD_CLIENT_NAME,
+      clientId: null,
+      clientName: GENERIC_CLIENT_NAME,
       barberName: selectedBarber?.name || '',
       barbershopId: currentBarbershopId || null,
       branchId: currentBranchId || selectedBarber?.branchId || null,
@@ -3581,23 +3525,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
       isQuickDirectSale: false,
     };
 
-    const clientsForAppointmentSync = clients.some((client) => String(client.id) === String(appointment.clientId))
-      ? clients
-      : [...clients, {
-          id: appointment.clientId,
-          name: STANDARD_CLIENT_NAME,
-          phone: '',
-          notes: '',
-          points: 0,
-          createdAt: now,
-          completedVisits: 0,
-          totalSpent: 0,
-          lastVisitAt: null,
-          favoriteBarberId: null,
-          favoriteBarberName: '',
-          favoriteServiceName: '',
-          statsUpdatedAt: null,
-        }];
+    const clientsForAppointmentSync = clients;
 
     setAppointments((prev) => [...prev, appointment]);
     setModals((prev) => ({ ...prev, finalize: false }));
@@ -5024,7 +4952,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                       <div key={appointment.id} onClick={() => onAptClick(appointment)} className="w-full cursor-pointer rounded-[1.4rem] border border-white/5 bg-black/25 px-4 py-4 text-left">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || appointment.clientName || 'Cliente estándar'}</p>
+                            <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
                             <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{getAgendaServiceLabel(appointment.service)}</p>
                           </div>
                           <div className="text-right shrink-0">
@@ -5108,7 +5036,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                       {apt ? (
                         <div className={`w-full ${statusStyles} rounded-2xl p-4 text-[10px] font-black uppercase italic shadow-2xl flex flex-col justify-between animate-in zoom-in-95 border-l-4 transition-all hover:scale-[1.02] cursor-pointer text-white`}>
                           <div className="flex justify-between items-start text-white">
-                            <span className="drop-shadow-lg truncate w-24">{clients.find(c => c.id === apt.clientId)?.name || apt.clientName || 'Cliente estándar'}</span>
+                            <span className="drop-shadow-lg truncate w-24">{clients.find(c => c.id === apt.clientId)?.name || apt.clientName || 'Cliente gen\u00e9rico'}</span>
                             {apt.status === 'Cita Perdida' ? <UserX size={12} className="text-rose-400" /> : (apt.status === 'Finalizada' ? <CheckCircle2 size={12} className="text-emerald-400" /> : <Clock size={12} className="text-white" />)}
                           </div>
                           <div className="flex items-center justify-between mt-2 text-white">
@@ -7911,7 +7839,7 @@ function TransferAppointmentModal({ appointment, appointments, clients, barbers,
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Trasladar cita</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente estándar'} · {appointment.time || '--:--'} · {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
+                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} · {appointment.time || '--:--'} · {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
               </p>
             </div>
           </div>
@@ -8041,7 +7969,7 @@ function RescheduleAppointmentModal({ appointment, appointments, clients, barber
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Mover turno</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente estándar'} · {barber?.name || 'Sin barbero'}
+                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} · {barber?.name || 'Sin barbero'}
               </p>
             </div>
           </div>
@@ -8144,7 +8072,7 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
               {barber?.avatar || '?'}
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente estándar'}</h3>
+              <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
                 {appointment.time || '--:--'} · {normalizeFavoriteServiceName(appointment.service) || 'Servicio'} · {barber?.name || 'Sin barbero'}
               </p>
@@ -8515,7 +8443,7 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
             </div>
             <div className="min-w-0">
               <h3 className="truncate text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">Agendar rápido</h3>
-              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Cliente estándar - sin guardar ficha</p>
+              <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Cliente gen&eacute;rico - sin guardar ficha</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-900 p-2.5 text-slate-400 transition-colors hover:text-white">
@@ -8583,6 +8511,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   const [searchTerm, setSearchTerm] = useState(initial?.client?.name || '');
   const [phoneVal, setPhoneVal] = useState(formatPhoneNumber(initial?.client?.phone || ''));
   const [selectedClient, setSelectedClient] = useState(initial?.client || null);
+  const [skipClientData, setSkipClientData] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [modalError, setModalError] = useState(null);
   const [serviceSearch, setServiceSearch] = useState('');
@@ -8607,20 +8536,32 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     return () => document.removeEventListener("mousedown", handleClickOutside); 
   }, []);
   const filteredClients = useMemo(() => { 
-    if (searchTerm.trim().length < 2 || selectedClient) return []; 
+    if (skipClientData || searchTerm.trim().length < 2 || selectedClient) return []; 
     const phoneQuery = getPhoneDigits(searchTerm);
     return (clients || []).filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (phoneQuery.length > 0 && getPhoneDigits(c.phone).includes(phoneQuery))); 
-  }, [searchTerm, clients, selectedClient]);
+  }, [searchTerm, clients, selectedClient, skipClientData]);
   const filteredServices = useMemo(
     () => (services || []).filter((service) => !isPromotionService(service) && service.name.toLowerCase().includes(serviceSearch.toLowerCase())),
     [services, serviceSearch],
   );
-  const isNewClient = searchTerm.trim().length >= 3 && filteredClients.length === 0 && !selectedClient;
+  const isNewClient = !skipClientData && searchTerm.trim().length >= 3 && filteredClients.length === 0 && !selectedClient;
   const duplicatePhoneClient = useMemo(() => {
     if (!isValidPhoneNumber(phoneVal)) return null;
     return findClientByPhone(clients, phoneVal, selectedClient?.id);
   }, [clients, phoneVal, selectedClient]);
-  const handleSelectClient = (c) => { setSelectedClient(c); setSearchTerm(c.name); setPhoneVal(formatPhoneNumber(c.phone)); setShowResults(false); setModalError(null); };
+  const showGenericClientOption = !selectedClient && searchTerm.trim().length === 0;
+  const handleToggleSkipClientData = (event) => {
+    const checked = event.target.checked;
+    setSkipClientData(checked);
+    setModalError(null);
+    setShowResults(false);
+    if (checked) {
+      setSelectedClient(null);
+      setSearchTerm('');
+      setPhoneVal('');
+    }
+  };
+  const handleSelectClient = (c) => { setSelectedClient(c); setSkipClientData(false); setSearchTerm(c.name); setPhoneVal(formatPhoneNumber(c.phone)); setShowResults(false); setModalError(null); };
   const handleSelectService = (s) => { 
     if (s === "POR DEFINIR") { 
       setForm({ ...form, service: "POR DEFINIR", price: 0, durationMinutes: 30 }); 
@@ -8681,11 +8622,14 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     } 
     
     if (!form.service) { setModalError("Por favor elige un servicio."); return; } 
-    if ((selectedClient || isNewClient) && phoneVal.trim() && !isValidPhoneNumber(phoneVal)) { setModalError("El celular debe tener exactamente 8 dígitos."); return; }
-    if (isNewClient && !phoneVal.trim()) { setModalError("Ingresa el número de celular del nuevo cliente."); return; }
-    if (isNewClient && duplicatePhoneClient) { setModalError(`Ese número ya está registrado con ${duplicatePhoneClient.name}.`); return; }
+    if (!skipClientData && (selectedClient || isNewClient) && phoneVal.trim() && !isValidPhoneNumber(phoneVal)) { setModalError("El celular debe tener exactamente 8 dígitos."); return; }
+    if (!skipClientData && isNewClient && !phoneVal.trim()) { setModalError("Ingresa el número de celular del nuevo cliente."); return; }
+    if (!skipClientData && isNewClient && duplicatePhoneClient) { setModalError(`Ese número ya está registrado con ${duplicatePhoneClient.name}.`); return; }
     
-    onSave(form, { name: searchTerm, phone: formatPhoneNumber(phoneVal), id: selectedClient?.id, isNew: isNewClient }); 
+    onSave(form, skipClientData
+      ? { id: null, name: GENERIC_CLIENT_NAME, phone: '', isNew: false, skipRegistration: true }
+      : { name: searchTerm, phone: formatPhoneNumber(phoneVal), id: selectedClient?.id, isNew: isNewClient }
+    ); 
   };
 
   return (
@@ -8729,8 +8673,19 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
             <div className="space-y-3 text-white" ref={wrapperRef}>
               <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">2. DATOS DEL CLIENTE</label>
               <div className="space-y-3 text-white relative">
-                <input required className={`w-full bg-black border border-slate-800 p-4 text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none ${showResults && filteredClients.length > 0 ? 'rounded-t-[1.2rem] rounded-b-none' : 'rounded-[1.2rem]'}`} placeholder="BUSCAR CLIENTE" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => setShowResults(true)} />
-                {showResults && filteredClients.length > 0 && (
+                <input disabled={skipClientData} required={!skipClientData} className={`w-full bg-black border border-slate-800 p-4 text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none disabled:cursor-not-allowed disabled:opacity-50 ${showResults && filteredClients.length > 0 ? 'rounded-t-[1.2rem] rounded-b-none' : 'rounded-[1.2rem]'}`} placeholder={skipClientData ? 'CLIENTE GEN\u00c9RICO' : 'BUSCAR CLIENTE'} value={skipClientData ? 'CLIENTE GEN\u00c9RICO' : searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => { if (!skipClientData) setShowResults(true); }} />
+                {showGenericClientOption && (
+                  <label className="ml-auto flex w-fit cursor-pointer select-none items-center gap-2 rounded-full px-1 text-[9px] font-black uppercase italic tracking-[0.14em] text-slate-400 transition-colors hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={skipClientData}
+                      onChange={handleToggleSkipClientData}
+                      className="h-3.5 w-3.5 rounded border-slate-400 accent-emerald-500"
+                    />
+                    Cliente gen&eacute;rico
+                  </label>
+                )}
+                {showResults && !skipClientData && filteredClients.length > 0 && (
                   <div className="absolute top-full left-0 w-full bg-slate-900 border border-t-0 border-slate-700 rounded-b-[1.2rem] shadow-2xl z-50 overflow-hidden text-white">
                     {filteredClients.map(c => (<div key={c.id} onClick={() => handleSelectClient(c)} className="flex items-center gap-4 p-4 hover:bg-indigo-600 cursor-pointer border-b border-slate-800 text-white"><span className="text-xs font-black uppercase italic text-white">{c.name}</span></div>))}
                   </div>
@@ -8740,7 +8695,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                     <span className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">¡Nuevo cliente detectado!</span>
                   </div>
                 )}
-                {(selectedClient || isNewClient) && (
+                {!skipClientData && (selectedClient || isNewClient) && (
                   <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-4 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TELÉFONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
                 )}
               </div>

@@ -1552,12 +1552,12 @@ export function POSView({
               </div>
             </div>
 
-            <div className="border-t border-[#1e293b] bg-white/85 px-5 py-3 md:px-7">
+            <div className="border-t border-[#1e293b] bg-[#020617]/95 px-5 py-3 md:px-7">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isBalancedClose ? 'text-[#34d399]' : 'text-[#fb7185]'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isBalancedClose ? 'rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-[#34d399]' : 'rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-amber-200'}`}>
                   {isBalancedClose ? 'Arqueo cuadrado. Listo para cerrar.' : 'Hay diferencias. Se pedirá motivo al cerrar.'}
                 </p>
-                <button type="button" onClick={handleCloseCash} className={`flex items-center justify-center gap-3 rounded-[1.5rem] px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${isBalancedClose ? 'bg-[#059669] text-white shadow-[0_18px_35px_rgba(114,183,155,0.24)] hover:bg-[#047857]' : 'bg-[#d65f7f] text-white shadow-[0_18px_35px_rgba(214,95,127,0.24)] hover:bg-[#c24f74]'}`}>
+                <button type="button" onClick={handleCloseCash} className={`flex items-center justify-center gap-3 rounded-[1.5rem] px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${isBalancedClose ? 'border border-emerald-300/30 bg-[#059669] text-white shadow-[0_18px_35px_rgba(5,150,105,0.28)] hover:bg-[#047857]' : 'border border-amber-300/30 bg-amber-500 text-slate-950 shadow-[0_18px_35px_rgba(245,158,11,0.22)] hover:bg-amber-400'}`}>
                   <Check size={18} /> Cerrar caja
                 </button>
               </div>

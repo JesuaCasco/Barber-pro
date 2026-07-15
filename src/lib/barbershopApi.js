@@ -596,6 +596,7 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
   return withScopeIds({
     id: appointment.id,
     client_id: normalizedClientId,
+    client_name: appointment.clientName || null,
     barber_id: normalizedBarberId,
     barber_name: appointment.barberName || matchedBarber?.name || null,
     service_id: normalizedServiceId,

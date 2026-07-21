@@ -5197,27 +5197,27 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const renderMonthView = () => (
     <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:min-h-0 md:rounded-[2.5rem]">
       <div className="shrink-0 border-b border-slate-800 bg-slate-950/95 px-3 py-2.5 backdrop-blur md:px-4">{renderStats()}</div>
-      <div className="grid grid-cols-7 border-b border-slate-800 bg-black text-center text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-        {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((label) => <div key={label} className="border-r border-slate-800 px-2 py-3 last:border-r-0">{label}</div>)}
+      <div className="shrink-0 grid grid-cols-7 border-b border-slate-800 bg-black text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-[9px]">
+        {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((label) => <div key={label} className="border-r border-slate-800 px-1.5 py-2 last:border-r-0 md:px-2">{label}</div>)}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6">
         {monthDays.map((date) => {
           const dateKey = formatLocalDateYmd(date);
           const items = appointmentsByDate.get(dateKey) || [];
           const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
           const selected = dateKey === viewDate;
           return (
-            <div key={dateKey} className={`min-h-[8.5rem] border-b border-r border-slate-800 p-2 last:border-r-0 ${isCurrentMonth ? 'bg-slate-950/45' : 'bg-black/55 opacity-60'} ${selected ? 'ring-1 ring-inset ring-cyan-300/60' : ''}`}>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-8 w-8 items-center justify-center rounded-xl text-[10px] font-black ${dateKey === today ? 'bg-cyan-300 text-slate-950' : 'bg-slate-900 text-slate-300 hover:bg-indigo-600 hover:text-white'}`}>{date.getDate()}</button>
-                <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="rounded-lg border border-slate-800 px-2 py-1 text-[8px] font-black text-slate-500 hover:border-cyan-300/40 hover:text-cyan-200">+</button>
+            <div key={dateKey} className={`min-h-0 overflow-hidden border-b border-r border-slate-800 p-1.5 last:border-r-0 md:p-2 ${isCurrentMonth ? 'bg-slate-950/45' : 'bg-black/55 opacity-60'} ${selected ? 'ring-1 ring-inset ring-cyan-300/60' : ''}`}>
+              <div className="mb-1.5 flex items-center justify-between gap-1.5">
+                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-6 w-6 items-center justify-center rounded-lg text-[9px] font-black md:h-7 md:w-7 ${dateKey === today ? 'bg-cyan-300 text-slate-950' : 'bg-slate-900 text-slate-300 hover:bg-indigo-600 hover:text-white'}`}>{date.getDate()}</button>
+                <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="rounded-md border border-slate-800 px-1.5 py-0.5 text-[7px] font-black text-slate-500 hover:border-cyan-300/40 hover:text-cyan-200">+</button>
               </div>
-              <div className="space-y-1.5">
-                {items.slice(0, 3).map((appointment) => {
+              <div className="space-y-1 overflow-hidden">
+                {items.slice(0, 2).map((appointment) => {
                   const barber = getBarber(appointment);
-                  return <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-2 py-2 text-left hover:border-indigo-400/40"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${barber?.bg || 'bg-slate-600'}`} /><span className="min-w-0 flex-1 truncate text-[8px] font-black uppercase text-white">{formatAgendaTime(appointment.time)} · {getClientLabel(appointment)}</span></button>;
+                  return <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/70 px-1.5 py-1 text-left hover:border-indigo-400/40"><span className={`h-2 w-2 shrink-0 rounded-full ${barber?.bg || 'bg-slate-600'}`} /><span className="min-w-0 flex-1 truncate text-[7px] font-black uppercase text-white md:text-[8px]">{formatAgendaTime(appointment.time)} · {getClientLabel(appointment)}</span></button>;
                 })}
-                {items.length > 3 && <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="w-full rounded-lg bg-indigo-500/10 px-2 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-indigo-200">+{items.length - 3} mas</button>}
+                {items.length > 2 && <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="w-full rounded-md bg-indigo-500/10 px-1.5 py-1 text-[7px] font-black uppercase tracking-[0.1em] text-indigo-200">+{items.length - 2} mas</button>}
               </div>
             </div>
           );

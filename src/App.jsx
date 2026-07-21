@@ -5195,42 +5195,34 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   );
 
   const renderMonthView = () => (
-    <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:min-h-0 md:rounded-[2.5rem]">
-      <div className="shrink-0 border-b border-slate-800 bg-slate-950/95 px-3 py-2.5 backdrop-blur md:px-4">{renderStats()}</div>
-      <div className="shrink-0 grid grid-cols-7 border-b border-slate-800 bg-slate-950 text-center text-[8px] font-black uppercase tracking-[0.16em] text-cyan-200/80 md:text-[9px]">
+    <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[1.4rem] border border-slate-800 bg-slate-950 shadow-[0_0_60px_rgba(0,0,0,0.35)] md:min-h-0 md:rounded-[1.8rem]">
+      <div className="shrink-0 border-b border-slate-800 bg-slate-950 px-3 py-2.5 md:px-4">{renderStats()}</div>
+      <div className="shrink-0 grid grid-cols-7 border-b border-slate-800 bg-black/30 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-[9px]">
         {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((label) => <div key={label} className="border-r border-slate-800 px-1.5 py-2 last:border-r-0 md:px-2">{label}</div>)}
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 bg-slate-950/30">
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6">
         {monthDays.map((date) => {
           const dateKey = formatLocalDateYmd(date);
           const items = appointmentsByDate.get(dateKey) || [];
           const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
           const selected = dateKey === viewDate;
-          const isWeekend = [0, 6].includes(date.getDay());
-          const hasItems = items.length > 0;
           return (
-            <div key={dateKey} className={`group/month-day min-h-0 overflow-hidden border-b border-r border-slate-800/90 p-1.5 transition-colors last:border-r-0 md:p-2 ${isCurrentMonth ? (isWeekend ? 'bg-slate-950/60' : 'bg-slate-950/35') : 'bg-black/45 opacity-45'} ${selected ? 'ring-1 ring-inset ring-cyan-300/70' : ''} ${hasItems ? 'hover:bg-slate-900/80' : 'hover:bg-indigo-500/[0.04]'}`}>
-              <div className="mb-1.5 flex items-center justify-between gap-1.5">
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-7 w-7 items-center justify-center rounded-xl text-[10px] font-black transition-all ${dateKey === today ? 'bg-cyan-300 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)]' : selected ? 'bg-indigo-500 text-white' : isCurrentMonth ? 'bg-slate-900 text-slate-100 hover:bg-indigo-600 hover:text-white' : 'bg-slate-950 text-slate-600'}`}>{date.getDate()}</button>
-                <div className="flex items-center gap-1">
-                  {hasItems && <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-1.5 py-0.5 text-[7px] font-black text-cyan-200">{items.length}</span>}
-                  <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-800 bg-black/30 text-[9px] font-black text-slate-500 opacity-70 transition-all hover:border-cyan-300/40 hover:bg-cyan-300/10 hover:text-cyan-200 group-hover/month-day:opacity-100">+</button>
-                </div>
+            <div key={dateKey} className={`min-h-0 overflow-hidden border-b border-r border-slate-800 p-2 last:border-r-0 ${isCurrentMonth ? 'bg-slate-950' : 'bg-black/30 text-slate-600'} ${selected ? 'bg-slate-900 ring-1 ring-inset ring-cyan-300/60' : ''}`}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-7 min-w-7 items-center justify-center rounded-lg px-2 text-[10px] font-black transition-all ${dateKey === today ? 'bg-cyan-300 text-slate-950' : isCurrentMonth ? 'text-slate-100 hover:bg-slate-800' : 'text-slate-600'}`}>{date.getDate()}</button>
+                <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="rounded-md px-1.5 py-0.5 text-[10px] font-black text-slate-600 transition-all hover:bg-slate-800 hover:text-cyan-200">+</button>
               </div>
               <div className="space-y-1 overflow-hidden">
                 {items.slice(0, 3).map((appointment) => {
                   const barber = getBarber(appointment);
-                  const isDone = appointment.status === 'Finalizada';
-                  const isLost = appointment.status === 'Cita Perdida';
                   return (
-                    <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className={`flex w-full items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left transition-all ${isLost ? 'border-rose-400/25 bg-rose-950/35 text-rose-100' : isDone ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100' : 'border-slate-700/80 bg-slate-900/85 text-white hover:border-cyan-300/35 hover:bg-cyan-300/10'}`}>
-                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[7px] font-black uppercase leading-none md:text-[8px]">{formatAgendaTime(appointment.time)} · {getClientLabel(appointment)}</span>
+                    <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-1.5 rounded-md bg-slate-900 px-1.5 py-1 text-left transition-all hover:bg-slate-800">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
+                      <span className="min-w-0 flex-1 truncate text-[7px] font-black uppercase text-slate-100 md:text-[8px]">{formatAgendaTime(appointment.time)} · {getClientLabel(appointment)}</span>
                     </button>
                   );
                 })}
-                {items.length > 3 && <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="w-full rounded-lg border border-indigo-400/15 bg-indigo-500/10 px-1.5 py-1 text-[7px] font-black uppercase tracking-[0.1em] text-indigo-200 transition-all hover:border-indigo-300/35 hover:bg-indigo-500/20">+{items.length - 3} mas</button>}
-                {!hasItems && isCurrentMonth && <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="mt-2 hidden w-full rounded-lg border border-dashed border-slate-800 px-2 py-2 text-[7px] font-black uppercase tracking-[0.12em] text-slate-700 transition-all hover:border-cyan-300/30 hover:text-cyan-200 md:block">Disponible</button>}
+                {items.length > 3 && <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="w-full rounded-md bg-slate-900/70 px-1.5 py-1 text-left text-[7px] font-black uppercase tracking-[0.1em] text-slate-400 hover:bg-slate-800 hover:text-cyan-200">+{items.length - 3} mas</button>}
               </div>
             </div>
           );

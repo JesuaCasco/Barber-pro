@@ -65,6 +65,7 @@ import {
   TrendingUp,
   Check,
   Edit2,
+  Pencil,
   UserPlus,
   Info,
   Star,
@@ -3024,6 +3025,16 @@ const [activeTab, setActiveTab] = useState('dashboard');
     setModals((prev) => ({ ...prev, appointmentActions: true }));
   };
 
+  const openEditAppointment = (appointment) => {
+    if (!appointment) return;
+    if (appointment.status === 'Finalizada' || appointment.status === 'Cita Perdida' || appointment.status === 'Cancelada') {
+      notify('Esta cita ya está cerrada y no se puede editar.', 'info');
+      return;
+    }
+    setSelectedData((prev) => ({ ...prev, appointment, appointmentActions: null }));
+    setModals((prev) => ({ ...prev, appointmentActions: false, appointment: true }));
+  };
+
   const openRescheduleAppointment = (appointment) => {
     if (!appointment) return;
 
@@ -3410,6 +3421,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
   };
 
   const handleSaveAppointment = async (aptData, clientData) => {
+    const editingAppointment = aptData?.id ? appointments.find((appointment) => String(appointment.id) === String(aptData.id)) : null;
     const skipClientRegistration = Boolean(clientData?.skipRegistration);
     let finalClientId = skipClientRegistration ? null : clientData.id;
     const now = new Date().toISOString();
@@ -3443,19 +3455,25 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }
 
     const newApt = {
-      id: makeId(),
+      ...(editingAppointment || {}),
       ...aptData,
+      id: editingAppointment?.id || aptData.id || makeId(),
       clientId: finalClientId,
       clientName: skipClientRegistration ? GENERIC_CLIENT_NAME : undefined,
-      type: aptData.type || 'reserva',
+      type: aptData.type || editingAppointment?.type || 'reserva',
       durationMinutes: Number(aptData.durationMinutes) > 0 ? Number(aptData.durationMinutes) : 30,
-      status: 'Confirmada',
-      createdAt: now,
-      checkInAt: aptData.type === 'walkin' ? now : null,
-      isPaid: false
+      status: editingAppointment?.status || 'Confirmada',
+      createdAt: editingAppointment?.createdAt || now,
+      updatedAt: editingAppointment ? now : undefined,
+      checkInAt: editingAppointment?.checkInAt ?? (aptData.type === 'walkin' ? now : null),
+      isPaid: editingAppointment?.isPaid || false,
     };
 
-    setAppointments([...appointments, newApt]);
+    setAppointments((prev) => (editingAppointment
+      ? prev.map((appointment) => (String(appointment.id) === String(newApt.id) ? newApt : appointment))
+      : [...prev, newApt]
+    ));
+    setSelectedData((prev) => ({ ...prev, appointment: null }));
     setModals({ ...modals, appointment: false });
 
     if (hasSupabaseConfig && bootstrapCompletedRef.current) {
@@ -3464,12 +3482,14 @@ const [activeTab, setActiveTab] = useState('dashboard');
           await upsertClients([createdClient], currentBarbershopId);
         }
         await upsertAppointments([newApt], services, currentBarbershopId, currentBranchId, barbers, clients);
+        notify(editingAppointment ? 'Cita actualizada correctamente.' : 'Cita guardada correctamente.', 'success');
       } catch (error) {
-        handleSyncError(error, 'No pude guardar la cita en Supabase.');
+        handleSyncError(error, editingAppointment ? 'No pude actualizar la cita en Supabase.' : 'No pude guardar la cita en Supabase.');
       }
+    } else {
+      notify(editingAppointment ? 'Cita actualizada correctamente.' : 'Cita guardada correctamente.', 'success');
     }
   };
-
   const handleSaveQuickAppointment = async (aptData) => {
     const now = new Date().toISOString();
     const selectedBarber = barbers.find((barber) => String(barber.id) === String(aptData.barberId));
@@ -4629,7 +4649,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
           {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={activePosSales} />}
-          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={handleAgendaAppointmentClick} onTransferApt={openTransferAppointment} />}
+          {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={openAppointmentActions} onTransferApt={openTransferAppointment} />}
           {activeTab === 'clientes' && <ClientsTableView clients={effectiveClientDirectory.clients} appointments={effectiveClientDirectory.appointments} barbers={effectiveClientDirectory.barbers} onRowClick={(c) => { setSelectedData({...selectedData, client: c}); setModals({...modals, clientDetail: true}); }} onNewApt={(c) => { setSelectedData({ ...selectedData, appointment: { date: getTodayString(), time: '09:00', barberId: defaultBarberId, client: c } }); setModals({ ...modals, appointment: true }); }} />}
           {activeTab === 'barberos' && (
             <BarbersView
@@ -4740,7 +4760,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
       {modals.quickAppointment && <QuickAppointmentModal onClose={() => setModals({...modals, quickAppointment: false})} onSave={handleSaveQuickAppointment} barbers={barbers} initial={selectedData.quickAppointment || { date: getTodayString(), time: getNextWalkinQueueTime(defaultBarberId), barberId: defaultBarberId }} appointments={appointments} />}
       {modals.cashWithdrawal && <CashWithdrawalModal onClose={() => setModals({...modals, cashWithdrawal: false})} onSave={handleSaveCashWithdrawal} barbers={barbers} initial={selectedData.cashWithdrawal || { barberId: defaultBarberId }} />}
       {modals.payrollHistory && <PayrollHistoryModal data={selectedData.payrollHistory} onClose={() => setModals({...modals, payrollHistory: false})} />}
-      {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onMove={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openRescheduleAppointment(appointment); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} onCancel={handleCancelAppointment} onMarkLost={handleMarkAppointmentLost} />}
+      {modals.appointmentActions && <AppointmentActionsModal appointment={selectedData.appointmentActions} clients={clients} barbers={barbers} onClose={() => setModals({...modals, appointmentActions: false})} onUpdate={(id, status) => { setModals((prev) => ({ ...prev, appointmentActions: false })); handleUpdateStatus(id, status); }} onMove={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openRescheduleAppointment(appointment); }} onTransfer={(appointment) => { setModals((prev) => ({ ...prev, appointmentActions: false })); openTransferAppointment(appointment); }} onEdit={openEditAppointment} onCancel={handleCancelAppointment} onMarkLost={handleMarkAppointmentLost} />}
       {modals.rescheduleAppointment && <RescheduleAppointmentModal appointment={selectedData.rescheduleAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, rescheduleAppointment: false})} onSave={handleRescheduleAppointment} />}
       {modals.transferAppointment && <TransferAppointmentModal appointment={selectedData.transferAppointment} appointments={appointments} clients={clients} barbers={barbers} onClose={() => setModals({...modals, transferAppointment: false})} onSave={handleTransferAppointment} />}
       {modals.client && <ClientModal onClose={() => setModals({...modals, client: false})} onSave={handleSaveClient} clients={clients} initial={selectedData.client} />}
@@ -8246,7 +8266,7 @@ function RescheduleAppointmentModal({ appointment, appointments, clients, barber
   );
 }
 
-function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpdate, onMove, onTransfer, onCancel, onMarkLost }) {
+function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpdate, onMove, onTransfer, onEdit, onCancel, onMarkLost }) {
   if (!appointment) return null;
 
   const client = clients.find((item) => String(item.id) === String(appointment.clientId));
@@ -8276,6 +8296,18 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
         </div>
 
         <div className="space-y-3 p-5">
+          <button
+            type="button"
+            disabled={isClosed}
+            onClick={() => onEdit(appointment)}
+            className="flex w-full items-center justify-between rounded-2xl border border-cyan-400/25 bg-cyan-400/10 px-5 py-4 text-left transition-all hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>
+              <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-white">Editar cita</span>
+              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Cambiar cliente, servicio, fecha, hora o barbero</span>
+            </span>
+            <Pencil size={18} className="text-cyan-200" />
+          </button>
           <button
             type="button"
             disabled={isClosed}
@@ -8700,15 +8732,19 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
 
 function AppointmentModal({ onClose, onSave, services, clients, barbers, initial, appointments }) {
   const availableBarbers = (barbers && barbers.length > 0) ? barbers : [];
-  const [searchTerm, setSearchTerm] = useState(initial?.client?.name || '');
-  const [phoneVal, setPhoneVal] = useState(formatPhoneNumber(initial?.client?.phone || ''));
-  const [selectedClient, setSelectedClient] = useState(initial?.client || null);
-  const [skipClientData, setSkipClientData] = useState(false);
+  const initialClient = initial?.client || (initial?.clientId ? (clients || []).find((client) => String(client.id) === String(initial.clientId)) : null);
+  const initialIsGenericClient = !initialClient && (initial?.clientName === GENERIC_CLIENT_NAME || initial?.clientId === null);
+  const initialServiceName = initial?.service || '';
+  const [searchTerm, setSearchTerm] = useState(initialClient?.name || '');
+  const [phoneVal, setPhoneVal] = useState(formatPhoneNumber(initialClient?.phone || ''));
+  const [selectedClient, setSelectedClient] = useState(initialClient || null);
+  const [skipClientData, setSkipClientData] = useState(initialIsGenericClient);
   const [showResults, setShowResults] = useState(false);
   const [modalError, setModalError] = useState(null);
-  const [serviceSearch, setServiceSearch] = useState('');
+  const [serviceSearch, setServiceSearch] = useState(initialServiceName);
   const [showServiceList, setShowServiceList] = useState(false);
-  const [form, setForm] = useState({ 
+  const [form, setForm] = useState({
+    id: initial?.id,
     date: initial?.date || getTodayString(), 
     time: initial?.time || '09:00', 
     barberId: initial?.barberId || availableBarbers[0]?.id || '', 
@@ -8801,6 +8837,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     const newDurationMinutes = Number(form.durationMinutes) > 0 ? Number(form.durationMinutes) : 30;
     const newEndMinutes = newStartMinutes + newDurationMinutes;
     const hasReservationConflict = form.type !== 'walkin' && (appointments || []).some(a => {
+      if (String(a.id) === String(initial?.id || '')) return false;
       if (standardizeDate(a.date) !== standardizeDate(form.date) || String(a.barberId) !== String(form.barberId) || a.status === 'Cancelada' || a.status === 'Finalizada' || a.status === 'Cita Perdida') return false;
       const existingStartMinutes = toMinutes(a.time);
       const existingDurationMinutes = Number(a.durationMinutes) > 0 ? Number(a.durationMinutes) : 30;
@@ -8833,7 +8870,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                     {form.type === 'walkin' ? <Zap size={22}/> : <CalendarIcon size={22}/>}
             </div>
             <h3 className="text-xl md:text-2xl font-black uppercase italic text-white leading-none">
-                {form.type === 'walkin' ? 'NUEVO TURNO (SIN CITA)' : 'RESERVAR TURNO'}
+                {initial?.id ? 'EDITAR CITA' : form.type === 'walkin' ? 'NUEVO TURNO (SIN CITA)' : 'RESERVAR TURNO'}
             </h3>
           </div>
           <button onClick={onClose} className="p-2.5 bg-slate-900 rounded-xl text-slate-500 text-white"><X size={24} strokeWidth={3} /></button>
@@ -8935,7 +8972,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
           </div>
           <div className="pt-5 border-t border-slate-900 flex justify-between items-center gap-4 text-white">
             <div className="flex flex-col text-white"><span className="text-[9px] font-black text-slate-500 uppercase italic mb-1.5 leading-none">MONTO ESTIMADO</span><h4 className="text-3xl md:text-4xl font-black italic text-white leading-none"><span className="text-emerald-500 mr-2 text-white">C$</span>{(Number(form.price) || 0).toLocaleString()}</h4></div>
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] italic transition-all text-white leading-none">RESERVAR ESPACIO</button>
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] italic transition-all text-white leading-none">{initial?.id ? 'GUARDAR CAMBIOS' : 'RESERVAR ESPACIO'}</button>
           </div>
         </form>
       </div>

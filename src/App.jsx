@@ -5163,7 +5163,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:min-h-0 md:rounded-[2.5rem]">
       <div className="shrink-0 border-b border-slate-800 bg-slate-950/95 px-3 py-2.5 backdrop-blur md:px-4">{renderStats()}</div>
       <div className="min-h-0 flex-1 overflow-auto custom-scrollbar">
-        <div className="grid min-w-[58rem] grid-cols-[4.6rem_repeat(7,minmax(7.6rem,1fr))]">
+        <div className="grid min-w-[52rem] grid-cols-[4.4rem_repeat(7,minmax(0,1fr))] xl:min-w-0">
           <div className="sticky left-0 z-20 border-b border-r border-slate-800 bg-black p-2"><Clock className="mx-auto text-slate-600" size={16} /></div>
           {weekDays.map((date) => {
             const key = formatLocalDateYmd(date);
@@ -5251,9 +5251,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           <div className="text-center xl:text-right"><p className="mobile-simplify-subtitle mb-2 text-[10px] font-black uppercase italic leading-none tracking-[0.3em] text-cyan-300">Agenda de barberia</p><h3 className="text-2xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-3xl md:text-3xl">{viewTitle}</h3></div>
         </div>
       </div>
-      <div className={`grid min-h-0 flex-1 gap-4 ${agendaViewMode === 'month' ? '2xl:grid-cols-[minmax(0,1fr)_20rem]' : '2xl:grid-cols-[minmax(0,1fr)_21rem]'}`}>
+      <div className={`grid min-h-0 flex-1 gap-4 ${agendaViewMode === 'day' ? 'min-[1800px]:grid-cols-[minmax(0,1fr)_21rem]' : 'grid-cols-1'}`}>
         {agendaViewMode === 'month' ? renderMonthView() : agendaViewMode === 'week' ? renderWeekView() : renderDayView()}
-        <div className="hidden 2xl:block">{renderSidePanel()}</div>
+        {agendaViewMode === 'day' && <div className="hidden min-[1800px]:block">{renderSidePanel()}</div>}
       </div>
     </div>
   );

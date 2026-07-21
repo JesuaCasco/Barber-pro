@@ -4869,8 +4869,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
 
 function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onSlotClick, onAptClick, onTransferApt }) {
   const today = getTodayString();
-  const isToday = viewDate === today;
-  const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
+  const [agendaViewMode, setAgendaViewMode] = useState('day');
   const [nowPos, setNowPos] = useState(0);
   const agendaBarbers = useMemo(() => ((barbers && barbers.length > 0) ? barbers : []), [barbers]);
   const defaultBarberId = agendaBarbers[0]?.id || '';
@@ -4879,27 +4878,79 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const totalDayMinutes = Math.max(dayEndMinutes - dayStartMinutes, 30);
   const minuteHeight = 2.4;
   const calendarHeight = totalDayMinutes * minuteHeight;
-  const formattedDay = new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   const clientById = useMemo(() => new Map((clients || []).map((client) => [String(client.id), client])), [clients]);
   const barberById = useMemo(() => new Map(agendaBarbers.map((barber) => [String(barber.id), barber])), [agendaBarbers]);
-  const dayAppointments = useMemo(
+  const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
+  const selectedDate = useMemo(() => new Date(`${viewDate}T00:00:00`), [viewDate]);
+  const isToday = viewDate === today;
+
+  const addDays = (date, days) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  };
+
+  const startOfWeek = (date) => {
+    const next = new Date(date);
+    const day = next.getDay();
+    const offset = day === 0 ? -6 : 1 - day;
+    next.setDate(next.getDate() + offset);
+    return next;
+  };
+
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(selectedDate), index)), [selectedDate]);
+  const monthDays = useMemo(() => {
+    const firstDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const weekStart = startOfWeek(firstDay);
+    return Array.from({ length: 42 }, (_, index) => addDays(weekStart, index));
+  }, [selectedDate]);
+  const viewTitle = useMemo(() => {
+    if (agendaViewMode === 'month') {
+      return selectedDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    }
+    if (agendaViewMode === 'week') {
+      const first = weekDays[0];
+      const last = weekDays[6];
+      return `${first.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${last.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+    return selectedDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  }, [agendaViewMode, selectedDate, weekDays]);
+
+  const activeAppointments = useMemo(
     () => (appointments || [])
-      .filter((appointment) => standardizeDate(appointment.date) === viewDate)
       .filter((appointment) => appointment.status !== 'Cancelada')
       .sort((left, right) => String(left.time || '').localeCompare(String(right.time || ''))),
-    [appointments, viewDate],
+    [appointments],
   );
+
+  const appointmentsByDate = useMemo(() => {
+    const grouped = new Map();
+    activeAppointments.forEach((appointment) => {
+      const key = standardizeDate(appointment.date);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(appointment);
+    });
+    return grouped;
+  }, [activeAppointments]);
+
+  const dayAppointments = useMemo(() => appointmentsByDate.get(viewDate) || [], [appointmentsByDate, viewDate]);
+  const visibleAppointments = useMemo(() => {
+    if (agendaViewMode === 'month') {
+      const keys = new Set(monthDays.map((date) => formatLocalDateYmd(date)));
+      return activeAppointments.filter((appointment) => keys.has(standardizeDate(appointment.date)));
+    }
+    if (agendaViewMode === 'week') {
+      const keys = new Set(weekDays.map((date) => formatLocalDateYmd(date)));
+      return activeAppointments.filter((appointment) => keys.has(standardizeDate(appointment.date)));
+    }
+    return dayAppointments;
+  }, [activeAppointments, agendaViewMode, dayAppointments, monthDays, weekDays]);
 
   const positionedAppointments = useMemo(() => {
     const baseEvents = dayAppointments.map((appointment) => {
       const start = appointmentTimeToMinutes(appointment.time || HOURS[0] || '08:00');
       const duration = Math.max(Number(appointment.durationMinutes || 30), 20);
-      return {
-        appointment,
-        start,
-        end: start + duration,
-        duration,
-      };
+      return { appointment, start, end: start + duration, duration };
     });
 
     return baseEvents.map((event) => {
@@ -4908,12 +4959,10 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         .sort((left, right) => (left.start - right.start) || String(left.appointment.id).localeCompare(String(right.appointment.id)));
       const overlapCount = Math.max(overlapping.length, 1);
       const overlapIndex = Math.max(overlapping.findIndex((candidate) => String(candidate.appointment.id) === String(event.appointment.id)), 0);
-      const top = Math.max(event.start - dayStartMinutes, 0) * minuteHeight;
-      const height = Math.max(event.duration * minuteHeight - 8, 58);
       return {
         ...event,
-        top,
-        height,
+        top: Math.max(event.start - dayStartMinutes, 0) * minuteHeight,
+        height: Math.max(event.duration * minuteHeight - 8, 58),
         width: `calc(${100 / overlapCount}% - 0.6rem)`,
         left: `calc(${(100 / overlapCount) * overlapIndex}% + 0.3rem)`,
       };
@@ -4921,11 +4970,11 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   }, [dayAppointments, dayStartMinutes, minuteHeight]);
 
   const agendaStats = useMemo(() => {
-    const active = dayAppointments.filter((appointment) => !['Finalizada', 'Cita Perdida'].includes(appointment.status));
-    const finished = dayAppointments.filter((appointment) => appointment.status === 'Finalizada');
-    const missed = dayAppointments.filter((appointment) => appointment.status === 'Cita Perdida');
-    return { total: dayAppointments.length, active: active.length, finished: finished.length, missed: missed.length };
-  }, [dayAppointments]);
+    const active = visibleAppointments.filter((appointment) => !['Finalizada', 'Cita Perdida'].includes(appointment.status));
+    const finished = visibleAppointments.filter((appointment) => appointment.status === 'Finalizada');
+    const missed = visibleAppointments.filter((appointment) => appointment.status === 'Cita Perdida');
+    return { total: visibleAppointments.length, active: active.length, finished: finished.length, missed: missed.length };
+  }, [visibleAppointments]);
 
   useEffect(() => {
     const updateNow = () => {
@@ -4942,12 +4991,6 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     return () => clearInterval(interval);
   }, [dayStartMinutes, dayEndMinutes, totalDayMinutes]);
 
-  const changeDay = (value) => {
-    const date = new Date(viewDate + 'T00:00:00');
-    date.setDate(date.getDate() + value);
-    setViewDate(formatLocalDateYmd(date));
-  };
-
   const formatAgendaTime = (time) => {
     if (!time) return '--:--';
     const [hourRaw, minuteRaw] = String(time).split(':').map(Number);
@@ -4958,200 +5001,182 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     return `${hour}:${minute} ${suffix}`;
   };
 
-  const addAppointmentAt = (time = '09:00') => {
+  const getClientLabel = (appointment) => clientById.get(String(appointment.clientId))?.name || appointment.clientName || 'Cliente gen\u00e9rico';
+  const getBarber = (appointment) => barberById.get(String(appointment.barberId));
+
+  const changePeriod = (direction) => {
+    const next = new Date(selectedDate);
+    if (agendaViewMode === 'month') next.setMonth(next.getMonth() + direction);
+    else if (agendaViewMode === 'week') next.setDate(next.getDate() + (direction * 7));
+    else next.setDate(next.getDate() + direction);
+    setViewDate(formatLocalDateYmd(next));
+  };
+
+  const addAppointmentAt = (time = '09:00', date = viewDate) => {
+    setViewDate(date);
     onSlotClick(time, defaultBarberId);
   };
+
+  const renderStats = () => (
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Citas</p><p className="mt-1 text-xl font-black italic text-white">{agendaStats.total}</p></div>
+      <div className="rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-indigo-300">Activas</p><p className="mt-1 text-xl font-black italic text-indigo-200">{agendaStats.active}</p></div>
+      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Finalizadas</p><p className="mt-1 text-xl font-black italic text-emerald-200">{agendaStats.finished}</p></div>
+      <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-rose-300">Perdidas</p><p className="mt-1 text-xl font-black italic text-rose-200">{agendaStats.missed}</p></div>
+    </div>
+  );
+
+  const renderAppointmentCard = (appointment, compact = false) => {
+    const barber = getBarber(appointment);
+    return (
+      <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className={`w-full rounded-2xl border border-slate-800 bg-slate-900/55 text-left transition-all hover:border-indigo-400/40 hover:bg-indigo-500/10 ${compact ? 'p-2' : 'p-3'}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-black uppercase italic text-white md:text-[11px]">{getClientLabel(appointment)}</p>
+            <p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-[9px]">{getAgendaServiceLabel(appointment.service)}</p>
+          </div>
+          <p className="shrink-0 text-[9px] font-black text-cyan-200 md:text-[10px]">{formatAgendaTime(appointment.time)}</p>
+        </div>
+        {!compact && (
+          <div className="mt-3 flex items-center gap-2">
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
+            <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">{barber?.name || 'Sin barbero'} · {appointment.status || 'Confirmada'}</p>
+          </div>
+        )}
+      </button>
+    );
+  };
+
+  const renderDayView = () => (
+    <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
+      <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">{renderStats()}</div>
+      <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div className="grid min-w-[42rem] grid-cols-[5.8rem_minmax(0,1fr)] md:min-w-0">
+          <div className="border-r border-slate-800 bg-slate-950/50">
+            {HOURS.map((hour) => <div key={hour} className="flex h-[72px] items-start justify-center border-b border-slate-900 px-2 py-3 text-[10px] font-black italic text-slate-500">{formatAgendaTime(hour)}</div>)}
+          </div>
+          <div className="relative" style={{ height: calendarHeight }}>
+            {HOURS.map((hour) => {
+              const minutes = appointmentTimeToMinutes(hour);
+              const top = Math.max(minutes - dayStartMinutes, 0) * minuteHeight;
+              return <button key={hour} type="button" onClick={() => addAppointmentAt(hour)} className="absolute left-0 right-0 border-b border-slate-900/90 text-left transition-colors hover:bg-indigo-500/[0.04]" style={{ top, height: 30 * minuteHeight }} aria-label={`Agendar a las ${hour}`} />;
+            })}
+            {isToday && nowPos >= 0 && <div className="absolute left-0 right-0 z-20 h-0.5 bg-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.8)]" style={{ top: `${nowPos}%` }}><span className="absolute -top-3 left-3 rounded-full bg-cyan-300 px-3 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-950 shadow-lg">Ahora</span></div>}
+            {positionedAppointments.map(({ appointment, top, height, left, width }) => {
+              const barber = getBarber(appointment);
+              let statusStyles = 'border-indigo-400/40 bg-indigo-600/90 shadow-[0_18px_35px_rgba(79,70,229,0.25)]';
+              if (appointment.status === 'En Corte') statusStyles = 'border-emerald-300/40 bg-emerald-600/90 shadow-[0_18px_35px_rgba(16,185,129,0.25)]';
+              if (appointment.status === 'Finalizada') statusStyles = 'border-slate-600 bg-slate-800/90 opacity-75';
+              if (appointment.status === 'Cita Perdida') statusStyles = 'border-rose-400/35 bg-rose-950/90 opacity-80';
+              return (
+                <div key={appointment.id} onClick={() => onAptClick(appointment)} className={`absolute z-10 cursor-pointer overflow-hidden rounded-2xl border px-4 py-3 text-white transition-all hover:z-30 hover:scale-[1.01] ${statusStyles}`} style={{ top, height, left, width }}>
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-[11px] font-black uppercase italic tracking-tight text-white">{getClientLabel(appointment)}</p><p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.16em] text-white/70">{getAgendaServiceLabel(appointment.service)}</p></div><p className="shrink-0 text-[9px] font-black italic text-white/90">{formatAgendaTime(appointment.time)}</p></div>
+                  <div className="mt-2 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div><p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-white/85">{barber?.name || 'Sin barbero'}</p></div>{appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && <button type="button" onClick={(event) => { event.stopPropagation(); onTransferApt?.(appointment); }} className="shrink-0 rounded-lg bg-black/25 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[0.14em] text-white/90 transition-all hover:bg-black/40">Mover</button>}</div>
+                </div>
+              );
+            })}
+            {dayAppointments.length === 0 && <button type="button" onClick={() => addAppointmentAt('09:00')} className="absolute left-6 right-6 top-10 rounded-[1.6rem] border border-dashed border-cyan-400/30 bg-cyan-400/5 px-5 py-8 text-center text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200 transition-all hover:bg-cyan-400/10">No hay citas. Agendar primer turno</button>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderWeekView = () => (
+    <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
+      <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">{renderStats()}</div>
+      <div className="overflow-auto custom-scrollbar">
+        <div className="grid min-w-[68rem] grid-cols-[5.5rem_repeat(7,minmax(8.5rem,1fr))]">
+          <div className="sticky left-0 z-20 border-b border-r border-slate-800 bg-black p-3"><Clock className="mx-auto text-slate-600" size={18} /></div>
+          {weekDays.map((date) => {
+            const key = formatLocalDateYmd(date);
+            const selected = key === viewDate;
+            return <button key={key} type="button" onClick={() => setViewDate(key)} className={`border-b border-r border-slate-800 p-3 text-center transition-all ${selected ? 'bg-indigo-500/20 text-white' : 'bg-slate-950 text-slate-400 hover:bg-indigo-500/10'}`}><p className="text-[9px] font-black uppercase tracking-[0.16em]">{date.toLocaleDateString('es-ES', { weekday: 'short' })}</p><p className="mt-1 text-2xl font-black italic">{date.getDate()}</p></button>;
+          })}
+          {HOURS.map((hour) => (
+            <React.Fragment key={hour}>
+              <div className="sticky left-0 z-10 border-b border-r border-slate-800 bg-slate-950 px-2 py-4 text-center text-[10px] font-black italic text-slate-500">{formatAgendaTime(hour)}</div>
+              {weekDays.map((date) => {
+                const dateKey = formatLocalDateYmd(date);
+                const [slotH, slotM] = hour.split(':').map(Number);
+                const slotAppointments = (appointmentsByDate.get(dateKey) || []).filter((appointment) => {
+                  const [aptH, aptM] = String(appointment.time || '00:00').split(':').map(Number);
+                  return aptH === slotH && aptM >= slotM && aptM < slotM + 30;
+                });
+                return (
+                  <div key={`${dateKey}-${hour}`} onDoubleClick={() => addAppointmentAt(hour, dateKey)} className="min-h-[7.5rem] border-b border-r border-slate-800 bg-slate-950/35 p-2 transition-colors hover:bg-indigo-500/[0.04]">
+                    <div className="space-y-2">{slotAppointments.map((appointment) => renderAppointmentCard(appointment, true))}</div>
+                    {slotAppointments.length === 0 && <button type="button" onClick={() => addAppointmentAt(hour, dateKey)} className="flex h-full min-h-[4.5rem] w-full items-center justify-center rounded-xl border border-dashed border-transparent text-[8px] font-black uppercase tracking-[0.14em] text-slate-700 transition-all hover:border-cyan-400/25 hover:text-cyan-300">+ cita</button>}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderMonthView = () => (
+    <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
+      <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">{renderStats()}</div>
+      <div className="grid grid-cols-7 border-b border-slate-800 bg-black text-center text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+        {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((label) => <div key={label} className="border-r border-slate-800 px-2 py-3 last:border-r-0">{label}</div>)}
+      </div>
+      <div className="grid grid-cols-7">
+        {monthDays.map((date) => {
+          const dateKey = formatLocalDateYmd(date);
+          const items = appointmentsByDate.get(dateKey) || [];
+          const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+          const selected = dateKey === viewDate;
+          return (
+            <div key={dateKey} className={`min-h-[8.5rem] border-b border-r border-slate-800 p-2 last:border-r-0 ${isCurrentMonth ? 'bg-slate-950/45' : 'bg-black/55 opacity-60'} ${selected ? 'ring-1 ring-inset ring-cyan-300/60' : ''}`}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-8 w-8 items-center justify-center rounded-xl text-[10px] font-black ${dateKey === today ? 'bg-cyan-300 text-slate-950' : 'bg-slate-900 text-slate-300 hover:bg-indigo-600 hover:text-white'}`}>{date.getDate()}</button>
+                <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="rounded-lg border border-slate-800 px-2 py-1 text-[8px] font-black text-slate-500 hover:border-cyan-300/40 hover:text-cyan-200">+</button>
+              </div>
+              <div className="space-y-1.5">
+                {items.slice(0, 3).map((appointment) => {
+                  const barber = getBarber(appointment);
+                  return <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-2 py-2 text-left hover:border-indigo-400/40"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${barber?.bg || 'bg-slate-600'}`} /><span className="min-w-0 flex-1 truncate text-[8px] font-black uppercase text-white">{formatAgendaTime(appointment.time)} · {getClientLabel(appointment)}</span></button>;
+                })}
+                {items.length > 3 && <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="w-full rounded-lg bg-indigo-500/10 px-2 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-indigo-200">+{items.length - 3} mas</button>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const renderSidePanel = () => (
+    <aside className="space-y-4">
+      <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl">
+        <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Equipo</p><h4 className="mt-1 text-xl font-black uppercase italic tracking-tighter text-white">Barberos</h4></div><button onClick={() => addAppointmentAt(getCurrentTimeHHmm())} className="rounded-2xl bg-cyan-400 px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-950 hover:bg-cyan-300">+ Cita</button></div>
+        <div className="mt-4 space-y-2">{agendaBarbers.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay barberos activos.</div> : agendaBarbers.map((barber) => { const count = visibleAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id)).length; return <div key={barber.id} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/55 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${barber.bg} text-[10px] font-black italic text-white`}>{barber.avatar}</div><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-black uppercase italic text-white">{barber.name}</p><p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{count} cita{count === 1 ? '' : 's'}</p></div><span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[8px] font-black text-cyan-200">{count}</span></div>; })}</div>
+      </section>
+      <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Lista visible</p><div className="mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1 custom-scrollbar">{visibleAppointments.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Sin citas registradas.</div> : visibleAppointments.slice(0, 18).map((appointment) => renderAppointmentCard(appointment))}</div></section>
+    </aside>
+  );
 
   return (
     <div className="agenda-view p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
       <div className="agenda-toolbar-scroll">
-        <div className="agenda-toolbar min-w-full flex flex-col gap-4 rounded-[2rem] border border-slate-800 bg-black p-4 text-white shadow-2xl md:rounded-[2.5rem] md:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center justify-center gap-3 sm:justify-start">
-            <button onClick={() => changeDay(-1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronLeft size={20}/></button>
+        <div className="agenda-toolbar min-w-full flex flex-col gap-4 rounded-[2rem] border border-slate-800 bg-black p-4 text-white shadow-2xl md:rounded-[2.5rem] md:p-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+            <button onClick={() => changePeriod(-1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronLeft size={20}/></button>
             <button onClick={() => setViewDate(today)} className="rounded-xl border border-indigo-600/30 bg-indigo-600/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 transition-all hover:bg-indigo-600 hover:text-white md:px-6 md:py-4">Hoy</button>
-            <button onClick={() => changeDay(1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronRight size={20}/></button>
+            <button onClick={() => changePeriod(1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronRight size={20}/></button>
+            <div className="flex rounded-2xl border border-slate-800 bg-slate-950 p-1">
+              {[{ id: 'day', label: 'Dia' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mes' }].map((mode) => <button key={mode.id} type="button" onClick={() => setAgendaViewMode(mode.id)} className={`rounded-xl px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${agendaViewMode === mode.id ? 'bg-cyan-300 text-slate-950 shadow-[0_0_22px_rgba(34,211,238,0.24)]' : 'text-slate-400 hover:bg-slate-900 hover:text-white'}`}>{mode.label}</button>)}
+            </div>
           </div>
-          <div className="text-center lg:text-right">
-            <p className="mobile-simplify-subtitle mb-2 text-[10px] font-black uppercase italic leading-none tracking-[0.3em] text-cyan-300">Agenda de barberia</p>
-            <h3 className="text-2xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-3xl md:text-3xl">
-              {formattedDay}
-            </h3>
-          </div>
+          <div className="text-center xl:text-right"><p className="mobile-simplify-subtitle mb-2 text-[10px] font-black uppercase italic leading-none tracking-[0.3em] text-cyan-300">Agenda de barberia</p><h3 className="text-2xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-3xl md:text-3xl">{viewTitle}</h3></div>
         </div>
       </div>
-
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
-          <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Citas</p>
-                <p className="mt-1 text-xl font-black italic text-white">{agendaStats.total}</p>
-              </div>
-              <div className="rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-indigo-300">Activas</p>
-                <p className="mt-1 text-xl font-black italic text-indigo-200">{agendaStats.active}</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Finalizadas</p>
-                <p className="mt-1 text-xl font-black italic text-emerald-200">{agendaStats.finished}</p>
-              </div>
-              <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-rose-300">Perdidas</p>
-                <p className="mt-1 text-xl font-black italic text-rose-200">{agendaStats.missed}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="grid min-w-[42rem] grid-cols-[5.8rem_minmax(0,1fr)] md:min-w-0">
-              <div className="border-r border-slate-800 bg-slate-950/50">
-                {HOURS.map((hour) => (
-                  <div key={hour} className="flex h-[72px] items-start justify-center border-b border-slate-900 px-2 py-3 text-[10px] font-black italic text-slate-500 md:h-[72px]">
-                    {formatAgendaTime(hour)}
-                  </div>
-                ))}
-              </div>
-              <div className="relative" style={{ height: calendarHeight }}>
-                {HOURS.map((hour) => {
-                  const minutes = appointmentTimeToMinutes(hour);
-                  const top = Math.max(minutes - dayStartMinutes, 0) * minuteHeight;
-                  return (
-                    <button
-                      key={hour}
-                      type="button"
-                      onClick={() => addAppointmentAt(hour)}
-                      className="absolute left-0 right-0 border-b border-slate-900/90 text-left transition-colors hover:bg-indigo-500/[0.04]"
-                      style={{ top, height: 30 * minuteHeight }}
-                      aria-label={`Agendar a las ${hour}`}
-                    >
-                      <span className="pointer-events-none absolute left-4 top-3 hidden rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-indigo-200 opacity-0 transition-opacity group-hover:opacity-100 md:inline-flex">
-                        Nueva cita
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {isToday && nowPos >= 0 && (
-                  <div className="absolute left-0 right-0 z-20 h-0.5 bg-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.8)]" style={{ top: `${nowPos}%` }}>
-                    <span className="absolute -top-3 left-3 rounded-full bg-cyan-300 px-3 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-950 shadow-lg">Ahora</span>
-                  </div>
-                )}
-
-                {positionedAppointments.map(({ appointment, top, height, left, width }) => {
-                  const client = clientById.get(String(appointment.clientId));
-                  const barber = barberById.get(String(appointment.barberId));
-                  let statusStyles = 'border-indigo-400/40 bg-indigo-600/90 shadow-[0_18px_35px_rgba(79,70,229,0.25)]';
-                  if (appointment.status === 'En Corte') statusStyles = 'border-emerald-300/40 bg-emerald-600/90 shadow-[0_18px_35px_rgba(16,185,129,0.25)]';
-                  if (appointment.status === 'Finalizada') statusStyles = 'border-slate-600 bg-slate-800/90 opacity-75';
-                  if (appointment.status === 'Cita Perdida') statusStyles = 'border-rose-400/35 bg-rose-950/90 opacity-80';
-                  return (
-                    <div
-                      key={appointment.id}
-                      onClick={() => onAptClick(appointment)}
-                      className={`absolute z-10 cursor-pointer overflow-hidden rounded-2xl border px-4 py-3 text-white transition-all hover:z-30 hover:scale-[1.01] ${statusStyles}`}
-                      style={{ top, height, left, width }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
-                          <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.16em] text-white/70">{getAgendaServiceLabel(appointment.service)}</p>
-                        </div>
-                        <p className="shrink-0 text-[9px] font-black italic text-white/90">{formatAgendaTime(appointment.time)}</p>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-white/85">{barber?.name || 'Sin barbero'}</p>
-                        </div>
-                        {appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onTransferApt?.(appointment);
-                            }}
-                            className="shrink-0 rounded-lg bg-black/25 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[0.14em] text-white/90 transition-all hover:bg-black/40"
-                          >
-                            Mover
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {dayAppointments.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => addAppointmentAt('09:00')}
-                    className="absolute left-6 right-6 top-10 rounded-[1.6rem] border border-dashed border-cyan-400/30 bg-cyan-400/5 px-5 py-8 text-center text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200 transition-all hover:bg-cyan-400/10"
-                  >
-                    No hay citas. Agendar primer turno
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <aside className="space-y-4">
-          <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Equipo del dia</p>
-                <h4 className="mt-1 text-xl font-black uppercase italic tracking-tighter text-white">Barberos</h4>
-              </div>
-              <button onClick={() => addAppointmentAt(getCurrentTimeHHmm())} className="rounded-2xl bg-cyan-400 px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-950 hover:bg-cyan-300">
-                + Cita
-              </button>
-            </div>
-            <div className="mt-4 space-y-2">
-              {agendaBarbers.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay barberos activos.</div>
-              ) : agendaBarbers.map((barber) => {
-                const count = dayAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id)).length;
-                return (
-                  <div key={barber.id} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/55 p-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${barber.bg} text-[10px] font-black italic text-white`}>{barber.avatar}</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-black uppercase italic text-white">{barber.name}</p>
-                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{count} cita{count === 1 ? '' : 's'}</p>
-                    </div>
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[8px] font-black text-cyan-200">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Lista del dia</p>
-            <div className="mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1 custom-scrollbar">
-              {dayAppointments.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Sin citas registradas.</div>
-              ) : dayAppointments.map((appointment) => {
-                const client = clientById.get(String(appointment.clientId));
-                const barber = barberById.get(String(appointment.barberId));
-                return (
-                  <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="w-full rounded-2xl border border-slate-800 bg-slate-900/55 p-3 text-left transition-all hover:border-indigo-400/40 hover:bg-indigo-500/10">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[11px] font-black uppercase italic text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
-                        <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{getAgendaServiceLabel(appointment.service)}</p>
-                      </div>
-                      <p className="shrink-0 text-[10px] font-black text-cyan-200">{formatAgendaTime(appointment.time)}</p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
-                      <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">{barber?.name || 'Sin barbero'} · {appointment.status || 'Confirmada'}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </aside>
+      <div className={`grid min-h-0 flex-1 gap-4 ${agendaViewMode === 'month' ? 'xl:grid-cols-[minmax(0,1fr)_20rem]' : 'xl:grid-cols-[minmax(0,1fr)_21rem]'}`}>
+        {agendaViewMode === 'month' ? renderMonthView() : agendaViewMode === 'week' ? renderWeekView() : renderDayView()}
+        {renderSidePanel()}
       </div>
     </div>
   );

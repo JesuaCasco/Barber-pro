@@ -4994,11 +4994,11 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   };
 
   const renderStats = () => (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Citas</p><p className="mt-1 text-xl font-black italic text-white">{agendaStats.total}</p></div>
-      <div className="rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-indigo-300">Activas</p><p className="mt-1 text-xl font-black italic text-indigo-200">{agendaStats.active}</p></div>
-      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Finalizadas</p><p className="mt-1 text-xl font-black italic text-emerald-200">{agendaStats.finished}</p></div>
-      <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3"><p className="text-[8px] font-black uppercase tracking-[0.18em] text-rose-300">Perdidas</p><p className="mt-1 text-xl font-black italic text-rose-200">{agendaStats.missed}</p></div>
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2.5 md:rounded-2xl md:px-4"><p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500 md:text-[8px]">Citas</p><p className="mt-1 text-lg font-black italic text-white md:text-xl">{agendaStats.total}</p></div>
+      <div className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-2.5 md:rounded-2xl md:px-4"><p className="text-[7px] font-black uppercase tracking-[0.16em] text-indigo-300 md:text-[8px]">Activas</p><p className="mt-1 text-lg font-black italic text-indigo-200 md:text-xl">{agendaStats.active}</p></div>
+      <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2.5 md:rounded-2xl md:px-4"><p className="text-[7px] font-black uppercase tracking-[0.16em] text-emerald-300 md:text-[8px]">Finalizadas</p><p className="mt-1 text-lg font-black italic text-emerald-200 md:text-xl">{agendaStats.finished}</p></div>
+      <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2.5 md:rounded-2xl md:px-4"><p className="text-[7px] font-black uppercase tracking-[0.16em] text-rose-300 md:text-[8px]">Perdidas</p><p className="mt-1 text-lg font-black italic text-rose-200 md:text-xl">{agendaStats.missed}</p></div>
     </div>
   );
 
@@ -5086,7 +5086,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           })}
         </div>
 
-        <div className="agenda-table-shell hidden min-h-[42rem] flex-col overflow-hidden rounded-[2.5rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] lg:flex">
+        <div className="agenda-table-shell hidden min-h-[34rem] flex-col md:min-h-[calc(100vh-14rem)] overflow-hidden rounded-[2.5rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] lg:flex">
           <div className="flex-1 overflow-auto custom-scrollbar relative">
             <div className="relative flex min-h-full flex-col" style={{ minWidth: agendaMinWidth }}>
               <div className="sticky top-0 z-50 grid border-b border-slate-800 bg-slate-950 shadow-[0_12px_30px_rgba(0,0,0,0.35)]" style={{ gridTemplateColumns: agendaGridColumns }}>
@@ -5160,19 +5160,19 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     );
   };
   const renderWeekView = () => (
-    <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
-      <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">{renderStats()}</div>
-      <div className="overflow-auto custom-scrollbar">
-        <div className="grid min-w-[68rem] grid-cols-[5.5rem_repeat(7,minmax(8.5rem,1fr))]">
-          <div className="sticky left-0 z-20 border-b border-r border-slate-800 bg-black p-3"><Clock className="mx-auto text-slate-600" size={18} /></div>
+    <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:min-h-0 md:rounded-[2.5rem]">
+      <div className="shrink-0 border-b border-slate-800 bg-slate-950/95 px-3 py-2.5 backdrop-blur md:px-4">{renderStats()}</div>
+      <div className="min-h-0 flex-1 overflow-auto custom-scrollbar">
+        <div className="grid min-w-[58rem] grid-cols-[4.6rem_repeat(7,minmax(7.6rem,1fr))]">
+          <div className="sticky left-0 z-20 border-b border-r border-slate-800 bg-black p-2"><Clock className="mx-auto text-slate-600" size={16} /></div>
           {weekDays.map((date) => {
             const key = formatLocalDateYmd(date);
             const selected = key === viewDate;
-            return <button key={key} type="button" onClick={() => setViewDate(key)} className={`border-b border-r border-slate-800 p-3 text-center transition-all ${selected ? 'bg-indigo-500/20 text-white' : 'bg-slate-950 text-slate-400 hover:bg-indigo-500/10'}`}><p className="text-[9px] font-black uppercase tracking-[0.16em]">{date.toLocaleDateString('es-ES', { weekday: 'short' })}</p><p className="mt-1 text-2xl font-black italic">{date.getDate()}</p></button>;
+            return <button key={key} type="button" onClick={() => setViewDate(key)} className={`border-b border-r border-slate-800 p-2 text-center transition-all ${selected ? 'bg-indigo-500/20 text-white' : 'bg-slate-950 text-slate-400 hover:bg-indigo-500/10'}`}><p className="text-[9px] font-black uppercase tracking-[0.16em]">{date.toLocaleDateString('es-ES', { weekday: 'short' })}</p><p className="mt-1 text-xl font-black italic">{date.getDate()}</p></button>;
           })}
           {HOURS.map((hour) => (
             <React.Fragment key={hour}>
-              <div className="sticky left-0 z-10 border-b border-r border-slate-800 bg-slate-950 px-2 py-4 text-center text-[10px] font-black italic text-slate-500">{formatAgendaTime(hour)}</div>
+              <div className="sticky left-0 z-10 border-b border-r border-slate-800 bg-slate-950 px-1.5 py-3 text-center text-[9px] font-black italic text-slate-500">{formatAgendaTime(hour)}</div>
               {weekDays.map((date) => {
                 const dateKey = formatLocalDateYmd(date);
                 const [slotH, slotM] = hour.split(':').map(Number);
@@ -5181,9 +5181,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                   return aptH === slotH && aptM >= slotM && aptM < slotM + 30;
                 });
                 return (
-                  <div key={`${dateKey}-${hour}`} onDoubleClick={() => addAppointmentAt(hour, dateKey)} className="min-h-[7.5rem] border-b border-r border-slate-800 bg-slate-950/35 p-2 transition-colors hover:bg-indigo-500/[0.04]">
+                  <div key={`${dateKey}-${hour}`} onDoubleClick={() => addAppointmentAt(hour, dateKey)} className="min-h-[5.8rem] border-b border-r border-slate-800 bg-slate-950/35 p-1.5 transition-colors hover:bg-indigo-500/[0.04]">
                     <div className="space-y-2">{slotAppointments.map((appointment) => renderAppointmentCard(appointment, true))}</div>
-                    {slotAppointments.length === 0 && <button type="button" onClick={() => addAppointmentAt(hour, dateKey)} className="flex h-full min-h-[4.5rem] w-full items-center justify-center rounded-xl border border-dashed border-transparent text-[8px] font-black uppercase tracking-[0.14em] text-slate-700 transition-all hover:border-cyan-400/25 hover:text-cyan-300">+ cita</button>}
+                    {slotAppointments.length === 0 && <button type="button" onClick={() => addAppointmentAt(hour, dateKey)} className="flex h-full min-h-[3.6rem] w-full items-center justify-center rounded-xl border border-dashed border-transparent text-[7px] font-black uppercase tracking-[0.12em] text-slate-700 transition-all hover:border-cyan-400/25 hover:text-cyan-300">+ cita</button>}
                   </div>
                 );
               })}
@@ -5195,8 +5195,8 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   );
 
   const renderMonthView = () => (
-    <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
-      <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">{renderStats()}</div>
+    <section className="agenda-table-shell flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:min-h-0 md:rounded-[2.5rem]">
+      <div className="shrink-0 border-b border-slate-800 bg-slate-950/95 px-3 py-2.5 backdrop-blur md:px-4">{renderStats()}</div>
       <div className="grid grid-cols-7 border-b border-slate-800 bg-black text-center text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
         {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((label) => <div key={label} className="border-r border-slate-800 px-2 py-3 last:border-r-0">{label}</div>)}
       </div>
@@ -5237,9 +5237,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   );
 
   return (
-    <div className="agenda-view p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
+    <div className="agenda-view flex h-full flex-col gap-3 bg-slate-950 p-3 no-print md:gap-4 md:p-5 2xl:p-8">
       <div className="agenda-toolbar-scroll">
-        <div className="agenda-toolbar min-w-full flex flex-col gap-4 rounded-[2rem] border border-slate-800 bg-black p-4 text-white shadow-2xl md:rounded-[2.5rem] md:p-6 xl:flex-row xl:items-center xl:justify-between">
+        <div className="agenda-toolbar min-w-full flex flex-col gap-3 rounded-[1.6rem] border border-slate-800 bg-black p-3 text-white shadow-2xl md:rounded-[2rem] md:p-4 xl:flex-row xl:items-center xl:justify-between 2xl:p-6">
           <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
             <button onClick={() => changePeriod(-1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronLeft size={20}/></button>
             <button onClick={() => setViewDate(today)} className="rounded-xl border border-indigo-600/30 bg-indigo-600/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 transition-all hover:bg-indigo-600 hover:text-white md:px-6 md:py-4">Hoy</button>
@@ -5251,9 +5251,9 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           <div className="text-center xl:text-right"><p className="mobile-simplify-subtitle mb-2 text-[10px] font-black uppercase italic leading-none tracking-[0.3em] text-cyan-300">Agenda de barberia</p><h3 className="text-2xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-3xl md:text-3xl">{viewTitle}</h3></div>
         </div>
       </div>
-      <div className={`grid min-h-0 flex-1 gap-4 ${agendaViewMode === 'month' ? 'xl:grid-cols-[minmax(0,1fr)_20rem]' : 'xl:grid-cols-[minmax(0,1fr)_21rem]'}`}>
+      <div className={`grid min-h-0 flex-1 gap-4 ${agendaViewMode === 'month' ? '2xl:grid-cols-[minmax(0,1fr)_20rem]' : '2xl:grid-cols-[minmax(0,1fr)_21rem]'}`}>
         {agendaViewMode === 'month' ? renderMonthView() : agendaViewMode === 'week' ? renderWeekView() : renderDayView()}
-        {renderSidePanel()}
+        <div className="hidden 2xl:block">{renderSidePanel()}</div>
       </div>
     </div>
   );

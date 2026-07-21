@@ -4872,11 +4872,16 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const isToday = viewDate === today;
   const getAgendaServiceLabel = (serviceName) => normalizeFavoriteServiceName(serviceName) || 'Servicio';
   const [nowPos, setNowPos] = useState(0);
-  const agendaBarbers = (barbers && barbers.length > 0) ? barbers : [];
-  const agendaTimeColumnWidth = 112;
-  const agendaBarberColumnWidth = 168;
-  const agendaMinWidth = Math.max(760, agendaTimeColumnWidth + (agendaBarbers.length * agendaBarberColumnWidth));
-  const agendaGridColumns = `${agendaTimeColumnWidth}px repeat(${agendaBarbers.length}, minmax(${agendaBarberColumnWidth}px, 1fr))`;
+  const agendaBarbers = useMemo(() => ((barbers && barbers.length > 0) ? barbers : []), [barbers]);
+  const defaultBarberId = agendaBarbers[0]?.id || '';
+  const dayStartMinutes = appointmentTimeToMinutes(HOURS[0] || '08:00');
+  const dayEndMinutes = appointmentTimeToMinutes(HOURS[HOURS.length - 1] || '18:00') + 30;
+  const totalDayMinutes = Math.max(dayEndMinutes - dayStartMinutes, 30);
+  const minuteHeight = 2.4;
+  const calendarHeight = totalDayMinutes * minuteHeight;
+  const formattedDay = new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const clientById = useMemo(() => new Map((clients || []).map((client) => [String(client.id), client])), [clients]);
+  const barberById = useMemo(() => new Map(agendaBarbers.map((barber) => [String(barber.id), barber])), [agendaBarbers]);
   const dayAppointments = useMemo(
     () => (appointments || [])
       .filter((appointment) => standardizeDate(appointment.date) === viewDate)
@@ -4885,80 +4890,179 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     [appointments, viewDate],
   );
 
+  const positionedAppointments = useMemo(() => {
+    const baseEvents = dayAppointments.map((appointment) => {
+      const start = appointmentTimeToMinutes(appointment.time || HOURS[0] || '08:00');
+      const duration = Math.max(Number(appointment.durationMinutes || 30), 20);
+      return {
+        appointment,
+        start,
+        end: start + duration,
+        duration,
+      };
+    });
+
+    return baseEvents.map((event) => {
+      const overlapping = baseEvents
+        .filter((candidate) => event.start < candidate.end && candidate.start < event.end)
+        .sort((left, right) => (left.start - right.start) || String(left.appointment.id).localeCompare(String(right.appointment.id)));
+      const overlapCount = Math.max(overlapping.length, 1);
+      const overlapIndex = Math.max(overlapping.findIndex((candidate) => String(candidate.appointment.id) === String(event.appointment.id)), 0);
+      const top = Math.max(event.start - dayStartMinutes, 0) * minuteHeight;
+      const height = Math.max(event.duration * minuteHeight - 8, 58);
+      return {
+        ...event,
+        top,
+        height,
+        width: `calc(${100 / overlapCount}% - 0.6rem)`,
+        left: `calc(${(100 / overlapCount) * overlapIndex}% + 0.3rem)`,
+      };
+    });
+  }, [dayAppointments, dayStartMinutes, minuteHeight]);
+
+  const agendaStats = useMemo(() => {
+    const active = dayAppointments.filter((appointment) => !['Finalizada', 'Cita Perdida'].includes(appointment.status));
+    const finished = dayAppointments.filter((appointment) => appointment.status === 'Finalizada');
+    const missed = dayAppointments.filter((appointment) => appointment.status === 'Cita Perdida');
+    return { total: dayAppointments.length, active: active.length, finished: finished.length, missed: missed.length };
+  }, [dayAppointments]);
+
   useEffect(() => {
     const updateNow = () => {
       const now = new Date();
-      const h = now.getHours();
-      const m = now.getMinutes();
-      if (h < 8 || h > 18) { setNowPos(-1); return; }
-      const totalMinFromStart = (h - 8) * 60 + m;
-      const totalDuration = (18 - 8) * 60;
-      setNowPos((totalMinFromStart / totalDuration) * 100);
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      if (currentMinutes < dayStartMinutes || currentMinutes > dayEndMinutes) {
+        setNowPos(-1);
+        return;
+      }
+      setNowPos(((currentMinutes - dayStartMinutes) / totalDayMinutes) * 100);
     };
     updateNow();
     const interval = setInterval(updateNow, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [dayStartMinutes, dayEndMinutes, totalDayMinutes]);
 
-  const changeDay = (v) => { 
-    const d = new Date(viewDate + 'T00:00:00'); 
-    d.setDate(d.getDate() + v); 
-    setViewDate(formatLocalDateYmd(d)); 
+  const changeDay = (value) => {
+    const date = new Date(viewDate + 'T00:00:00');
+    date.setDate(date.getDate() + value);
+    setViewDate(formatLocalDateYmd(date));
+  };
+
+  const formatAgendaTime = (time) => {
+    if (!time) return '--:--';
+    const [hourRaw, minuteRaw] = String(time).split(':').map(Number);
+    if (!Number.isFinite(hourRaw)) return time;
+    const suffix = hourRaw >= 12 ? 'p. m.' : 'a. m.';
+    const hour = hourRaw % 12 || 12;
+    const minute = Number.isFinite(minuteRaw) ? String(minuteRaw).padStart(2, '0') : '00';
+    return `${hour}:${minute} ${suffix}`;
+  };
+
+  const addAppointmentAt = (time = '09:00') => {
+    onSlotClick(time, defaultBarberId);
   };
 
   return (
     <div className="agenda-view p-4 md:p-8 h-full flex flex-col gap-4 md:gap-6 bg-slate-950 no-print">
       <div className="agenda-toolbar-scroll">
-        <div
-          className="agenda-toolbar min-w-full flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-black border border-slate-800 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl text-white"
-        >
-          <div className="flex items-center justify-center sm:justify-start gap-3">
-            <button onClick={() => changeDay(-1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronLeft size={20}/></button>
-            <button onClick={() => setViewDate(today)} className="px-5 md:px-6 py-3 md:py-4 bg-indigo-600/10 hover:bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all rounded-xl border border-indigo-600/30">Hoy</button>
-            <button onClick={() => changeDay(1)} className="p-3 md:p-4 bg-slate-900 rounded-2xl text-white shadow-lg transition-all hover:bg-indigo-600"><ChevronRight size={20}/></button>
+        <div className="agenda-toolbar min-w-full flex flex-col gap-4 rounded-[2rem] border border-slate-800 bg-black p-4 text-white shadow-2xl md:rounded-[2.5rem] md:p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center justify-center gap-3 sm:justify-start">
+            <button onClick={() => changeDay(-1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronLeft size={20}/></button>
+            <button onClick={() => setViewDate(today)} className="rounded-xl border border-indigo-600/30 bg-indigo-600/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 transition-all hover:bg-indigo-600 hover:text-white md:px-6 md:py-4">Hoy</button>
+            <button onClick={() => changeDay(1)} className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg transition-all hover:bg-indigo-600 md:p-4"><ChevronRight size={20}/></button>
           </div>
           <div className="text-center lg:text-right">
-            <p className="mobile-simplify-subtitle text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 italic mb-2 leading-none">Agenda de Barbería</p>
-            <h3 className="text-2xl sm:text-3xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-tight">
-              {new Date(viewDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <p className="mobile-simplify-subtitle mb-2 text-[10px] font-black uppercase italic leading-none tracking-[0.3em] text-cyan-300">Agenda de barberia</p>
+            <h3 className="text-2xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-3xl md:text-3xl">
+              {formattedDay}
             </h3>
           </div>
         </div>
       </div>
 
-      <div className="lg:hidden space-y-4">
-        {agendaBarbers.map((barber) => {
-          const barberAppointments = dayAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id));
-          return (
-            <div key={barber.id} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl ${barber.bg} flex items-center justify-center font-black italic text-white`}>{barber.avatar}</div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-black uppercase italic tracking-tighter text-white truncate">{barber.name}</p>
-                  <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.18em] ${barberAppointments.length ? 'text-indigo-300' : 'text-emerald-300'}`}>
-                    {barberAppointments.length ? `${barberAppointments.length} cita${barberAppointments.length === 1 ? '' : 's'} en agenda` : 'Disponible'}
-                  </p>
-                </div>
-                <button onClick={() => onSlotClick(getCurrentTimeHHmm(), barber.id)} className="rounded-xl border border-indigo-500/30 bg-indigo-600/10 p-3 text-indigo-300">
-                  <Plus size={18} />
-                </button>
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <section className="agenda-table-shell min-h-[42rem] overflow-hidden rounded-[2rem] border border-slate-800 bg-black/45 shadow-[0_0_80px_rgba(0,0,0,0.48)] md:rounded-[2.5rem]">
+          <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-5">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Citas</p>
+                <p className="mt-1 text-xl font-black italic text-white">{agendaStats.total}</p>
               </div>
+              <div className="rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-indigo-300">Activas</p>
+                <p className="mt-1 text-xl font-black italic text-indigo-200">{agendaStats.active}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Finalizadas</p>
+                <p className="mt-1 text-xl font-black italic text-emerald-200">{agendaStats.finished}</p>
+              </div>
+              <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-rose-300">Perdidas</p>
+                <p className="mt-1 text-xl font-black italic text-rose-200">{agendaStats.missed}</p>
+              </div>
+            </div>
+          </div>
 
-              {barberAppointments.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {barberAppointments.map((appointment) => {
-                    const client = clients.find((item) => item.id === appointment.clientId);
-                    return (
-                      <div key={appointment.id} onClick={() => onAptClick(appointment)} className="w-full cursor-pointer rounded-[1.4rem] border border-white/5 bg-black/25 px-4 py-4 text-left">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-black uppercase italic text-white truncate">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
-                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{getAgendaServiceLabel(appointment.service)}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-black italic text-white">{appointment.time || '--:--'}</p>
-                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-300">{appointment.status || 'Confirmada'}</p>
-                          </div>
+          <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <div className="grid min-w-[42rem] grid-cols-[5.8rem_minmax(0,1fr)] md:min-w-0">
+              <div className="border-r border-slate-800 bg-slate-950/50">
+                {HOURS.map((hour) => (
+                  <div key={hour} className="flex h-[72px] items-start justify-center border-b border-slate-900 px-2 py-3 text-[10px] font-black italic text-slate-500 md:h-[72px]">
+                    {formatAgendaTime(hour)}
+                  </div>
+                ))}
+              </div>
+              <div className="relative" style={{ height: calendarHeight }}>
+                {HOURS.map((hour) => {
+                  const minutes = appointmentTimeToMinutes(hour);
+                  const top = Math.max(minutes - dayStartMinutes, 0) * minuteHeight;
+                  return (
+                    <button
+                      key={hour}
+                      type="button"
+                      onClick={() => addAppointmentAt(hour)}
+                      className="absolute left-0 right-0 border-b border-slate-900/90 text-left transition-colors hover:bg-indigo-500/[0.04]"
+                      style={{ top, height: 30 * minuteHeight }}
+                      aria-label={`Agendar a las ${hour}`}
+                    >
+                      <span className="pointer-events-none absolute left-4 top-3 hidden rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-indigo-200 opacity-0 transition-opacity group-hover:opacity-100 md:inline-flex">
+                        Nueva cita
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {isToday && nowPos >= 0 && (
+                  <div className="absolute left-0 right-0 z-20 h-0.5 bg-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.8)]" style={{ top: `${nowPos}%` }}>
+                    <span className="absolute -top-3 left-3 rounded-full bg-cyan-300 px-3 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-950 shadow-lg">Ahora</span>
+                  </div>
+                )}
+
+                {positionedAppointments.map(({ appointment, top, height, left, width }) => {
+                  const client = clientById.get(String(appointment.clientId));
+                  const barber = barberById.get(String(appointment.barberId));
+                  let statusStyles = 'border-indigo-400/40 bg-indigo-600/90 shadow-[0_18px_35px_rgba(79,70,229,0.25)]';
+                  if (appointment.status === 'En Corte') statusStyles = 'border-emerald-300/40 bg-emerald-600/90 shadow-[0_18px_35px_rgba(16,185,129,0.25)]';
+                  if (appointment.status === 'Finalizada') statusStyles = 'border-slate-600 bg-slate-800/90 opacity-75';
+                  if (appointment.status === 'Cita Perdida') statusStyles = 'border-rose-400/35 bg-rose-950/90 opacity-80';
+                  return (
+                    <div
+                      key={appointment.id}
+                      onClick={() => onAptClick(appointment)}
+                      className={`absolute z-10 cursor-pointer overflow-hidden rounded-2xl border px-4 py-3 text-white transition-all hover:z-30 hover:scale-[1.01] ${statusStyles}`}
+                      style={{ top, height, left, width }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
+                          <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.16em] text-white/70">{getAgendaServiceLabel(appointment.service)}</p>
+                        </div>
+                        <p className="shrink-0 text-[9px] font-black italic text-white/90">{formatAgendaTime(appointment.time)}</p>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-white/85">{barber?.name || 'Sin barbero'}</p>
                         </div>
                         {appointment.status !== 'Finalizada' && appointment.status !== 'Cita Perdida' && (
                           <button
@@ -4967,112 +5071,87 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                               event.stopPropagation();
                               onTransferApt?.(appointment);
                             }}
-                            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-600/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-indigo-200"
+                            className="shrink-0 rounded-lg bg-black/25 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[0.14em] text-white/90 transition-all hover:bg-black/40"
                           >
-                            <Repeat size={12} /> Trasladar
+                            Mover
                           </button>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <button onClick={() => onSlotClick('09:00', barber.id)} className="mt-4 w-full rounded-[1.4rem] border border-dashed border-indigo-500/30 bg-indigo-500/5 px-4 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">
-                  Agendar cita
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="agenda-table-shell hidden lg:flex flex-1 bg-black/40 border border-slate-900 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] flex-col">
-        <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 relative">
-          <div className="h-full flex flex-col relative" style={{ minWidth: agendaMinWidth }}>
-            <div
-              className="sticky top-0 z-50 grid border-b border-slate-800 bg-slate-950 shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
-              style={{ gridTemplateColumns: agendaGridColumns }}
-            >
-              <div className="p-4 border-r border-slate-800 flex items-center justify-center bg-black"><Clock className="text-slate-600" size={22} /></div>
-              {agendaBarbers.map(b => (
-                <div key={b.id} className="min-w-0 p-4 xl:p-6 border-r border-slate-800 last:border-0 flex items-center justify-center gap-3 xl:gap-4 text-white">
-                  <div className={`w-11 h-11 rounded-xl bg-slate-950 border-2 ${b.color} flex items-center justify-center font-black italic text-xs text-white shadow-lg`}>{b.avatar}</div>
-                  <div className="min-w-0 flex flex-col items-start leading-none text-white">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-white italic truncate w-full">{b.name}</span>
-                    <span className={`text-[8px] font-bold uppercase mt-1 tracking-widest ${b.color.replace('border', 'text')}`}>Disponible</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {isToday && nowPos >= 0 && (
-              <div className="absolute left-0 w-full h-1 bg-rose-500 z-20 pointer-events-none flex items-center justify-start shadow-[0_0_20px_rgba(244,63,94,0.8)]" style={{ top: `calc(76px + ((${nowPos} / 100) * (21 * 100px)))` }}>
-                <div className="px-3 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-full -translate-y-1/2 shadow-lg text-white" style={{ marginLeft: agendaTimeColumnWidth }}>Ahora</div>
-              </div>
-            )}
-
-            {HOURS.map(h => (
-              <div 
-                key={h} 
-                className="grid min-h-[100px] group/row border-b border-slate-900 hover:bg-indigo-600/[0.03] transition-colors"
-                style={{ gridTemplateColumns: agendaGridColumns }}
-              >
-                <div className="p-4 flex items-center justify-center font-black text-slate-500 text-sm border-r border-slate-900 bg-slate-900/10 italic group-hover/row:text-indigo-400 transition-colors">{h}</div>
-                {agendaBarbers.map(b => {
-                  const apt = appointments.find(a => {
-                    const normalizedAptDate = standardizeDate(a.date);
-                    const [aptH, aptM] = (a.time || "00:00").split(':').map(Number);
-                    const [slotH, slotM] = h.split(':').map(Number);
-                    const isWithinSlot = aptH === slotH && aptM >= slotM && aptM < slotM + 30;
-                    return normalizedAptDate === viewDate && isWithinSlot && String(a.barberId) === String(b.id) && a.status !== 'Cancelada';
-                  });
-
-                  let statusStyles = "bg-indigo-600 hover:bg-indigo-500 border-indigo-400 shadow-[0_10px_20px_rgba(79,70,229,0.3)]";
-                  if (apt?.status === 'En Corte') statusStyles = "bg-emerald-600 hover:bg-emerald-500 border-emerald-400 shadow-[0_10px_20px_rgba(16,185,129,0.3)]";
-                  if (apt?.status === 'Finalizada' || apt?.status === 'Cita Perdida') statusStyles = "bg-slate-800 border-slate-700 opacity-60";
-                  
-                  return (
-                    <div key={`${h}-${b.id}`} onClick={() => !apt ? onSlotClick(h, b.id) : onAptClick(apt)} className={`p-2 border-r border-slate-900 last:border-r-0 relative transition-all flex items-stretch group/cell ${!apt ? 'cursor-pointer hover:bg-indigo-500/[0.05]' : ''}`}>
-                      {apt ? (
-                        <div className={`w-full ${statusStyles} rounded-2xl p-4 text-[10px] font-black uppercase italic shadow-2xl flex flex-col justify-between animate-in zoom-in-95 border-l-4 transition-all hover:scale-[1.02] cursor-pointer text-white`}>
-                          <div className="flex justify-between items-start text-white">
-                            <span className="drop-shadow-lg truncate w-24">{clients.find(c => c.id === apt.clientId)?.name || apt.clientName || 'Cliente gen\u00e9rico'}</span>
-                            {apt.status === 'Cita Perdida' ? <UserX size={12} className="text-rose-400" /> : (apt.status === 'Finalizada' ? <CheckCircle2 size={12} className="text-emerald-400" /> : <Clock size={12} className="text-white" />)}
-                          </div>
-                          <div className="flex items-center justify-between mt-2 text-white">
-                            <span className="text-white text-[8px] font-black truncate flex items-center gap-1">
-                              {apt.service?.toLowerCase().includes('barba') ? <BeardIcon size={10}/> : <Scissors size={10}/>}
-                          {apt.status === 'Cita Perdida' ? 'NO LLEGÓ' : getAgendaServiceLabel(apt.service)}
-                            </span>
-                            <span className="text-[7px] opacity-70 font-black">{apt.time}</span>
-                          </div>
-                          {apt.status !== 'Finalizada' && apt.status !== 'Cita Perdida' && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onTransferApt?.(apt);
-                              }}
-                              className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-black/20 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[0.16em] text-white/90 transition-all hover:bg-black/35"
-                            >
-                              <Repeat size={10} /> Trasladar
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full opacity-0 group-hover/cell:opacity-100 flex items-center justify-center transition-all duration-200">
-                          <div className="w-11 h-11 rounded-xl bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-[0_0_20px_rgba(99,102,241,0.18)]">
-                            <Plus size={18} />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
+
+                {dayAppointments.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => addAppointmentAt('09:00')}
+                    className="absolute left-6 right-6 top-10 rounded-[1.6rem] border border-dashed border-cyan-400/30 bg-cyan-400/5 px-5 py-8 text-center text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200 transition-all hover:bg-cyan-400/10"
+                  >
+                    No hay citas. Agendar primer turno
+                  </button>
+                )}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        </section>
+
+        <aside className="space-y-4">
+          <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Equipo del dia</p>
+                <h4 className="mt-1 text-xl font-black uppercase italic tracking-tighter text-white">Barberos</h4>
+              </div>
+              <button onClick={() => addAppointmentAt(getCurrentTimeHHmm())} className="rounded-2xl bg-cyan-400 px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-950 hover:bg-cyan-300">
+                + Cita
+              </button>
+            </div>
+            <div className="mt-4 space-y-2">
+              {agendaBarbers.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay barberos activos.</div>
+              ) : agendaBarbers.map((barber) => {
+                const count = dayAppointments.filter((appointment) => String(appointment.barberId) === String(barber.id)).length;
+                return (
+                  <div key={barber.id} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/55 p-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${barber.bg} text-[10px] font-black italic text-white`}>{barber.avatar}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-black uppercase italic text-white">{barber.name}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{count} cita{count === 1 ? '' : 's'}</p>
+                    </div>
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[8px] font-black text-cyan-200">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-800 bg-black p-5 text-white shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Lista del dia</p>
+            <div className="mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+              {dayAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Sin citas registradas.</div>
+              ) : dayAppointments.map((appointment) => {
+                const client = clientById.get(String(appointment.clientId));
+                const barber = barberById.get(String(appointment.barberId));
+                return (
+                  <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="w-full rounded-2xl border border-slate-800 bg-slate-900/55 p-3 text-left transition-all hover:border-indigo-400/40 hover:bg-indigo-500/10">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-black uppercase italic text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</p>
+                        <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{getAgendaServiceLabel(appointment.service)}</p>
+                      </div>
+                      <p className="shrink-0 text-[10px] font-black text-cyan-200">{formatAgendaTime(appointment.time)}</p>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
+                      <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">{barber?.name || 'Sin barbero'} � {appointment.status || 'Confirmada'}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
   );

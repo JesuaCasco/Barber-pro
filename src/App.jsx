@@ -5241,13 +5241,13 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                   return (
                     <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/95 px-2.5 py-2 text-left text-slate-100 transition-all hover:border-cyan-300/40 hover:bg-slate-800">
                       <span className={`h-3 w-3 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-black leading-tight md:text-[12px]">{formatAgendaTime(appointment.time)} {getClientLabel(appointment)}</span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-black leading-tight md:text-[13px]">{formatAgendaTime(appointment.time)} {getClientLabel(appointment)}</span>
                     </button>
                   );
                 })}
               </div>
               {hiddenCount > 0 && (
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
+                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
                   +{hiddenCount} citas mas
                 </button>
               )}

@@ -1,4 +1,4 @@
-﻿-- Plataforma publica de reservas para instalaciones independientes de BarberPro.
+-- Plataforma publica de reservas para instalaciones independientes de BarberPro.
 -- Ejecutar una vez por base de datos de barberia.
 
 alter table public.appointments

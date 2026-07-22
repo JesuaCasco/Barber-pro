@@ -5046,7 +5046,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         {!compact && (
           <div className="mt-3 flex items-center gap-2">
             <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${barber?.bg || 'bg-slate-700'} text-[8px] font-black italic text-white`}>{barber?.avatar || '?'}</div>
-            <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">{barber?.name || 'Sin barbero'} · {appointment.status || 'Confirmada'}</p>
+            <p className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">{barber?.name || 'Sin barbero'} - {appointment.status || 'Confirmada'}</p>
           </div>
         )}
       </button>
@@ -5301,7 +5301,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 text-white shadow-[0_24px_90px_rgba(0,0,0,0.6)]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-black px-6 py-5">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Resumen del día</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Resumen del dia</p>
                 <h3 className="mt-1 text-2xl font-black uppercase italic leading-none text-white">{new Date(`${monthDaySummary.dateKey}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                 <p className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{monthDaySummary.items.length} cita{monthDaySummary.items.length === 1 ? '' : 's'} agendada{monthDaySummary.items.length === 1 ? '' : 's'}</p>
               </div>
@@ -5309,7 +5309,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
             </div>
             <div className="custom-scrollbar max-h-[60vh] space-y-3 overflow-y-auto p-5">
               {monthDaySummary.items.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">No hay citas para este día.</div>
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">No hay citas para este dia.</div>
               ) : monthDaySummary.items.map((appointment) => {
                 const barber = getBarber(appointment);
                 return (
@@ -5317,7 +5317,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${barber?.bg || 'bg-cyan-500'} text-[11px] font-black italic text-white`}>{barber?.avatar || 'C'}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-base font-black uppercase italic text-white">{getClientLabel(appointment)}</span>
-                      <span className="mt-1 block truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">{formatAgendaTime(appointment.time)} · {barber?.name || 'Sin barbero'} · {getAgendaServiceLabel(appointment.service)}</span>
+                      <span className="mt-1 block truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">{formatAgendaTime(appointment.time)} - {barber?.name || 'Sin barbero'} - {getAgendaServiceLabel(appointment.service)}</span>
                     </span>
                     <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">Ver</span>
                   </button>
@@ -5326,7 +5326,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
             </div>
             <div className="flex flex-col gap-3 border-t border-slate-800 bg-black/60 p-5 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => { addAppointmentAt('09:00', monthDaySummary.dateKey); setMonthDaySummary(null); }} className="rounded-2xl bg-cyan-300 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-950 transition-all hover:bg-cyan-200">Nueva cita</button>
-              <button type="button" onClick={() => { setViewDate(monthDaySummary.dateKey); setAgendaViewMode('day'); setMonthDaySummary(null); }} className="rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white transition-all hover:border-cyan-300/40">Ver día completo</button>
+              <button type="button" onClick={() => { setViewDate(monthDaySummary.dateKey); setAgendaViewMode('day'); setMonthDaySummary(null); }} className="rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white transition-all hover:border-cyan-300/40">Ver dia completo</button>
             </div>
           </div>
         </div>
@@ -5843,7 +5843,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                       <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
                         <div>
                           <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-white">{item.productName || item.name}</p>
-                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{item.sku || 'Sin SKU'} Â· Margen C$ {margin.toLocaleString('es-NI')}</p>
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{item.sku || 'Sin SKU'} Â- Margen C$ {margin.toLocaleString('es-NI')}</p>
                         </div>
                         <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${
                           item.usageType === 'internal'
@@ -8096,7 +8096,7 @@ function TransferAppointmentModal({ appointment, appointments, clients, barbers,
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Trasladar cita</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â· {appointment.time || '--:--'} Â· {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
+                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â- {appointment.time || '--:--'} Â- {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
               </p>
             </div>
           </div>
@@ -8226,7 +8226,7 @@ function RescheduleAppointmentModal({ appointment, appointments, clients, barber
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Mover turno</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â· {barber?.name || 'Sin barbero'}
+                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â- {barber?.name || 'Sin barbero'}
               </p>
             </div>
           </div>
@@ -8331,7 +8331,7 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
             <div className="min-w-0">
               <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {appointment.time || '--:--'} Â· {normalizeFavoriteServiceName(appointment.service) || 'Servicio'} Â· {barber?.name || 'Sin barbero'}
+                {appointment.time || '--:--'} Â- {normalizeFavoriteServiceName(appointment.service) || 'Servicio'} Â- {barber?.name || 'Sin barbero'}
               </p>
             </div>
           </div>
@@ -8631,7 +8631,7 @@ function PayrollHistoryModal({ data, onClose }) {
                           {hasDate ? paidDate.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : 'Fecha sin registrar'}
                         </p>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                          {hasDate ? paidDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} Â· {settlement.type === 'staff' ? 'LiquidaciÃ³n de planilla' : 'Pago individual'} Â· {settlement.pendingServices || 0} servicios
+                          {hasDate ? paidDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} Â- {settlement.type === 'staff' ? 'LiquidaciÃ³n de planilla' : 'Pago individual'} Â- {settlement.pendingServices || 0} servicios
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-3 text-right">

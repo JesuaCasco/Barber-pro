@@ -4891,6 +4891,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
   const today = getTodayString();
   const [agendaViewMode, setAgendaViewMode] = useState('day');
   const [nowPos, setNowPos] = useState(0);
+  const [monthDaySummary, setMonthDaySummary] = useState(null);
   const agendaBarbers = useMemo(() => ((barbers && barbers.length > 0) ? barbers : []), [barbers]);
   const defaultBarberId = agendaBarbers[0]?.id || '';
   const dayStartMinutes = appointmentTimeToMinutes(HOURS[0] || '08:00');
@@ -4999,6 +5000,15 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
 
   const getClientLabel = (appointment) => clientById.get(String(appointment.clientId))?.name || appointment.clientName || 'Cliente gen\u00e9rico';
   const getBarber = (appointment) => barberById.get(String(appointment.barberId));
+  const getMonthAppointmentLabel = (appointment) => {
+    const clientLabel = getClientLabel(appointment);
+    const barber = getBarber(appointment);
+    return barber?.name ? `${clientLabel} - ${barber.name}` : clientLabel;
+  };
+  const openMonthDaySummary = (dateKey) => {
+    const items = appointmentsByDate.get(dateKey) || [];
+    setMonthDaySummary({ dateKey, items });
+  };
 
   const changePeriod = (direction) => {
     const next = new Date(selectedDate);
@@ -5228,26 +5238,26 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
           const selected = dateKey === viewDate;
           return (
-            <div key={dateKey} className={`group/month-day flex min-h-0 flex-col overflow-hidden border-b border-r border-slate-800 bg-slate-950 p-4 last:border-r-0 md:p-5 ${!isCurrentMonth ? 'bg-black/35 text-slate-600' : ''} ${selected ? 'bg-slate-900 ring-1 ring-inset ring-cyan-300/70' : ''}`}>
+            <div key={dateKey} role="button" tabIndex={0} onClick={() => openMonthDaySummary(dateKey)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') openMonthDaySummary(dateKey); }} className={`group/month-day flex min-h-0 cursor-pointer flex-col overflow-hidden border-b border-r border-slate-800 bg-slate-950 p-4 text-left last:border-r-0 md:p-5 ${!isCurrentMonth ? 'bg-black/35 text-slate-600' : ''} ${selected ? 'bg-slate-900 ring-1 ring-inset ring-cyan-300/70' : ''}`}>
               <div className="mb-4 flex shrink-0 items-start justify-between gap-2">
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-[16px] font-black transition-all ${dateKey === today ? 'bg-cyan-300 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)]' : isCurrentMonth ? 'text-slate-100 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-900'}`}>
+                <button type="button" onClick={(event) => { event.stopPropagation(); setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-[16px] font-black transition-all ${dateKey === today ? 'bg-cyan-300 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)]' : isCurrentMonth ? 'text-slate-100 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-900'}`}>
                   {date.getDate()}
                 </button>
-                <button type="button" onClick={() => addAppointmentAt('09:00', dateKey)} className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-slate-600 opacity-0 transition-all hover:bg-slate-800 hover:text-cyan-200 group-hover/month-day:opacity-100">+</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); addAppointmentAt('09:00', dateKey); }} className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-slate-600 opacity-0 transition-all hover:bg-slate-800 hover:text-cyan-200 group-hover/month-day:opacity-100">+</button>
               </div>
               <div className="min-h-0 flex-1 space-y-2 overflow-hidden">
                 {visibleItems.map((appointment) => {
                   const barber = getBarber(appointment);
                   return (
-                    <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/95 px-2.5 py-2 text-left text-slate-100 transition-all hover:border-cyan-300/40 hover:bg-slate-800">
+                    <button key={appointment.id} type="button" onClick={(event) => { event.stopPropagation(); onAptClick(appointment); }} className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/95 px-2.5 py-2 text-left text-slate-100 transition-all hover:border-cyan-300/40 hover:bg-slate-800">
                       <span className={`h-3 w-3 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[12px] font-black leading-tight md:text-[13px]">{formatAgendaTime(appointment.time)} {getClientLabel(appointment)}</span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-black leading-tight md:text-[13px]">{getMonthAppointmentLabel(appointment)}</span>
                     </button>
                   );
                 })}
               </div>
               {hiddenCount > 0 && (
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
+                <button type="button" onClick={(event) => { event.stopPropagation(); openMonthDaySummary(dateKey); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
                   +{hiddenCount} citas mas
                 </button>
               )}
@@ -5286,6 +5296,41 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         {agendaViewMode === 'month' ? renderMonthView() : agendaViewMode === 'week' ? renderWeekView() : renderDayView()}
         {agendaViewMode === 'day' && <div className="hidden min-[1800px]:block">{renderSidePanel()}</div>}
       </div>
+      {monthDaySummary && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md no-print" onClick={() => setMonthDaySummary(null)}>
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 text-white shadow-[0_24px_90px_rgba(0,0,0,0.6)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-black px-6 py-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Resumen del día</p>
+                <h3 className="mt-1 text-2xl font-black uppercase italic leading-none text-white">{new Date(`${monthDaySummary.dateKey}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{monthDaySummary.items.length} cita{monthDaySummary.items.length === 1 ? '' : 's'} agendada{monthDaySummary.items.length === 1 ? '' : 's'}</p>
+              </div>
+              <button type="button" onClick={() => setMonthDaySummary(null)} className="rounded-2xl border border-cyan-300/30 bg-slate-900 p-3 text-cyan-200 transition-all hover:bg-cyan-300 hover:text-slate-950"><X size={22} /></button>
+            </div>
+            <div className="custom-scrollbar max-h-[60vh] space-y-3 overflow-y-auto p-5">
+              {monthDaySummary.items.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">No hay citas para este día.</div>
+              ) : monthDaySummary.items.map((appointment) => {
+                const barber = getBarber(appointment);
+                return (
+                  <button key={appointment.id} type="button" onClick={() => { setMonthDaySummary(null); onAptClick(appointment); }} className="flex w-full items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-left transition-all hover:border-cyan-300/40 hover:bg-slate-900">
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${barber?.bg || 'bg-cyan-500'} text-[11px] font-black italic text-white`}>{barber?.avatar || 'C'}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-black uppercase italic text-white">{getClientLabel(appointment)}</span>
+                      <span className="mt-1 block truncate text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">{formatAgendaTime(appointment.time)} · {barber?.name || 'Sin barbero'} · {getAgendaServiceLabel(appointment.service)}</span>
+                    </span>
+                    <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">Ver</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-col gap-3 border-t border-slate-800 bg-black/60 p-5 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => { addAppointmentAt('09:00', monthDaySummary.dateKey); setMonthDaySummary(null); }} className="rounded-2xl bg-cyan-300 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-950 transition-all hover:bg-cyan-200">Nueva cita</button>
+              <button type="button" onClick={() => { setViewDate(monthDaySummary.dateKey); setAgendaViewMode('day'); setMonthDaySummary(null); }} className="rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-white transition-all hover:border-cyan-300/40">Ver día completo</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

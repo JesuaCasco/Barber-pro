@@ -1813,7 +1813,7 @@ function PublicBookingView() {
                       <div className="grid gap-2 sm:grid-cols-2">
                         {snapshot.barbers.map((barber) => {
                           const active = String(form.barberId) === String(barber.id);
-                          const initials = getInitials(barber.name);
+                          const initials = String(barber.name || 'BP').split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'BP';
                           return (
                             <button key={barber.id} type="button" onClick={() => setForm((prev) => ({ ...prev, barberId: barber.id, time: '' }))} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${active ? 'border-emerald-300 bg-emerald-300/15' : 'border-slate-700 bg-black/55 hover:border-emerald-300/50'}`}>
                               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-black text-white" style={{ background: barber.color || barber.bg || '#4de1ff' }}>{initials}</span>

@@ -9080,7 +9080,8 @@ function QuickAppointmentModal({ onClose, onSave, barbers, initial, appointments
 function AppointmentModal({ onClose, onSave, services, clients, barbers, initial, appointments }) {
   const availableBarbers = (barbers && barbers.length > 0) ? barbers : [];
   const initialClient = initial?.client || (initial?.clientId ? (clients || []).find((client) => String(client.id) === String(initial.clientId)) : null);
-  const initialIsGenericClient = !initialClient && (initial?.clientName === GENERIC_CLIENT_NAME || initial?.clientId === null);
+  const isPendingWebClient = isWebAppointment(initial) && initial?.needsClientConfirmation;
+  const initialIsGenericClient = !isPendingWebClient && !initialClient && (initial?.clientName === GENERIC_CLIENT_NAME || initial?.clientId === null);
   const initialServiceName = initial?.service || '';
   const initialWebGuestName = isWebAppointment(initial) ? (initial?.guestName || '') : '';
   const initialWebGuestPhone = isWebAppointment(initial) ? (initial?.guestPhone || '') : '';
@@ -9090,7 +9091,6 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   const [skipClientData, setSkipClientData] = useState(initialIsGenericClient);
   const [showResults, setShowResults] = useState(false);
   const [modalError, setModalError] = useState(null);
-  const isPendingWebClient = isWebAppointment(initial) && initial?.needsClientConfirmation;
   const [serviceSearch, setServiceSearch] = useState(initialServiceName);
   const [showServiceList, setShowServiceList] = useState(false);
   const [form, setForm] = useState({
@@ -9132,6 +9132,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     [services, serviceSearch],
   );
   const isNewClient = !skipClientData && searchTerm.trim().length >= 3 && filteredClients.length === 0 && !selectedClient;
+  const shouldShowClientPhoneField = !skipClientData && (isPendingWebClient || selectedClient || isNewClient);
   const duplicatePhoneClient = useMemo(() => {
     if (!isValidPhoneNumber(phoneVal)) return null;
     return findClientByPhone(clients, phoneVal, selectedClient?.id);
@@ -9274,7 +9275,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
             <div className="space-y-3 text-white" ref={wrapperRef}>
               <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">2. DATOS DEL CLIENTE</label>
               <div className="space-y-3 text-white relative">
-                <input disabled={skipClientData} required={!skipClientData} className={`w-full bg-black border border-slate-800 p-4 text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none disabled:cursor-not-allowed disabled:opacity-50 ${showResults && filteredClients.length > 0 ? 'rounded-t-[1.2rem] rounded-b-none' : 'rounded-[1.2rem]'}`} placeholder={skipClientData ? 'CLIENTE GEN\u00c9RICO' : 'BUSCAR CLIENTE'} value={skipClientData ? 'CLIENTE GEN\u00c9RICO' : searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => { if (!skipClientData) setShowResults(true); }} />
+                <input disabled={skipClientData} required={!skipClientData} className={`w-full bg-black border border-slate-800 p-4 text-sm font-black uppercase italic text-white outline-none focus:border-indigo-600 leading-none disabled:cursor-not-allowed disabled:opacity-50 ${showResults && filteredClients.length > 0 ? 'rounded-t-[1.2rem] rounded-b-none' : 'rounded-[1.2rem]'}`} placeholder={skipClientData ? 'CLIENTE GEN\u00c9RICO' : 'BUSCAR NOMBRE O CELULAR'} value={skipClientData ? 'CLIENTE GEN\u00c9RICO' : searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedClient(null); setShowResults(true); }} onFocus={() => { if (!skipClientData) setShowResults(true); }} />
                 {showGenericClientOption && (
                   <label className="ml-auto flex w-fit cursor-pointer select-none items-center gap-2 rounded-full px-1 text-[9px] font-black uppercase italic tracking-[0.14em] text-slate-400 transition-colors hover:text-white">
                     <input
@@ -9301,8 +9302,8 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                     <span className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">¡Nuevo cliente detectado!</span>
                   </div>
                 )}
-                {!skipClientData && (selectedClient || isNewClient) && (
-                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-4 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TELÉFONO 0000-0000" value={phoneVal} onChange={e => setPhoneVal(formatPhoneNumber(e.target.value))} />
+                {shouldShowClientPhoneField && (
+                  <input required type="tel" className="w-full bg-black border-2 border-indigo-600/40 p-4 rounded-[1.2rem] text-sm font-black text-white italic leading-none" placeholder="TELEFONO 0000-0000" value={phoneVal} onFocus={() => { if (!skipClientData && !selectedClient) setShowResults(true); }} onChange={e => { setPhoneVal(formatPhoneNumber(e.target.value)); setSelectedClient(null); setShowResults(true); }} />
                 )}
               </div>
             </div>

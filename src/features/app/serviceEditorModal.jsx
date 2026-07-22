@@ -13,6 +13,7 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
     name: initial?.name || '',
     price: initial?.price || '',
     category: initial?.category || 'Cortes',
+    durationMinutes: Number(initial?.durationMinutes || 30),
     items: initial?.items || [],
     inventoryUsage: initial?.inventoryUsage || [],
     appliesTo: initial?.appliesTo || 'General',
@@ -190,6 +191,9 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
             const normalized = {
               ...formData,
               price: formData.category === 'Promocion' ? 0 : Number(formData.price) || 0,
+              durationMinutes: formData.category === 'Combo'
+                ? Number(selectedComboDuration || formData.durationMinutes || 30)
+                : Number(formData.durationMinutes || 30),
               discountValue: normalizedDiscountValue,
               items: formData.category === 'Combo' ? formData.items : [],
               inventoryUsage: canConfigureSupplies
@@ -207,8 +211,8 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
           className="min-h-0 flex-1 overflow-y-auto custom-scrollbar"
         >
           <div className="grid min-h-full grid-cols-1 gap-4 p-4 pb-24 lg:p-6 lg:pb-24">
-            <div className={isCombo ? "grid min-h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]" : "grid grid-cols-1 gap-4"}>
-              <section className={isCombo ? "flex min-h-0 flex-col rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4 xl:min-h-[calc(88vh-12rem)]" : "rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4"}>
+            <div className={isCombo ? "grid min-h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]" : "grid min-h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]"}>
+              <section className={isCombo ? "flex min-h-0 flex-col rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4 xl:min-h-[calc(88vh-12rem)]" : "flex min-h-0 flex-col rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4 xl:min-h-[calc(88vh-12rem)]"}>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="block text-[9px] font-black uppercase italic tracking-[0.18em] text-slate-400">Categoría</span>
@@ -256,6 +260,44 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
                       <span className="absolute left-8 top-1/2 -translate-y-1/2 text-2xl font-black italic leading-none text-cyan-300">C$</span>
                     </div>
                   </label>
+                ) : null}
+
+                {!isCombo && !isPromotion ? (
+                  <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+                    <div className="rounded-[1.2rem] border border-cyan-300/25 bg-black/35 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Resumen de venta</p>
+                      <div className="mt-4 space-y-3 text-sm font-black">
+                        <div className="flex items-center justify-between gap-4 border-b border-cyan-300/15 pb-3">
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Servicio</span>
+                          <span className="max-w-[60%] truncate text-right text-white">{formData.name || 'Sin nombre'}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4 border-b border-cyan-300/15 pb-3">
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Precio caja</span>
+                          <span className="text-cyan-200">C$ {Number(formData.price || 0).toLocaleString('es-NI')}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Tiempo agenda</span>
+                          <span className="text-cyan-200">{Number(formData.durationMinutes || 0)} min</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.2rem] border border-cyan-300/25 bg-cyan-300/10 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Control del servicio</p>
+                      <div className="mt-4 grid grid-cols-1 gap-2">
+                        {[
+                          { label: 'Agenda', value: `${Number(formData.durationMinutes || 0)} min bloqueados` },
+                          { label: 'Caja', value: `C$ ${Number(formData.price || 0).toLocaleString('es-NI')} al cobrar` },
+                          { label: 'Inventario', value: formData.inventoryUsage.length ? `${formData.inventoryUsage.length} insumos` : 'Sin descuento automatico' },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-2xl border border-cyan-300/20 bg-slate-950/65 px-4 py-3">
+                            <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+                            <p className="mt-1 truncate text-[11px] font-black uppercase italic text-white">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : null}
 
                 {isCombo ? (
@@ -312,6 +354,110 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
                   </div>
                 ) : null}
               </section>
+
+              {!isCombo && !isPromotion ? (
+                <section className="flex min-h-0 flex-col gap-4 rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4 xl:min-h-[calc(88vh-12rem)]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Ficha operativa</p>
+                      <p className="mt-1 text-[11px] font-bold text-slate-400">Datos utiles para agenda, caja e inventario.</p>
+                    </div>
+                    <span className="w-fit rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-200">
+                      {formData.category || 'Servicio'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <label className="rounded-2xl border border-cyan-300/25 bg-black/45 p-4">
+                      <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Duracion agenda</span>
+                      <div className="mt-3 flex items-end gap-2">
+                        <input
+                          type="number"
+                          min="5"
+                          step="5"
+                          value={formData.durationMinutes}
+                          onChange={(event) => setFormData({ ...formData, durationMinutes: Number(event.target.value || 0) })}
+                          className="min-w-0 flex-1 bg-transparent text-3xl font-black italic text-white outline-none"
+                        />
+                        <span className="pb-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">min</span>
+                      </div>
+                    </label>
+                    <div className="rounded-2xl border border-cyan-300/25 bg-black/45 p-4">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Costo insumos</p>
+                      <p className="mt-3 text-3xl font-black italic text-cyan-200">C$ {supplyCost.toLocaleString('es-NI')}</p>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-300/25 bg-black/45 p-4">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Margen estimado</p>
+                      <p className="mt-3 text-3xl font-black italic text-emerald-300">C$ {estimatedMargin.toLocaleString('es-NI')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <div className="flex min-h-0 flex-col rounded-[1.15rem] border border-cyan-300/25 bg-black/35">
+                      <div className="border-b border-cyan-300/15 px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Inventario asociado</p>
+                        <p className="mt-1 text-[10px] font-bold text-slate-500">Lo que se descontara al cobrar este servicio.</p>
+                      </div>
+                      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 pr-2 custom-scrollbar">
+                        {formData.inventoryUsage.length > 0 ? formData.inventoryUsage.map((usage) => {
+                          const item = supplyById.get(String(usage.inventoryItemId));
+                          const lineCost = Number(usage.quantity || 0) * Number(item?.costPrice || 0);
+                          return (
+                            <div key={usage.inventoryItemId} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950 px-3 py-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-[11px] font-black uppercase italic text-white">{item?.productName || item?.name || 'Insumo'}</p>
+                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                  {usage.quantity || 0} {item?.unitName || 'unidad'} - C$ {lineCost.toLocaleString('es-NI')}
+                                </p>
+                              </div>
+                              <button type="button" onClick={() => setIsSupplyConfigOpen(true)} className="rounded-xl border border-cyan-300/25 px-3 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200 hover:bg-cyan-300/10">
+                                Editar
+                              </button>
+                            </div>
+                          );
+                        }) : (
+                          <div className="flex min-h-36 items-center justify-center rounded-2xl border border-dashed border-cyan-300/25 bg-black/25 p-5 text-center">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Sin insumos configurados</p>
+                              <p className="mt-2 text-[10px] font-bold text-slate-500">Puedes conectar productos de inventario para calcular rentabilidad.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex min-h-0 flex-col gap-3">
+                      <div className="rounded-[1.15rem] border border-cyan-300/25 bg-black/35 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Categorias sugeridas</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {preferredSupplyCategories.map((category) => (
+                            <span key={category} className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
+                              {category}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.15rem] border border-cyan-300/25 bg-black/35 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Uso en operacion</p>
+                        <div className="mt-4 space-y-3 text-[11px] font-bold text-slate-400">
+                          <p>Agenda usa la duracion para reservar espacio real del barbero.</p>
+                          <p>Caja usa el precio final para cobrar y generar movimiento.</p>
+                          <p>Inventario descuenta insumos configurados cuando se cobra.</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsSupplyConfigOpen(true)}
+                        className="mt-auto rounded-[1.2rem] border border-cyan-300/35 bg-cyan-300/10 px-5 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-cyan-100 transition-all hover:bg-cyan-300 hover:text-slate-950"
+                      >
+                        Configurar insumos y rentabilidad
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
 
               {isPromotion ? (
                 <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] rounded-[1.8rem] border border-[#b7d8c7] bg-[#edf7f2] p-5">

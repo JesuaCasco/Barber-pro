@@ -101,6 +101,17 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
     }, 0)
   );
 
+  const selectedComboItems = useMemo(
+    () => (formData.items || [])
+      .map((itemId) => services.find((service) => String(service.id) === String(itemId)))
+      .filter(Boolean),
+    [formData.items, services],
+  );
+  const selectedComboDuration = selectedComboItems.reduce(
+    (sum, item) => sum + Number(item.durationMinutes || 0),
+    0,
+  );
+
   const toggleItem = (id) => {
     const newItems = formData.items.includes(id)
       ? formData.items.filter((itemId) => itemId !== id)
@@ -197,7 +208,7 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
         >
           <div className="grid min-h-full grid-cols-1 gap-4 p-4 pb-24 lg:p-6 lg:pb-24">
             <div className={isCombo ? "grid min-h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]" : "grid grid-cols-1 gap-4"}>
-              <section className="rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4">
+              <section className={isCombo ? "flex min-h-0 flex-col rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4 xl:min-h-[calc(88vh-12rem)]" : "rounded-[1.35rem] border border-cyan-300/30 bg-slate-900/78 p-4"}>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="block text-[9px] font-black uppercase italic tracking-[0.18em] text-slate-400">Categoría</span>
@@ -245,6 +256,60 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
                       <span className="absolute left-8 top-1/2 -translate-y-1/2 text-2xl font-black italic leading-none text-cyan-300">C$</span>
                     </div>
                   </label>
+                ) : null}
+
+                {isCombo ? (
+                  <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-cyan-300/25 bg-black/45 px-4 py-3">
+                        <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Servicios</p>
+                        <p className="mt-1 text-xl font-black italic text-cyan-200">{selectedComboItems.length}</p>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-300/25 bg-black/45 px-4 py-3">
+                        <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Duracion</p>
+                        <p className="mt-1 text-xl font-black italic text-cyan-200">{selectedComboDuration || 0}m</p>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-300/25 bg-black/45 px-4 py-3">
+                        <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Precio</p>
+                        <p className="mt-1 text-xl font-black italic text-cyan-200">C$ {Number(formData.price || 0).toLocaleString('es-NI')}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex min-h-0 flex-1 flex-col rounded-[1.15rem] border border-cyan-300/25 bg-black/35">
+                      <div className="flex items-center justify-between gap-3 border-b border-cyan-300/15 px-4 py-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Servicios seleccionados</p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-500">Orden y contenido del combo.</p>
+                        </div>
+                        <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
+                          {selectedComboItems.length} items
+                        </span>
+                      </div>
+
+                      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 pr-2 custom-scrollbar">
+                        {selectedComboItems.length > 0 ? selectedComboItems.map((item, index) => (
+                          <div key={item.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950 px-3 py-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-300/12 text-[10px] font-black italic text-cyan-200">{index + 1}</span>
+                            <div className="min-w-0">
+                              <p className="truncate text-[11px] font-black uppercase italic text-white">{item.name}</p>
+                              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{item.category || 'Servicio'} {Number(item.durationMinutes || 0) > 0 ? `- ${item.durationMinutes}m` : ''}</p>
+                            </div>
+                            <span className="text-[11px] font-black italic text-cyan-300">C$ {Number(item.price || 0).toLocaleString('es-NI')}</span>
+                            <button type="button" onClick={() => toggleItem(item.id)} className="flex h-8 w-8 items-center justify-center rounded-xl border border-rose-400/30 text-rose-300 transition-all hover:bg-rose-500/10">
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )) : (
+                          <div className="flex min-h-40 items-center justify-center rounded-2xl border border-dashed border-cyan-300/25 bg-black/25 p-6 text-center">
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200">Aun no hay servicios</p>
+                              <p className="mt-2 text-[11px] font-bold text-slate-500">Agrega servicios desde la derecha para construir el combo.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ) : null}
               </section>
 
@@ -321,17 +386,38 @@ export function ServiceEditorModal({ services, inventoryItems = [], serviceCateg
                     onChange={(event) => setSearchTerm(event.target.value)}
                   />
                   <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-2 custom-scrollbar md:grid-cols-2 xl:auto-rows-min">
-                    {availableItems.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => toggleItem(item.id)}
-                        className={`flex items-center justify-between rounded-2xl border p-4 text-left transition-all ${formData.items.includes(item.id) ? 'border-cyan-300 bg-cyan-300/15 shadow-[0_0_22px_rgba(34,211,238,0.12)]' : 'border-slate-700 bg-black/55 hover:border-cyan-300/70 hover:bg-cyan-300/10'}`}
-                      >
-                        <span className="text-[11px] font-black uppercase italic text-white">{item.name}</span>
-                        <span className="text-[11px] font-black italic text-cyan-300">C$ {item.price}</span>
-                      </button>
-                    ))}
+                    {availableItems.map((item) => {
+                      const isSelected = formData.items.includes(item.id);
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => toggleItem(item.id)}
+                          className={`flex min-h-[4.25rem] items-center justify-between gap-4 rounded-2xl border p-4 text-left transition-all ${
+                            isSelected
+                              ? 'border-cyan-300 bg-cyan-300/15 shadow-[0_0_22px_rgba(34,211,238,0.12)]'
+                              : 'border-slate-700 bg-black/55 hover:border-cyan-300/70 hover:bg-cyan-300/10'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-[12px] font-black uppercase italic text-white">{item.name}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
+                              {item.category || 'Servicio'} {Number(item.durationMinutes || 0) > 0 ? `- ${item.durationMinutes}m` : ''}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-3">
+                            <span className="text-[12px] font-black italic text-cyan-300">C$ {Number(item.price || 0).toLocaleString('es-NI')}</span>
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-black ${
+                              isSelected
+                                ? 'border-cyan-300 bg-cyan-300 text-slate-950'
+                                : 'border-cyan-300/25 text-cyan-200'
+                            }`}>
+                              {isSelected ? '✓' : '+'}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               ) : null}

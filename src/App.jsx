@@ -158,7 +158,7 @@ const { useCallback } = React;
 
 const accessUiFallback = (
   <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-    <div className="rounded-2xl border border-white/10 bg-slate-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300">
+    <div className="rounded-2xl border border-cyan-300/15 bg-slate-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300">
       Cargando interfaz...
     </div>
   </div>
@@ -740,7 +740,7 @@ function SystemView({
 
       {isSuperAdmin && showCreateBarbershop && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-5xl bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
+          <div className="w-full max-w-5xl bg-slate-950 border border-cyan-300/15 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
             <button
               type="button"
               onClick={() => setShowCreateBarbershop(false)}
@@ -849,7 +849,7 @@ function SystemView({
 
       {showBranchForm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-4xl bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
+          <div className="w-full max-w-4xl bg-slate-950 border border-cyan-300/15 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
             <button
               type="button"
               onClick={() => {
@@ -1011,7 +1011,7 @@ function SystemView({
                           <p className="mt-1 font-bold text-slate-300 break-all">{shop.ownerEmail || 'Sin correo del dueño'}</p>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="inline-flex px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
+                          <span className="inline-flex px-3 py-2 rounded-xl border border-cyan-300/15 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
                             {shop.plan || 'Sin plan'}
                           </span>
                           <span className="text-sm font-black text-white">{branchCountByBarbershopId[String(shop.id)] || 0} suc.</span>
@@ -1057,7 +1057,7 @@ function SystemView({
                           )}
                         </div>
                         <div>
-                          <span className="inline-flex px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
+                          <span className="inline-flex px-3 py-2 rounded-xl border border-cyan-300/15 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">
                             {shop.plan || 'Sin plan'}
                           </span>
                         </div>
@@ -1291,7 +1291,7 @@ function SystemView({
         <div className="p-4 md:p-8 space-y-5">
           {canCreateUsers && showCreateUser && (
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="w-full max-w-4xl bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
+              <div className="w-full max-w-4xl bg-slate-950 border border-cyan-300/15 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative text-white max-h-[88vh] overflow-y-auto custom-scrollbar">
                 <button
                   type="button"
                   onClick={() => setShowCreateUser(false)}
@@ -1737,9 +1737,9 @@ function PublicBookingView() {
     return parsed.toLocaleDateString('es-NI', { weekday: 'long', day: 'numeric', month: 'long' });
   })();
   const FieldButton = ({ label, value, placeholder, onClick }) => (
-    <button type="button" onClick={onClick} className="group w-full border-b border-white/20 pb-5 text-left transition-colors hover:border-cyan-300/60">
+    <button type="button" onClick={onClick} className="group w-full border-b border-cyan-300/20 pb-5 text-left transition-colors hover:border-cyan-300/60">
       <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">{label}</span>
-      <span className={`mt-5 flex items-center justify-between gap-4 text-xl font-semibold uppercase tracking-wide ${value ? 'text-white' : 'text-slate-500'}`}>
+      <span className={`mt-5 flex items-center justify-between gap-4 text-xl font-black uppercase italic tracking-wide ${value ? 'text-white' : 'text-slate-500'}`}>
         <span className="line-clamp-1">{value || placeholder}</span>
         <ChevronDown size={20} className="shrink-0 text-slate-500 transition-colors group-hover:text-cyan-300" />
       </span>
@@ -1755,7 +1755,7 @@ function PublicBookingView() {
         : '';
 
   return (
-    <div className="min-h-screen bg-[#1f2427] text-[#eef6f7]">
+    <div className="min-h-screen bg-[#020714] text-white">
       <style>{styleTag}</style>
       <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-8 md:px-10">
         <main className="w-full">
@@ -1771,54 +1771,54 @@ function PublicBookingView() {
           </header>
 
           {loading ? (
-            <section className="flex min-h-[28rem] flex-col items-center justify-center gap-4 border-y border-white/10 text-slate-400">
+            <section className="flex min-h-[28rem] flex-col items-center justify-center gap-4 border-y border-cyan-300/15 text-slate-400">
               <Loader2 className="animate-spin text-cyan-300" size={42} />
               <p className="text-[11px] font-black uppercase tracking-[0.22em]">Cargando disponibilidad</p>
             </section>
           ) : success ? (
-            <section className="max-w-3xl border-y border-white/10 py-12">
+            <section className="max-w-3xl border-y border-cyan-300/15 py-12">
               <CheckCircle2 className="text-cyan-300" size={56} />
-              <h1 className="mt-5 font-serif text-5xl font-black tracking-tight text-white md:text-6xl">Reserva recibida</h1>
-              <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
+              <h1 className="mt-5 text-5xl font-black uppercase italic tracking-tight text-white md:text-6xl">Reserva recibida</h1>
+              <p className="mt-5 max-w-xl text-lg font-bold leading-8 text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
               <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{success.service} con {success.barber}</p>
               <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false, notes: '' })); }} className="mt-10 border-b border-cyan-300 pb-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">Hacer otra reserva</button>
             </section>
           ) : (
             <form onSubmit={handleSubmit} className="max-w-4xl">
               <p className="text-[12px] font-black uppercase tracking-[0.28em] text-slate-300">Reserva online</p>
-              <h1 className="mt-6 font-serif text-5xl font-black tracking-tight text-white md:text-6xl">Agenda tu corte</h1>
-              <p className="mt-5 max-w-2xl text-sm font-semibold leading-7 text-slate-400">Completa tus datos y elige servicio, barbero y horario disponible.</p>
+              <h1 className="mt-6 text-5xl font-black uppercase italic tracking-tight text-white md:text-6xl">Agenda tu corte</h1>
+              <p className="mt-5 max-w-2xl text-sm font-bold leading-7 text-slate-400">Completa tus datos y elige servicio, barbero y horario disponible.</p>
 
               {error && <div className="mt-8 border border-rose-400/30 bg-rose-500/10 px-5 py-4 text-sm font-bold text-rose-100">{error}</div>}
 
               <div className="mt-12 grid gap-x-12 gap-y-10 md:grid-cols-2">
-                <label className="block border-b border-white/20 pb-5">
+                <label className="block border-b border-cyan-300/20 pb-5">
                   <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Nombre completo</span>
-                  <input value={form.guestName} onChange={(event) => setForm((prev) => ({ ...prev, guestName: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Carlos Mendoza" />
+                  <input value={form.guestName} onChange={(event) => setForm((prev) => ({ ...prev, guestName: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-black uppercase italic tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Carlos Mendoza" />
                 </label>
 
-                <label className="block border-b border-white/20 pb-5">
+                <label className="block border-b border-cyan-300/20 pb-5">
                   <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">WhatsApp</span>
-                  <input value={form.guestPhone} onChange={(event) => setForm((prev) => ({ ...prev, guestPhone: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="+505 8888 8888" />
+                  <input value={form.guestPhone} onChange={(event) => setForm((prev) => ({ ...prev, guestPhone: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-black tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="+505 8888 8888" />
                 </label>
 
                 <FieldButton label="Servicio" value={selectedService ? `${selectedService.name} - C$ ${Number(selectedService.price || 0).toLocaleString()}` : ''} placeholder="Selecciona un servicio" onClick={() => setPublicPicker('service')} />
                 <FieldButton label="Barbero" value={selectedBarber?.name || ''} placeholder="Selecciona un barbero" onClick={() => setPublicPicker('barber')} />
 
-                <label className="block border-b border-white/20 pb-5">
+                <label className="block border-b border-cyan-300/20 pb-5">
                   <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Fecha preferida</span>
-                  <input type="date" min={today} max={maxDate} value={form.date} onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value, time: '' }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none [color-scheme:dark]" />
+                  <input type="date" min={today} max={maxDate} value={form.date} onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value, time: '' }))} className="mt-5 w-full bg-transparent text-xl font-black uppercase italic tracking-wide text-white outline-none [color-scheme:dark]" />
                 </label>
 
                 <FieldButton label="Hora preferida" value={form.time ? formatPublicTime(form.time) : ''} placeholder="Seleccionar hora" onClick={() => setPublicPicker('time')} />
 
-                <label className="block border-b border-white/20 pb-5 md:col-span-2">
+                <label className="block border-b border-cyan-300/20 pb-5 md:col-span-2">
                   <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Notas adicionales (opcional)</span>
-                  <input value={form.notes || ''} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Algun requerimiento especial?" />
+                  <input value={form.notes || ''} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-black uppercase italic tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Algun requerimiento especial?" />
                 </label>
               </div>
 
-              <div className="mt-8 flex flex-col gap-5 border-b border-white/20 pb-8 md:flex-row md:items-center md:justify-between">
+              <div className="mt-8 flex flex-col gap-5 border-b border-cyan-300/20 pb-8 md:flex-row md:items-center md:justify-between">
                 <label className="flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">
                   <input type="checkbox" checked={form.claimsExistingClient} onChange={(event) => setForm((prev) => ({ ...prev, claimsExistingClient: event.target.checked }))} className="h-4 w-4 accent-cyan-300" />
                   Ya soy cliente de esta barberia
@@ -1838,29 +1838,29 @@ function PublicBookingView() {
       </div>
 
       {publicPicker && !loading && !success && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md" onClick={() => setPublicPicker(null)}>
-          <section className="w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-cyan-300/20 bg-[#1f2427] shadow-[0_30px_90px_rgba(0,0,0,0.6)]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md" onClick={() => setPublicPicker(null)}>
+          <section className="w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-cyan-300/20 bg-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.6)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-cyan-300/15 px-6 py-5">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Reservacion</p>
                 <h2 className="mt-1 text-2xl font-black italic text-white">{pickerTitle}</h2>
               </div>
-              <button type="button" onClick={() => setPublicPicker(null)} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-slate-300 hover:border-cyan-300 hover:text-cyan-200"><X size={20} /></button>
+              <button type="button" onClick={() => setPublicPicker(null)} className="flex h-11 w-11 items-center justify-center rounded-full border border-cyan-300/20 text-slate-300 hover:border-cyan-300 hover:text-cyan-200"><X size={20} /></button>
             </div>
 
             <div className="max-h-[68vh] overflow-y-auto p-4">
               {publicPicker === 'service' && <div className="grid gap-3 sm:grid-cols-2">{snapshot.services.map((service) => {
                 const active = String(form.serviceId) === String(service.id);
-                return <button key={service.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, serviceId: service.id })); setPublicPicker(null); }} className={`border p-4 text-left transition-all ${active ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 bg-black/30 text-white hover:border-cyan-300/60'}`}><p className="text-sm font-black uppercase italic">{service.name}</p><p className={`mt-2 text-lg font-black ${active ? 'text-slate-950' : 'text-emerald-300'}`}>C$ {Number(service.price || 0).toLocaleString()}</p></button>;
+                return <button key={service.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, serviceId: service.id })); setPublicPicker(null); }} className={`border p-4 text-left transition-all ${active ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-cyan-300/20 bg-slate-900/80 text-white hover:border-cyan-300/60'}`}><p className="text-sm font-black uppercase italic">{service.name}</p><p className={`mt-2 text-lg font-black ${active ? 'text-slate-950' : 'text-emerald-300'}`}>C$ {Number(service.price || 0).toLocaleString()}</p></button>;
               })}</div>}
 
               {publicPicker === 'barber' && <div className="grid gap-3 sm:grid-cols-2">{snapshot.barbers.map((barber) => {
                 const active = String(form.barberId) === String(barber.id);
                 const initials = String(barber.name || 'BP').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'BP';
-                return <button key={barber.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, barberId: barber.id, time: '' })); setPublicPicker(null); }} className={`flex items-center gap-3 border p-4 text-left transition-all ${active ? 'border-emerald-300 bg-emerald-300/15' : 'border-white/15 bg-black/30 hover:border-emerald-300/60'}`}><span className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: barber.color || barber.bg || '#4de1ff' }}>{initials}</span><span><span className="block text-sm font-black uppercase italic text-white">{barber.name}</span><span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Barbero disponible</span></span></button>;
+                return <button key={barber.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, barberId: barber.id, time: '' })); setPublicPicker(null); }} className={`flex items-center gap-3 border p-4 text-left transition-all ${active ? 'border-emerald-300 bg-emerald-300/15' : 'border-cyan-300/20 bg-slate-900/80 hover:border-emerald-300/60'}`}><span className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: barber.color || barber.bg || '#4de1ff' }}>{initials}</span><span><span className="block text-sm font-black uppercase italic text-white">{barber.name}</span><span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Barbero disponible</span></span></button>;
               })}</div>}
 
-              {publicPicker === 'time' && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{availableTimes.map((time) => <button key={time} type="button" onClick={() => { setForm((prev) => ({ ...prev, time })); setPublicPicker(null); }} className={`border px-4 py-4 text-sm font-black uppercase tracking-[0.1em] transition-all ${form.time === time ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 bg-black/30 text-white hover:border-cyan-300/60'}`}>{formatPublicTime(time)}</button>)}{availableTimes.length === 0 && <p className="col-span-full border border-dashed border-white/15 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">No hay horarios disponibles ese dia.</p>}</div>}
+              {publicPicker === 'time' && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{availableTimes.map((time) => <button key={time} type="button" onClick={() => { setForm((prev) => ({ ...prev, time })); setPublicPicker(null); }} className={`border px-4 py-4 text-sm font-black uppercase tracking-[0.1em] transition-all ${form.time === time ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-cyan-300/20 bg-slate-900/80 text-white hover:border-cyan-300/60'}`}>{formatPublicTime(time)}</button>)}{availableTimes.length === 0 && <p className="col-span-full border border-dashed border-cyan-300/20 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">No hay horarios disponibles ese dia.</p>}</div>}
             </div>
           </section>
         </div>
@@ -3052,7 +3052,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
               </p>
             </div>
           </div>
-          <div className="rounded-[1.5rem] border border-white/10 bg-black/40 p-5">
+          <div className="rounded-[1.5rem] border border-cyan-300/15 bg-black/40 p-5">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Variables faltantes</p>
             <div className="mt-4 space-y-2 text-sm font-mono text-rose-200">
               {!import.meta.env.VITE_SUPABASE_URL && <p>VITE_SUPABASE_URL</p>}
@@ -3083,7 +3083,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
               </p>
             </div>
           </div>
-          <div className="rounded-[1.5rem] border border-white/10 bg-black/40 p-5 space-y-3">
+          <div className="rounded-[1.5rem] border border-cyan-300/15 bg-black/40 p-5 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cómo continuar</p>
             <p className="text-sm text-slate-300">Configura `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` para trabajar con datos reales.</p>
             <p className="text-sm text-slate-300">Si necesitas una prueba local intencional, activa `VITE_ENABLE_LOCAL_MODE=true`.</p>
@@ -4795,7 +4795,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
-            className="rounded-xl border border-white/10 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white lg:hidden"
+            className="rounded-xl border border-cyan-300/15 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-white lg:hidden"
             aria-label="Cerrar menú lateral"
           >
             <X size={16} />
@@ -4819,7 +4819,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
                   <select
                     value={superAdminViewBarbershopId || availableBarbershops[0]?.id || ''}
                     onChange={(event) => setSuperAdminViewBarbershopId(event.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black px-2.5 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-white outline-none transition-all focus:border-indigo-500"
+                    className="mt-1.5 w-full rounded-xl border border-cyan-300/15 bg-black px-2.5 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-white outline-none transition-all focus:border-indigo-500"
                   >
                     {availableBarbershops.map((shop) => (
                       <option key={shop.id} value={shop.id} className="bg-slate-950 text-white">
@@ -4844,7 +4844,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
-              className="mt-2 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
+              className="mt-2 flex w-full items-center justify-center rounded-2xl border border-cyan-300/15 bg-slate-900/70 px-4 py-3 text-slate-200 transition-all hover:border-indigo-500/40 hover:text-white"
               title={currentBarbershop?.name ? `Cambiar barbería actual: ${currentBarbershop.name}` : 'Cambiar barbería'}
             >
               <Crown size={16} />
@@ -4885,7 +4885,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white lg:hidden shrink-0"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/15 bg-slate-900 text-slate-200 transition-colors hover:text-white lg:hidden shrink-0"
               aria-label="Abrir menú lateral"
             >
               <Menu size={18} />
@@ -4893,7 +4893,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
             <button
               type="button"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              className="hidden lg:flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-slate-200 transition-colors hover:text-white"
+              className="hidden lg:flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/15 bg-slate-900 text-slate-200 transition-colors hover:text-white"
               aria-label={sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
             >
               <Menu size={18} />
@@ -5111,7 +5111,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
       )}
       {confirmState && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
-          <div className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
+          <div className="w-full max-w-lg rounded-[2rem] border border-cyan-300/15 bg-slate-950 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
             <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">
               {confirmState.title}
             </h3>
@@ -5125,7 +5125,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
                   confirmState.resolve(false);
                   setConfirmState(null);
                 }}
-                className="flex-1 rounded-2xl border border-white/10 bg-slate-900 px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-slate-800"
+                className="flex-1 rounded-2xl border border-cyan-300/15 bg-slate-900 px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-slate-800"
               >
                 {confirmState.cancelLabel}
               </button>
@@ -5618,7 +5618,7 @@ function CatalogSettingsModal({ title, subtitle, values = [], protectedValues = 
   };
 
   return (
-    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md no-print">
+    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md no-print">
       <div className="flex h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
         <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-6 py-5">
           <div>
@@ -5818,7 +5818,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
                 </div>
               )}
             </div>
-            <div className="pt-6 md:pt-8 border-t border-slate-800 group-hover:border-white/15 mt-6 md:mt-8 flex justify-between items-center text-white">
+            <div className="pt-6 md:pt-8 border-t border-slate-800 group-hover:border-cyan-300/20 mt-6 md:mt-8 flex justify-between items-center text-white">
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1 leading-none">{s.category === 'Promocion' ? 'Descuento' : 'Precio Final'}</p>
                 <p className={`text-3xl md:text-4xl font-black italic tracking-tighter transition-all leading-none ${theme.price}`}>{s.category === 'Promocion' ? formatPromotionValue(s) : `C$ ${s.price}`}</p>
@@ -6147,7 +6147,7 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
       </section>
 
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
           <form onSubmit={handleSubmit} className="w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_28px_80px_rgba(0,0,0,0.55)] custom-scrollbar">
             <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-950/95 px-5 md:px-7 py-5 backdrop-blur">
               <div>
@@ -6560,7 +6560,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
         <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 shadow-lg hover:shadow-emerald-500/40 transition-all text-white">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">{compensationMetric.label}</p>
-            <div className="inline-flex rounded-2xl border border-white/10 bg-black/30 p-1">
+            <div className="inline-flex rounded-2xl border border-cyan-300/15 bg-slate-900/80 p-1">
               <button
                 type="button"
                 onClick={() => setCompensationIndicator('salary')}
@@ -6654,7 +6654,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300 text-white">
-          <div className="w-full max-w-[70rem] max-h-[92vh] bg-slate-950 border border-white/10 rounded-[2.4rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 flex flex-col md:flex-row relative text-white">
+          <div className="w-full max-w-[70rem] max-h-[92vh] bg-slate-950 border border-cyan-300/15 rounded-[2.4rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 flex flex-col md:flex-row relative text-white">
             
             <button onClick={closeModal} className="absolute top-6 right-6 p-3 rounded-2xl bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-400 transition-all z-20 text-white">
               <X size={20} />
@@ -6664,7 +6664,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
               <div className={`absolute top-0 left-0 w-full h-1 ${form.bg || 'bg-indigo-500'}`}></div>
               <div className="relative group mb-6 text-white mt-3">
                 <div className={`absolute inset-0 ${form.bg || 'bg-indigo-500'} blur-2xl opacity-30 group-hover:opacity-50 transition-opacity`}></div>
-                <div className={`w-24 h-24 rounded-[2rem] ${form.bg || 'bg-indigo-500'} flex items-center justify-center text-white font-black text-3xl shadow-2xl relative z-10 border-4 border-white/10 animate-glow text-white`}>
+                <div className={`w-24 h-24 rounded-[2rem] ${form.bg || 'bg-indigo-500'} flex items-center justify-center text-white font-black text-3xl shadow-2xl relative z-10 border-4 border-cyan-300/15 animate-glow text-white`}>
                   {(form.name || 'NB').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
                 </div>
               </div>
@@ -6721,35 +6721,35 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Comercial <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Nombre Completo <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos Pérez López" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Ej. Juan Carlos Pérez López" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Teléfono móvil</label>
                   <div className="relative group text-white">
                     <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} placeholder="Ej. 8899-4455" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} placeholder="Ej. 8899-4455" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Cédula</label>
                   <div className="relative group text-white">
                     <IdCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={16}/>
-                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: formatCedulaNumber(e.target.value) })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
+                    <input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: formatCedulaNumber(e.target.value) })} placeholder="Ej. 001-000000-0000A" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 text-white">
                   <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Modalidad de Pago <span className="text-rose-400">*</span></label>
                   <div className="relative group text-white">
                     <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-400 transition-colors" size={16}/>
-                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
+                    <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value, salary: barberHasBasePay(e.target.value) ? form.salary : '', commission: barberHasCommissionPay(e.target.value) ? form.commission : '' })} className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all appearance-none cursor-pointer text-white">
                         {BARBER_PAYMENT_MODE_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id} className="bg-slate-950 text-white">{option.label}</option>
                         ))}
@@ -6761,7 +6761,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                     <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Sueldo base (C$) <span className="text-rose-400">*</span></label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">C$</div>
-                      <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                      <input value={form.salary} onChange={(e) => setForm({ ...form, salary: formatSalary(e.target.value) })} placeholder="0,000" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
                     </div>
                   </div>
                   )}
@@ -6770,7 +6770,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                     <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2 italic leading-none">Comisión (%) <span className="text-rose-400">*</span></label>
                     <div className="relative group text-white">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-sm leading-none">%</div>
-                      <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
+                      <input value={form.commission} onChange={(e) => setForm({ ...form, commission: formatCommission(e.target.value) })} placeholder="15" className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 focus:bg-white/[0.07] transition-all" />
                     </div>
                   </div>
                   )}
@@ -6783,7 +6783,7 @@ function BarbersView({ barbers, appointments, branches, currentBarbershopId, cur
                         value={form.branchId || ''}
                         onChange={(e) => setForm({ ...form, branchId: e.target.value })}
                         disabled={!branchesForCurrentBarbershop.length}
-                        className="w-full bg-black border border-white/10 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all disabled:opacity-60 appearance-none cursor-pointer"
+                        className="w-full bg-black border border-cyan-300/15 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:bg-white/[0.07] transition-all disabled:opacity-60 appearance-none cursor-pointer"
                       >
                         <option value="" disabled className="bg-slate-950 text-white">
                           {branchesForCurrentBarbershop.length ? 'Selecciona una sucursal' : 'Sin sucursales disponibles'}
@@ -6908,7 +6908,7 @@ function NominaView({ barbers, appointments, cashWithdrawals = [], payrollSettle
       helper: `${summary.staffCount === 1 ? '1 barbero con pago pendiente' : `${summary.staffCount} barberos listos para liquidar`}`,
       icon: Users,
       shellClass: 'bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border-slate-700 shadow-[0_12px_35px_rgba(0,0,0,0.25)]',
-      iconWrapClass: 'bg-white/5 text-slate-200 border-white/10',
+      iconWrapClass: 'bg-white/5 text-slate-200 border-cyan-300/15',
       valueClass: 'text-white',
       badgeClass: 'text-slate-300',
     },
@@ -7064,7 +7064,7 @@ function NominaView({ barbers, appointments, cashWithdrawals = [], payrollSettle
         </div>
 
         {barberPaymentFiles.length === 0 ? (
-          <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-700 bg-black/30 p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+          <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-700 bg-slate-900/80 p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
             Aún no hay barberos para consultar.
           </div>
         ) : (
@@ -7094,7 +7094,7 @@ function NominaView({ barbers, appointments, cashWithdrawals = [], payrollSettle
                           <span className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${hasPayments ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-500'}`}>
                             {settlements.length} pago{settlements.length === 1 ? '' : 's'}
                           </span>
-                          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                          <span className="rounded-full border border-cyan-300/15 bg-white/[0.03] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
                             {dateLabel}
                           </span>
                         </div>
@@ -7891,7 +7891,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                               C$ {data.value >= 1000 ? (data.value / 1000).toFixed(1) + 'k' : data.value}
                             </span>
                           </div>
-                          <div className={`w-full max-w-[26px] sm:max-w-[34px] md:max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-white/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
+                          <div className={`w-full max-w-[26px] sm:max-w-[34px] md:max-w-[60px] rounded-t-3xl transition-all duration-1000 ease-out relative bg-gradient-to-t ${gradient} shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t border-cyan-300/20`} style={{ height: `${Math.max(hVal, 5)}%` }}>
                             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-3xl text-white"></div>
                             <div className={`absolute inset-0 opacity-0 transition-opacity rounded-t-3xl blur-xl bg-gradient-to-t ${gradient} group-hover:opacity-40 text-white`} />
                           </div>
@@ -7927,7 +7927,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                           onClick={() => setShowProductRangeControls((prev) => !prev)}
                           className={`min-h-[52px] px-5 rounded-2xl border text-[10px] font-black uppercase tracking-[0.18em] transition-all flex items-center justify-center gap-2 ${
                             showProductRangeControls
-                              ? 'bg-white/10 text-white border-white/15'
+                              ? 'bg-white/10 text-white border-cyan-300/20'
                               : 'bg-slate-950/70 text-slate-300 border-slate-800 hover:text-white'
                           }`}
                         >
@@ -8032,7 +8032,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                               <div>
                                 <p className="text-[13px] font-black uppercase italic tracking-tight text-white leading-none">{product.name}</p>
                                 <div className="mt-2.5 flex flex-wrap gap-2">
-                                  <span className="px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.03] text-[8px] font-black uppercase italic text-slate-300 leading-none">{product.units} unidades</span>
+                                  <span className="px-2.5 py-1 rounded-full border border-cyan-300/15 bg-white/[0.03] text-[8px] font-black uppercase italic text-slate-300 leading-none">{product.units} unidades</span>
                                   <span className="px-2.5 py-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 text-[8px] font-black uppercase italic text-indigo-300 leading-none">{product.ticketsCount} tickets</span>
                                 </div>
                               </div>
@@ -8090,7 +8090,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                     <p className="text-[14px] font-black text-amber-500 uppercase italic tracking-[0.4em] mb-2 drop-shadow-md leading-none">---THE BEST BARBER-PRO---</p>
                     <h4 className="text-6xl font-black italic uppercase text-white tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)] leading-none">{stats.bestBarber?.name || '---'}</h4>
                   </div>
-                  <div className="mt-16 pt-10 border-t border-white/20 w-full flex justify-between px-8 text-white relative">
+                  <div className="mt-16 pt-10 border-t border-cyan-300/20 w-full flex justify-between px-8 text-white relative">
                     <div className="flex flex-col items-start text-white"><p className="text-[13px] font-black text-amber-500 uppercase mb-2 italic tracking-widest opacity-80 leading-none">Total Cortes</p><p className="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-lg">{stats.bestBarberCount || 0}</p></div>
                     <div className="flex flex-col items-end text-white"><p className="text-[13px] font-black text-amber-500 uppercase mb-2 italic tracking-widest opacity-80 leading-none">Ventas Brutas</p><p className="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-lg"><span className="text-2xl mr-1 font-bold text-emerald-400">C$</span>{(stats.bestBarberSales || 0).toLocaleString()}</p></div>
                   </div>
@@ -8120,7 +8120,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                       </button>
 
                       {showStaffRangeControls && (
-                        <div className="adaptive-popover absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(88vw,22rem)] rounded-[1.8rem] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="adaptive-popover absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(88vw,22rem)] rounded-[1.8rem] border border-cyan-300/15 bg-slate-950/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                           <div className="rounded-2xl border border-indigo-500/20 bg-indigo-600/15 px-4 py-3">
                             <span className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-300/80 leading-none">
                               {staffRangePreset === 'custom' ? 'Rango personalizado' : `Vista ${periodOptions.find((option) => option.id === staffRangePreset)?.label || 'Mes'}`}
@@ -8217,7 +8217,7 @@ function ReportsView({ appointments, clients, barbers, services = [], branches =
                                 >
                                   {b.count}
                                 </span>
-                                <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} shadow-lg text-white border-t border-white/20`} style={{ height: `${Math.max(countHeight, 4)}%` }}>
+                                <div className={`w-full rounded-t-2xl transition-all duration-1000 ease-out relative ${barberColorClass} shadow-lg text-white border-t border-cyan-300/20`} style={{ height: `${Math.max(countHeight, 4)}%` }}>
                                   <div className="absolute inset-0 bg-white/5 opacity-0 transition-opacity rounded-t-2xl group-hover:opacity-100 text-white"></div>
                                 </div>
                               </div>
@@ -8739,7 +8739,7 @@ function CashWithdrawalModal({ onClose, onSave, barbers, initial }) {
       <form onSubmit={handleSubmit} className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950 shadow-2xl animate-in zoom-in-95">
         <div className="shrink-0 flex items-center justify-between gap-4 border-b border-slate-800 bg-black px-5 py-4">
           <div className="flex items-center gap-4 min-w-0">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selectedBarberBg} text-white border border-white/10`}>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selectedBarberBg} text-white border border-cyan-300/15`}>
               <Wallet size={22} />
             </div>
             <div className="min-w-0">
@@ -9172,7 +9172,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 md:p-8 animate-in fade-in text-white no-print">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 md:p-8 animate-in fade-in text-white no-print">
       <div className="appointment-modal bg-slate-950 w-full max-w-4xl rounded-[2.25rem] shadow-2xl border border-slate-800 animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[88vh] text-white">
         <div className="px-6 py-4 bg-black border-b border-slate-800 flex justify-between items-center text-white">
           <div className="flex items-center gap-4 text-white">

@@ -5223,7 +5223,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         {monthDays.map((date) => {
           const dateKey = formatLocalDateYmd(date);
           const items = appointmentsByDate.get(dateKey) || [];
-          const visibleItems = items.slice(0, 2);
+          const visibleItems = items.slice(0, 3);
           const hiddenCount = Math.max(items.length - visibleItems.length, 0);
           const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
           const selected = dateKey === viewDate;

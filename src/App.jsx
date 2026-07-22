@@ -5219,7 +5219,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
       <div className="grid shrink-0 grid-cols-7 border-b border-slate-800 bg-black/50 text-center text-[11px] font-black uppercase tracking-[0.12em] text-cyan-200">
         {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((label) => <div key={label} className="border-r border-slate-800 px-2 py-3 last:border-r-0">{label}</div>)}
       </div>
-      <div className="custom-scrollbar grid min-h-0 flex-1 grid-cols-7 auto-rows-[11rem] overflow-y-auto md:auto-rows-[12rem] xl:auto-rows-[13rem]">
+      <div className="custom-scrollbar grid min-h-0 flex-1 grid-cols-7 auto-rows-[12.5rem] overflow-y-auto md:auto-rows-[13.5rem] xl:auto-rows-[14.5rem]">
         {monthDays.map((date) => {
           const dateKey = formatLocalDateYmd(date);
           const items = appointmentsByDate.get(dateKey) || [];
@@ -5228,7 +5228,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
           const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
           const selected = dateKey === viewDate;
           return (
-            <div key={dateKey} className={`group/month-day flex min-h-0 flex-col overflow-hidden border-b border-r border-slate-800 bg-slate-950 p-3 last:border-r-0 md:p-4 ${!isCurrentMonth ? 'bg-black/35 text-slate-600' : ''} ${selected ? 'bg-slate-900 ring-1 ring-inset ring-cyan-300/70' : ''}`}>
+            <div key={dateKey} className={`group/month-day flex min-h-0 flex-col overflow-hidden border-b border-r border-slate-800 bg-slate-950 p-4 last:border-r-0 md:p-5 ${!isCurrentMonth ? 'bg-black/35 text-slate-600' : ''} ${selected ? 'bg-slate-900 ring-1 ring-inset ring-cyan-300/70' : ''}`}>
               <div className="mb-4 flex shrink-0 items-start justify-between gap-2">
                 <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-[16px] font-black transition-all ${dateKey === today ? 'bg-cyan-300 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)]' : isCurrentMonth ? 'text-slate-100 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-900'}`}>
                   {date.getDate()}
@@ -5239,15 +5239,15 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
                 {visibleItems.map((appointment) => {
                   const barber = getBarber(appointment);
                   return (
-                    <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/95 px-3 py-2.5 text-left text-slate-100 transition-all hover:border-cyan-300/40 hover:bg-slate-800">
-                      <span className={`h-3.5 w-3.5 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[12px] font-black leading-tight md:text-[13px]">{formatAgendaTime(appointment.time)} {getClientLabel(appointment)}</span>
+                    <button key={appointment.id} type="button" onClick={() => onAptClick(appointment)} className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/95 px-2.5 py-2 text-left text-slate-100 transition-all hover:border-cyan-300/40 hover:bg-slate-800">
+                      <span className={`h-3 w-3 shrink-0 rounded-full ${barber?.bg || 'bg-cyan-400'}`} />
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-black leading-tight md:text-[12px]">{formatAgendaTime(appointment.time)} {getClientLabel(appointment)}</span>
                     </button>
                   );
                 })}
               </div>
               {hiddenCount > 0 && (
-                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
+                <button type="button" onClick={() => { setViewDate(dateKey); setAgendaViewMode('day'); }} className="mt-2 shrink-0 rounded-lg border border-cyan-300/35 bg-cyan-300/12 px-2.5 py-2 text-left text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100 transition-all hover:bg-cyan-300/25">
                   +{hiddenCount} citas mas
                 </button>
               )}
@@ -8909,7 +8909,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                       type="checkbox"
                       checked={skipClientData}
                       onChange={handleToggleSkipClientData}
-                      className="h-3.5 w-3.5 rounded border-slate-400 accent-emerald-500"
+                      className="h-3 w-3 rounded border-slate-400 accent-emerald-500"
                     />
                     Cliente gen&eacute;rico
                   </label>

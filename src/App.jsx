@@ -2,6 +2,8 @@ import React, { Suspense, createContext, useContext, useState, useEffect, useMem
 import {
   closeCashSession,
   cancelPosSaleWithReversal,
+  createPublicBooking,
+  fetchPublicBookingSnapshot,
   createCashAuditMovement,
   createCashAdvanceWithMovement,
   createCashMovement,
@@ -1615,6 +1617,181 @@ function SystemView({
   );
 }
 
+function PublicBookingView() {
+  const today = getTodayString();
+  const maxDate = formatLocalDateYmd(new Date(Date.now() + 45 * 24 * 60 * 60 * 1000));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(null);
+  const [snapshot, setSnapshot] = useState({ barbershop: null, branch: null, services: [], barbers: [], appointments: [] });
+  const [form, setForm] = useState({
+    serviceId: '',
+    barberId: '',
+    date: today,
+    time: '',
+    guestName: '',
+    guestPhone: '',
+    claimsExistingClient: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!hasSupabaseConfig) {
+        setError('Esta instalacion no tiene Supabase configurado.');
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError('');
+      try {
+        const data = await fetchPublicBookingSnapshot(today, maxDate);
+        if (cancelled) return;
+        const services = Array.isArray(data.services) ? data.services : [];
+        const barbers = Array.isArray(data.barbers) ? data.barbers : [];
+        setSnapshot({
+          barbershop: data.barbershop || null,
+          branch: data.branch || null,
+          services,
+          barbers,
+          appointments: Array.isArray(data.appointments) ? data.appointments : [],
+        });
+        setForm((prev) => ({
+          ...prev,
+          serviceId: prev.serviceId || services[0]?.id || '',
+          barberId: prev.barberId || barbers[0]?.id || '',
+        }));
+      } catch (loadError) {
+        if (!cancelled) setError(loadError?.message || 'No pude cargar las reservas.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [maxDate, today]);
+
+  const selectedService = snapshot.services.find((service) => String(service.id) === String(form.serviceId));
+  const selectedBarber = snapshot.barbers.find((barber) => String(barber.id) === String(form.barberId));
+  const occupiedTimes = useMemo(() => new Set((snapshot.appointments || [])
+    .filter((appointment) => String(appointment.barber_id) === String(form.barberId) && standardizeDate(appointment.appointment_date) === standardizeDate(form.date))
+    .map((appointment) => safeTimeLabel(appointment.appointment_time))), [snapshot.appointments, form.barberId, form.date]);
+  const availableTimes = HOURS.filter((hour) => !occupiedTimes.has(hour));
+
+  useEffect(() => {
+    if (form.time && !availableTimes.includes(form.time)) {
+      setForm((prev) => ({ ...prev, time: '' }));
+    }
+  }, [availableTimes, form.time]);
+
+  const formatPublicTime = (time) => {
+    if (!time) return '';
+    const [hourRaw, minuteRaw] = String(time).split(':').map(Number);
+    const suffix = hourRaw >= 12 ? 'p. m.' : 'a. m.';
+    const hour = hourRaw % 12 || 12;
+    return `${hour}:${String(Number.isFinite(minuteRaw) ? minuteRaw : 0).padStart(2, '0')} ${suffix}`;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    if (!form.serviceId || !form.barberId || !form.date || !form.time || !form.guestName.trim() || !form.guestPhone.trim()) {
+      setError('Completa servicio, barbero, fecha, hora, nombre y telefono.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createPublicBooking({
+        serviceId: form.serviceId,
+        barberId: form.barberId,
+        date: form.date,
+        time: form.time,
+        guestName: form.guestName.trim(),
+        guestPhone: formatPhoneNumber(form.guestPhone),
+        claimsExistingClient: form.claimsExistingClient,
+        notes: 'Reserva creada desde plataforma publica.',
+      });
+      setSuccess({
+        name: form.guestName.trim(),
+        date: form.date,
+        time: form.time,
+        service: selectedService?.name || 'Servicio',
+        barber: selectedBarber?.name || 'Barbero',
+      });
+      const data = await fetchPublicBookingSnapshot(today, maxDate);
+      setSnapshot((prev) => ({ ...prev, appointments: Array.isArray(data.appointments) ? data.appointments : prev.appointments }));
+    } catch (saveError) {
+      setError(saveError?.message || 'No pude guardar la reserva.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <style>{styleTag}</style>
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 md:px-8 md:py-8">
+        <header className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-800 bg-black/70 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.45)] md:p-5">
+          <div className="flex items-center gap-3">
+            <img src="/barberpro-logo-ui.png" alt="BarberPro" className="h-12 w-12 object-contain" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Reserva online</p>
+              <h1 className="text-2xl font-black italic leading-none tracking-tight text-white md:text-3xl">{snapshot.barbershop?.name || 'BarberPro'}</h1>
+            </div>
+          </div>
+          <span className="hidden rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100 sm:inline-flex">Agenda publica</span>
+        </header>
+
+        <main className="grid flex-1 gap-5 py-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="rounded-[2rem] border border-slate-800 bg-black/65 p-6 shadow-[0_24px_90px_rgba(0,0,0,0.48)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-300">Elige tu espacio</p>
+            <h2 className="mt-2 text-4xl font-black uppercase italic tracking-tight text-white md:text-5xl">Reserva tu cita</h2>
+            <p className="mt-4 max-w-xl text-sm font-semibold leading-6 text-slate-400">Selecciona servicio, barbero y horario disponible. Al llegar, recepcion confirmara si ya eres cliente o si se crea tu ficha.</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Servicios</p><p className="mt-2 text-2xl font-black text-cyan-300">{snapshot.services.length}</p></div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Barberos</p><p className="mt-2 text-2xl font-black text-emerald-300">{snapshot.barbers.length}</p></div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Sucursal</p><p className="mt-2 truncate text-sm font-black uppercase text-white">{snapshot.branch?.name || 'Principal'}</p></div>
+            </div>
+          </section>
+
+          <form onSubmit={handleSubmit} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.5)] md:p-6">
+            {loading ? (
+              <div className="flex min-h-[28rem] flex-col items-center justify-center gap-4 text-slate-400"><Loader2 className="animate-spin text-cyan-300" size={42} /><p className="text-[11px] font-black uppercase tracking-[0.18em]">Cargando disponibilidad</p></div>
+            ) : success ? (
+              <div className="flex min-h-[28rem] flex-col justify-center rounded-[1.5rem] border border-emerald-400/25 bg-emerald-400/10 p-6 text-center">
+                <CheckCircle2 className="mx-auto text-emerald-300" size={54} />
+                <h3 className="mt-4 text-3xl font-black uppercase italic text-white">Reserva recibida</h3>
+                <p className="mt-3 text-sm font-bold text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
+                <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">{success.service} con {success.barber}</p>
+                <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false })); }} className="mt-8 rounded-2xl bg-cyan-300 px-6 py-4 text-[11px] font-black uppercase tracking-[0.16em] text-slate-950">Hacer otra reserva</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {error && <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-100">{error}</div>}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Servicio</span><select value={form.serviceId} onChange={(event) => setForm((prev) => ({ ...prev, serviceId: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300">{snapshot.services.map((service) => <option key={service.id} value={service.id}>{service.name} - C$ {Number(service.price || 0).toLocaleString()}</option>)}</select></label>
+                  <label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Barbero</span><select value={form.barberId} onChange={(event) => setForm((prev) => ({ ...prev, barberId: event.target.value, time: '' }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300">{snapshot.barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.name}</option>)}</select></label>
+                </div>
+                <label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Fecha</span><input type="date" min={today} max={maxDate} value={form.date} onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value, time: '' }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" /></label>
+                <div><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Hora disponible</span><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{availableTimes.map((time) => <button key={time} type="button" onClick={() => setForm((prev) => ({ ...prev, time }))} className={`rounded-2xl border px-3 py-3 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${form.time === time ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-slate-700 bg-black text-slate-300 hover:border-cyan-300/50'}`}>{formatPublicTime(time)}</button>)}</div>{availableTimes.length === 0 && <p className="mt-3 rounded-2xl border border-dashed border-slate-700 p-4 text-center text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">No hay horarios disponibles ese dia.</p>}</div>
+                <div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Nombre</span><input value={form.guestName} onChange={(event) => setForm((prev) => ({ ...prev, guestName: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Tu nombre" /></label><label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Telefono</span><input value={form.guestPhone} onChange={(event) => setForm((prev) => ({ ...prev, guestPhone: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Ej. 7731-3217" /></label></div>
+                <label className="flex items-center gap-3 rounded-2xl border border-slate-700 bg-black px-4 py-4"><input type="checkbox" checked={form.claimsExistingClient} onChange={(event) => setForm((prev) => ({ ...prev, claimsExistingClient: event.target.checked }))} className="h-4 w-4 accent-cyan-300" /><span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Ya soy cliente de esta barberia</span></label>
+                <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-300 px-6 py-4 text-[12px] font-black uppercase tracking-[0.18em] text-slate-950 transition-all hover:bg-cyan-200 disabled:opacity-60">{saving ? <Loader2 className="animate-spin" size={18} /> : <CalendarCheck size={18} />} Confirmar reserva</button>
+              </div>
+            )}
+          </form>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+const safeTimeLabel = (value) => {
+  if (!value) return '';
+  const [hour = '00', minute = '00'] = String(value).split(':');
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
 export default function App() {
   const getScopedActiveTabStorageKey = React.useCallback(
     (userId) => `${AUTH_RUNTIME_CACHE_KEY}:activeTab:${userId}`,
@@ -2760,6 +2937,12 @@ const [activeTab, setActiveTab] = useState('dashboard');
       setActiveTab(navItems[0]?.id || 'dashboard');
     }
   }, [activeTab, accessibleTabIds, navItems]);
+
+  const isPublicBookingRoute = typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/reservar';
+
+  if (isPublicBookingRoute) {
+    return <PublicBookingView />;
+  }
 
   if (authLoading) {
     return (

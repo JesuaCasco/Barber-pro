@@ -363,6 +363,11 @@ const toUiAppointment = (row) => ({
   barbershopId: row.barbershop_id || null,
   branchId: row.branch_id || null,
   clientId: row.client_id,
+  source: row.source || 'internal',
+  guestName: row.guest_name || '',
+  guestPhone: row.guest_phone || '',
+  claimsExistingClient: Boolean(row.claims_existing_client),
+  needsClientConfirmation: Boolean(row.needs_client_confirmation),
   barberId: row.barber_id,
   rawBarberId: row.raw_barber_id || row.barber_id,
   barberName: row.barber_name || '',
@@ -597,6 +602,11 @@ const toDbAppointment = (appointment, services = [], barbershopId, branchId = nu
     id: appointment.id,
     client_id: normalizedClientId,
     client_name: appointment.clientName || null,
+    source: appointment.source || 'internal',
+    guest_name: appointment.guestName || null,
+    guest_phone: appointment.guestPhone || null,
+    claims_existing_client: Boolean(appointment.claimsExistingClient),
+    needs_client_confirmation: Boolean(appointment.needsClientConfirmation),
     barber_id: normalizedBarberId,
     barber_name: appointment.barberName || matchedBarber?.name || null,
     service_id: normalizedServiceId,
@@ -2107,6 +2117,32 @@ export async function upsertAppointments(appointments, services, barbershopId = 
     .from('appointments')
     .upsert(payload, { onConflict: 'id' });
   if (error) throw normalizeError(error, 'No se pudo guardar la cita.');
+}
+
+export async function fetchPublicBookingSnapshot(fromDate, toDate) {
+  assertSupabase();
+  const { data, error } = await supabase.rpc('get_public_booking_snapshot', {
+    p_from: fromDate,
+    p_to: toDate,
+  });
+  if (error) throw normalizeError(error, 'No se pudo cargar la agenda publica.');
+  return data || {};
+}
+
+export async function createPublicBooking(payload) {
+  assertSupabase();
+  const { data, error } = await supabase.rpc('create_public_booking', {
+    p_service_id: payload.serviceId,
+    p_barber_id: payload.barberId,
+    p_appointment_date: payload.date,
+    p_appointment_time: payload.time,
+    p_guest_name: payload.guestName,
+    p_guest_phone: payload.guestPhone,
+    p_claims_existing_client: Boolean(payload.claimsExistingClient),
+    p_notes: payload.notes || null,
+  });
+  if (error) throw normalizeError(error, 'No pude guardar la reserva publica.');
+  return data || null;
 }
 
 export async function createPosSale(sale, currentUserId, scopeOverride = {}) {

@@ -3128,7 +3128,16 @@ const [activeTab, setActiveTab] = useState('dashboard');
   const handleUpdateStatus = async (id, status, extra = null) => {
     const apt = appointments.find(a => a.id === id);
     if (!apt) return;
+    const requiresWebClientConfirmation = isWebAppointment(apt)
+      && apt.needsClientConfirmation
+      && ['En Espera', 'En Corte', 'Finalizada'].includes(status);
 
+    if (requiresWebClientConfirmation) {
+      setSelectedData((prev) => ({ ...prev, appointment: apt }));
+      setModals((prev) => ({ ...prev, appointmentActions: false, appointment: true }));
+      notify('Primero confirma si la reserva web pertenece a un cliente existente o crea su ficha.', 'warning');
+      return;
+    }
     if (status === 'Finalizada' && !extra) {
       setSelectedData({ ...selectedData, finalize: apt });
       setModals({ ...modals, finalize: true });
@@ -3167,7 +3176,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
       updatedAppointment.startedAt = new Date().toISOString();
       if (!updatedAppointment.checkInAt) updatedAppointment.checkInAt = apt.createdAt;
     }
-
     if (status === 'Finalizada' && !updatedAppointment.finishedAt) {
       updatedAppointment.finishedAt = new Date().toISOString();
     }
@@ -3177,7 +3185,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }
 
     setAppointments(prev => prev.map(a => (a.id === id ? updatedAppointment : a)));
-
     if (status === 'Finalizada') {
       setModals({ ...modals, finalize: false });
     }
@@ -3192,7 +3199,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
         return;
       }
     }
-
     if (status === 'Finalizada' && apt.status !== 'Finalizada' && extra) {
       const appointmentClient = clientsForAppointmentSync.find((client) => String(client.id) === String(updatedAppointment.clientId || ''));
       const appointmentBarber = barbers.find((barber) => String(barber.id) === String(updatedAppointment.barberId || ''));
@@ -9084,6 +9090,7 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   const [skipClientData, setSkipClientData] = useState(initialIsGenericClient);
   const [showResults, setShowResults] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const isPendingWebClient = isWebAppointment(initial) && initial?.needsClientConfirmation;
   const [serviceSearch, setServiceSearch] = useState(initialServiceName);
   const [showServiceList, setShowServiceList] = useState(false);
   const [form, setForm] = useState({
@@ -9106,11 +9113,20 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     document.addEventListener("mousedown", handleClickOutside); 
     return () => document.removeEventListener("mousedown", handleClickOutside); 
   }, []);
-  const filteredClients = useMemo(() => { 
-    if (skipClientData || searchTerm.trim().length < 2 || selectedClient) return []; 
-    const phoneQuery = getPhoneDigits(searchTerm);
-    return (clients || []).filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (phoneQuery.length > 0 && getPhoneDigits(c.phone).includes(phoneQuery))); 
-  }, [searchTerm, clients, selectedClient, skipClientData]);
+  const filteredClients = useMemo(() => {
+    if (skipClientData || selectedClient) return [];
+    const nameQuery = searchTerm.trim().toLowerCase();
+    const phoneQueryFromSearch = getPhoneDigits(searchTerm);
+    const phoneQueryFromField = getPhoneDigits(phoneVal);
+    if (nameQuery.length < 2 && phoneQueryFromSearch.length < 2 && phoneQueryFromField.length < 2) return [];
+    return (clients || []).filter((client) => {
+      const clientName = String(client.name || '').toLowerCase();
+      const clientPhone = getPhoneDigits(client.phone || '');
+      return (nameQuery.length >= 2 && clientName.includes(nameQuery))
+        || (phoneQueryFromSearch.length >= 2 && clientPhone.includes(phoneQueryFromSearch))
+        || (phoneQueryFromField.length >= 2 && clientPhone.includes(phoneQueryFromField));
+    });
+  }, [searchTerm, phoneVal, clients, selectedClient, skipClientData]);
   const filteredServices = useMemo(
     () => (services || []).filter((service) => !isPromotionService(service) && service.name.toLowerCase().includes(serviceSearch.toLowerCase())),
     [services, serviceSearch],
@@ -9194,6 +9210,8 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
     } 
     
     if (!form.service) { setModalError("Por favor elige un servicio."); return; } 
+    if (isPendingWebClient && skipClientData) { setModalError("Esta reserva web necesita confirmar cliente antes de continuar."); return; }
+    if (!skipClientData && !selectedClient && filteredClients.length > 0) { setModalError("Selecciona una coincidencia existente o modifica los datos para crear un cliente nuevo."); return; }
     if (!skipClientData && (selectedClient || isNewClient) && phoneVal.trim() && !isValidPhoneNumber(phoneVal)) { setModalError("El celular debe tener exactamente 8 dígitos."); return; }
     if (!skipClientData && isNewClient && !phoneVal.trim()) { setModalError("Ingresa el número de celular del nuevo cliente."); return; }
     if (!skipClientData && isNewClient && duplicatePhoneClient) { setModalError(`Ese número ya está registrado con ${duplicatePhoneClient.name}.`); return; }
@@ -9220,6 +9238,17 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
         </div>
         <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 text-white">
           {modalError && <div className="bg-rose-500/10 border border-rose-500/30 p-3 rounded-2xl flex items-center gap-3 text-rose-500 text-[10px] font-black uppercase italic leading-none">{modalError}</div>}
+          {isPendingWebClient && (
+            <div className="rounded-2xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-cyan-100">
+              <p className="text-[10px] font-black uppercase italic tracking-[0.22em] text-cyan-300 leading-none">Reserva web pendiente de confirmar</p>
+              <p className="mt-2 text-[11px] font-bold text-cyan-50 leading-snug">
+                Busca por nombre o celular. Si ya existe, selecciona el cliente; si no existe, guarda la ficha nueva antes de iniciar el corte.
+              </p>
+              <p className="mt-2 text-[10px] font-black uppercase italic tracking-[0.12em] text-cyan-200 leading-tight">
+                {initialWebGuestName || 'Sin nombre'} {initialWebGuestPhone ? `- ${formatPhoneNumber(initialWebGuestPhone)}` : ''}
+              </p>
+            </div>
+          )}
           <div className="space-y-3 text-white">
             <label className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.2em] block leading-none">1. ELIGE BARBERO PROFESIONAL</label>
             {availableBarbers.length === 0 ? (
@@ -9259,7 +9288,12 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
                 )}
                 {showResults && !skipClientData && filteredClients.length > 0 && (
                   <div className="absolute top-full left-0 w-full bg-slate-900 border border-t-0 border-slate-700 rounded-b-[1.2rem] shadow-2xl z-50 overflow-hidden text-white">
-                    {filteredClients.map(c => (<div key={c.id} onClick={() => handleSelectClient(c)} className="flex items-center gap-4 p-4 hover:bg-indigo-600 cursor-pointer border-b border-slate-800 text-white"><span className="text-xs font-black uppercase italic text-white">{c.name}</span></div>))}
+                    {filteredClients.map(c => (
+                      <div key={c.id} onClick={() => handleSelectClient(c)} className="flex items-center justify-between gap-4 p-4 hover:bg-indigo-600 cursor-pointer border-b border-slate-800 text-white">
+                        <span className="text-xs font-black uppercase italic text-white">{c.name}</span>
+                        <span className="text-[10px] font-black uppercase italic text-cyan-200">{formatPhoneNumber(c.phone || '')}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {isNewClient && !selectedClient && (

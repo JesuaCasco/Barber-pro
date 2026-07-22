@@ -165,6 +165,16 @@ const accessUiFallback = (
 );
 
 const GENERIC_CLIENT_NAME = 'Cliente gen\u00e9rico';
+const isWebAppointment = (appointment) => appointment?.source === 'web' || Boolean(appointment?.needsClientConfirmation || appointment?.guestName || appointment?.guestPhone);
+const getAppointmentDisplayClientName = (appointment, client = null) => {
+  if (client?.name) return client.name;
+  if (isWebAppointment(appointment) && appointment?.guestName) return appointment.guestName;
+  return appointment?.clientName || GENERIC_CLIENT_NAME;
+};
+const getAppointmentClientMetaLabel = (appointment) => {
+  if (!isWebAppointment(appointment)) return '';
+  return appointment?.claimsExistingClient ? 'WEB - dice ser cliente' : 'WEB - cliente por confirmar';
+};
 const CASH_WITHDRAWAL_QUICK_AMOUNTS = [10, 20, 50, 100, 200, 300, 400, 500];
 
 const UiFeedbackContext = createContext({
@@ -3135,7 +3145,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
     const updatedAppointment = {
       ...apt,
       clientId: resolvedClientId,
-      clientName: apt.clientName || (!resolvedClientId ? GENERIC_CLIENT_NAME : undefined),
+      clientName: apt.clientName || (!resolvedClientId && !isWebAppointment(apt) ? GENERIC_CLIENT_NAME : undefined),
       status,
       service: extra ? extra.serviceName : apt.service,
       price: extra ? extra.price : apt.price,
@@ -3207,12 +3217,12 @@ const [activeTab, setActiveTab] = useState('dashboard');
           appointmentId: updatedAppointment.id,
           barberId: updatedAppointment.barberId || null,
           barberName: appointmentBarber?.name || updatedAppointment.barberName || '',
-          clientName: appointmentClient?.name || updatedAppointment.clientName || GENERIC_CLIENT_NAME,
+          clientName: getAppointmentDisplayClientName(updatedAppointment, appointmentClient),
         };
       };
       const serviceSaleRecord = await handleRegisterPosSale({
         clientId: updatedAppointment.clientId || null,
-        clientName: appointmentClient?.name || updatedAppointment.clientName || GENERIC_CLIENT_NAME,
+        clientName: getAppointmentDisplayClientName(updatedAppointment, appointmentClient),
         items: Array.isArray(extra.items) && extra.items.length
           ? extra.items.map(normalizeChargedItem)
           : [normalizeChargedItem({
@@ -3732,12 +3742,19 @@ const [activeTab, setActiveTab] = useState('dashboard');
       finalClientId = createdClient.id;
     }
 
+    const confirmsWebClient = Boolean(editingAppointment && isWebAppointment(editingAppointment) && !skipClientRegistration && finalClientId);
     const newApt = {
       ...(editingAppointment || {}),
       ...aptData,
       id: editingAppointment?.id || aptData.id || makeId(),
       clientId: finalClientId,
       clientName: skipClientRegistration ? GENERIC_CLIENT_NAME : undefined,
+      source: editingAppointment?.source || aptData.source || 'internal',
+      guestName: editingAppointment?.guestName || aptData.guestName || '',
+      guestPhone: editingAppointment?.guestPhone || aptData.guestPhone || '',
+      claimsExistingClient: editingAppointment?.claimsExistingClient || aptData.claimsExistingClient || false,
+      needsClientConfirmation: confirmsWebClient ? false : (editingAppointment?.needsClientConfirmation || aptData.needsClientConfirmation || false),
+      clientConfirmedAt: confirmsWebClient ? now : (editingAppointment?.clientConfirmedAt || aptData.clientConfirmedAt || null),
       type: aptData.type || editingAppointment?.type || 'reserva',
       durationMinutes: Number(aptData.durationMinutes) > 0 ? Number(aptData.durationMinutes) : 30,
       status: editingAppointment?.status || 'Confirmada',
@@ -5276,7 +5293,8 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
     return `${hour}:${minute} ${suffix}`;
   };
 
-  const getClientLabel = (appointment) => clientById.get(String(appointment.clientId))?.name || appointment.clientName || 'Cliente gen\u00e9rico';
+  const getClientLabel = (appointment) => getAppointmentDisplayClientName(appointment, clientById.get(String(appointment.clientId)));
+  const getClientMetaLabel = (appointment) => getAppointmentClientMetaLabel(appointment);
   const getBarber = (appointment) => barberById.get(String(appointment.barberId));
   const getMonthAppointmentLabel = (appointment) => {
     const clientLabel = getClientLabel(appointment);
@@ -5317,7 +5335,7 @@ function AgendaView({ viewDate, setViewDate, appointments, clients, barbers, onS
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-[10px] font-black uppercase italic text-white md:text-[11px]">{getClientLabel(appointment)}</p>
-            <p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-[9px]">{getAgendaServiceLabel(appointment.service)}</p>
+            <p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-[9px]">{getClientMetaLabel(appointment) || getAgendaServiceLabel(appointment.service)}</p>
           </div>
           <p className="shrink-0 text-[9px] font-black text-cyan-200 md:text-[10px]">{formatAgendaTime(appointment.time)}</p>
         </div>
@@ -8374,7 +8392,7 @@ function TransferAppointmentModal({ appointment, appointments, clients, barbers,
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Trasladar cita</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â- {appointment.time || '--:--'} Â- {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
+                {getAppointmentDisplayClientName(appointment, client)} - {appointment.time || '--:--'} - {normalizeFavoriteServiceName(appointment.service) || 'Servicio'}
               </p>
             </div>
           </div>
@@ -8504,7 +8522,7 @@ function RescheduleAppointmentModal({ appointment, appointments, clients, barber
             <div className="min-w-0">
               <h3 className="text-xl font-black uppercase italic tracking-tight text-white">Mover turno</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {client?.name || appointment.clientName || 'Cliente gen\u00e9rico'} Â- {barber?.name || 'Sin barbero'}
+                {getAppointmentDisplayClientName(appointment, client)} - {barber?.name || 'Sin barbero'}
               </p>
             </div>
           </div>
@@ -8607,9 +8625,9 @@ function AppointmentActionsModal({ appointment, clients, barbers, onClose, onUpd
               {barber?.avatar || '?'}
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}</h3>
+              <h3 className="truncate text-xl font-black uppercase italic tracking-tight text-white">{getAppointmentDisplayClientName(appointment, client)}</h3>
               <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                {appointment.time || '--:--'} Â- {normalizeFavoriteServiceName(appointment.service) || 'Servicio'} Â- {barber?.name || 'Sin barbero'}
+                {appointment.time || '--:--'} - {getAppointmentClientMetaLabel(appointment) || normalizeFavoriteServiceName(appointment.service) || 'Servicio'} - {barber?.name || 'Sin barbero'}
               </p>
             </div>
           </div>
@@ -9058,8 +9076,10 @@ function AppointmentModal({ onClose, onSave, services, clients, barbers, initial
   const initialClient = initial?.client || (initial?.clientId ? (clients || []).find((client) => String(client.id) === String(initial.clientId)) : null);
   const initialIsGenericClient = !initialClient && (initial?.clientName === GENERIC_CLIENT_NAME || initial?.clientId === null);
   const initialServiceName = initial?.service || '';
-  const [searchTerm, setSearchTerm] = useState(initialClient?.name || '');
-  const [phoneVal, setPhoneVal] = useState(formatPhoneNumber(initialClient?.phone || ''));
+  const initialWebGuestName = isWebAppointment(initial) ? (initial?.guestName || '') : '';
+  const initialWebGuestPhone = isWebAppointment(initial) ? (initial?.guestPhone || '') : '';
+  const [searchTerm, setSearchTerm] = useState(initialClient?.name || initialWebGuestName || '');
+  const [phoneVal, setPhoneVal] = useState(formatPhoneNumber(initialClient?.phone || initialWebGuestPhone || ''));
   const [selectedClient, setSelectedClient] = useState(initialClient || null);
   const [skipClientData, setSkipClientData] = useState(initialIsGenericClient);
   const [showResults, setShowResults] = useState(false);

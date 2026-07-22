@@ -36,6 +36,17 @@ import {
 } from './shared';
 import { DelayTimer, ServiceTimer, WaitTimer } from './sharedComponents';
 
+const GENERIC_CLIENT_NAME = 'Cliente generico';
+const isWebAppointment = (appointment) => appointment?.source === 'web' || Boolean(appointment?.needsClientConfirmation || appointment?.guestName || appointment?.guestPhone);
+const getAppointmentDisplayClientName = (appointment, client = null) => {
+  if (client?.name) return client.name;
+  if (isWebAppointment(appointment) && appointment?.guestName) return appointment.guestName;
+  return appointment?.clientName || GENERIC_CLIENT_NAME;
+};
+const getAppointmentClientMetaLabel = (appointment) => {
+  if (!isWebAppointment(appointment)) return '';
+  return appointment?.claimsExistingClient ? 'WEB - dice ser cliente' : 'WEB - cliente por confirmar';
+};
 const ProductCard = memo(function ProductCard({ service, onAdd }) {
   const categoryTheme = {
     Producto: {
@@ -320,11 +331,11 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
                         <div className="flex min-w-0 flex-1 flex-col justify-center">
                           <div className="min-w-0">
                             <p className="text-[16px] font-black uppercase italic text-white tracking-normal leading-tight group-hover:text-indigo-400 transition-colors whitespace-nowrap">
-                              {index + 1}-{client?.name || appointment.clientName || 'Cliente gen\u00e9rico'}
+                              {index + 1}-{getAppointmentDisplayClientName(appointment, client)}
                             </p>
                           </div>
                           <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-                            <span className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-full border ${getTypeColor(appointment)} text-white`}>{getTypeLabel(appointment)}</span>
+                            <span className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-full border ${isWebAppointment(appointment) ? 'bg-cyan-500 border-cyan-300' : getTypeColor(appointment)} text-white`}>{getAppointmentClientMetaLabel(appointment) || getTypeLabel(appointment)}</span>
                             <span className="min-w-0 text-[9px] text-slate-500 font-black uppercase italic tracking-widest leading-tight break-words">- {barber?.name || 'Sin barbero'}</span>
                           </div>
                         </div>
@@ -365,10 +376,10 @@ export function DashboardView({ appointments, clients, onUpdate, onOpenAppointme
               const activityClient = clients.find((item) => item.id === activity.clientId);
               return (
                 <div key={activity.id} className="bg-black/50 border border-white/5 p-4 rounded-2xl flex items-center gap-4 group text-white">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black italic border border-white/10 ${activity.status === 'Finalizada' ? 'bg-emerald-500/20 text-emerald-400' : (activity.status === 'En Corte' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400')}`}>{activityClient?.name?.[0] || '?'}</div>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black italic border border-white/10 ${activity.status === 'Finalizada' ? 'bg-emerald-500/20 text-emerald-400' : (activity.status === 'En Corte' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400')}`}>{getAppointmentDisplayClientName(activity, activityClient)?.[0] || '?'}</div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{activityClient?.name || activity.clientName || 'Cliente gen\u00e9rico'}</p>
-                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 leading-none">{activity.status} - {activity.service || 'Servicio'}</p>
+                    <p className="text-[10px] font-black uppercase text-white truncate leading-none">{getAppointmentDisplayClientName(activity, activityClient)}</p>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 leading-none">{getAppointmentClientMetaLabel(activity) || activity.status} - {activity.service || 'Servicio'}</p>
                   </div>
                   <span className="text-[8px] font-black text-slate-600 uppercase italic whitespace-nowrap">{new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>

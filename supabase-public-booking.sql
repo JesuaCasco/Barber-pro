@@ -6,7 +6,8 @@ alter table public.appointments
   add column if not exists guest_name text,
   add column if not exists guest_phone text,
   add column if not exists claims_existing_client boolean not null default false,
-  add column if not exists needs_client_confirmation boolean not null default false;
+  add column if not exists needs_client_confirmation boolean not null default false,
+  add column if not exists client_confirmed_at timestamptz;
 
 alter table public.appointments
   alter column client_id drop not null;
@@ -205,7 +206,7 @@ begin
     v_barbershop_id,
     v_branch_id,
     null,
-    trim(p_guest_name),
+    null,
     trim(p_guest_name),
     trim(p_guest_phone),
     coalesce(p_claims_existing_client, false),

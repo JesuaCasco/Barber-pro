@@ -67,7 +67,8 @@ begin
         from public.services
         where coalesce(is_active, true) = true
           and (barbershop_id = v_barbershop_id or barbershop_id is null)
-          and category <> 'Producto'
+          and category not in ('Producto', 'Promocion', 'Promociones')
+          and lower(coalesce(name, '')) not like 'descuento%'
       ) service
     ), '[]'::jsonb),
     'barbers', coalesce((

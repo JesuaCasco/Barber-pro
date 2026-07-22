@@ -1649,7 +1649,11 @@ function PublicBookingView() {
       try {
         const data = await fetchPublicBookingSnapshot(today, maxDate);
         if (cancelled) return;
-        const services = Array.isArray(data.services) ? data.services : [];
+        const services = (Array.isArray(data.services) ? data.services : []).filter((service) => {
+          const category = String(service?.category || '').toLowerCase();
+          const name = String(service?.name || '').toLowerCase();
+          return category !== 'producto' && category !== 'promocion' && category !== 'promociones' && !name.startsWith('descuento');
+        });
         const barbers = Array.isArray(data.barbers) ? data.barbers : [];
         setSnapshot({
           barbershop: data.barbershop || null,

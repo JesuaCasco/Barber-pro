@@ -1698,6 +1698,14 @@ function PublicBookingView() {
     return `${hour}:${String(Number.isFinite(minuteRaw) ? minuteRaw : 0).padStart(2, '0')} ${suffix}`;
   };
 
+  const formatGuestDisplayName = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -1705,6 +1713,7 @@ function PublicBookingView() {
       setError('Completa servicio, barbero, fecha, hora, nombre y telefono.');
       return;
     }
+    const guestDisplayName = formatGuestDisplayName(form.guestName);
     setSaving(true);
     try {
       await createPublicBooking({
@@ -1712,13 +1721,13 @@ function PublicBookingView() {
         barberId: form.barberId,
         date: form.date,
         time: form.time,
-        guestName: form.guestName.trim(),
+        guestName: guestDisplayName,
         guestPhone: formatPhoneNumber(form.guestPhone),
         claimsExistingClient: form.claimsExistingClient,
         notes: 'Reserva creada desde plataforma publica.',
       });
       setSuccess({
-        name: form.guestName.trim(),
+        name: guestDisplayName,
         date: form.date,
         time: form.time,
         service: selectedService?.name || 'Servicio',
@@ -1783,7 +1792,7 @@ function PublicBookingView() {
             <section className="max-w-3xl border-y border-cyan-300/15 py-12">
               <CheckCircle2 className="text-cyan-300" size={56} />
               <h1 className="mt-5 text-5xl font-black uppercase italic tracking-tight text-white md:text-6xl">Reserva recibida</h1>
-              <p className="mt-5 max-w-xl text-lg font-bold leading-8 text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
+              <p className="mt-5 max-w-xl text-lg font-bold leading-8 text-slate-300"><span className="font-black text-white">{success.name}</span>, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
               <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{success.service} con {success.barber}</p>
               <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false, notes: '' })); }} className="mt-10 border-b border-cyan-300 pb-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">Hacer otra reserva</button>
             </section>

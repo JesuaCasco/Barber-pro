@@ -1624,6 +1624,7 @@ function PublicBookingView() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
+  const [publicPicker, setPublicPicker] = useState(null);
   const [snapshot, setSnapshot] = useState({ barbershop: null, branch: null, services: [], barbers: [], appointments: [] });
   const [form, setForm] = useState({
     serviceId: '',
@@ -1728,150 +1729,142 @@ function PublicBookingView() {
     }
   };
 
+
   const canSubmit = Boolean(form.serviceId && form.barberId && form.date && form.time && form.guestName.trim() && form.guestPhone.trim());
   const selectedDateLabel = (() => {
     if (!form.date) return '';
     const parsed = new Date(`${form.date}T12:00:00`);
     return parsed.toLocaleDateString('es-NI', { weekday: 'long', day: 'numeric', month: 'long' });
   })();
+  const FieldButton = ({ label, value, placeholder, onClick }) => (
+    <button type="button" onClick={onClick} className="group w-full border-b border-white/20 pb-5 text-left transition-colors hover:border-cyan-300/60">
+      <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">{label}</span>
+      <span className={`mt-5 flex items-center justify-between gap-4 text-xl font-semibold uppercase tracking-wide ${value ? 'text-white' : 'text-slate-500'}`}>
+        <span className="line-clamp-1">{value || placeholder}</span>
+        <ChevronDown size={20} className="shrink-0 text-slate-500 transition-colors group-hover:text-cyan-300" />
+      </span>
+    </button>
+  );
+
+  const pickerTitle = publicPicker === 'service'
+    ? 'Selecciona un servicio'
+    : publicPicker === 'barber'
+      ? 'Selecciona un barbero'
+      : publicPicker === 'time'
+        ? 'Selecciona una hora'
+        : '';
 
   return (
-    <div className="min-h-screen bg-[#020714] text-white">
+    <div className="min-h-screen bg-[#1f2427] text-[#eef6f7]">
       <style>{styleTag}</style>
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 md:px-7 md:py-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-[1.5rem] border border-cyan-300/15 bg-black/75 px-5 py-4 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
-          <div className="flex items-center gap-3">
-            <img src="/barberpro-logo-ui.png" alt="BarberPro" className="h-11 w-11 object-contain" />
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Reserva online</p>
-              <h1 className="text-2xl font-black italic leading-none tracking-tight text-white md:text-3xl">{snapshot.barbershop?.name || 'BarberPro'}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">
-            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-cyan-100">{snapshot.branch?.name || 'Sucursal principal'}</span>
-            <span className="hidden rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-emerald-100 sm:inline-flex">Confirmacion en recepcion</span>
-          </div>
-        </header>
-
-        <main className="flex-1 py-4">
-          <form onSubmit={handleSubmit} className="grid min-h-[calc(100vh-7.5rem)] overflow-hidden rounded-[1.75rem] border border-cyan-300/15 bg-slate-950 shadow-[0_24px_90px_rgba(0,0,0,0.52)] lg:grid-cols-[1.05fr_0.95fr]">
-            {loading ? (
-              <div className="col-span-full flex min-h-[34rem] flex-col items-center justify-center gap-4 text-slate-400">
-                <Loader2 className="animate-spin text-cyan-300" size={42} />
-                <p className="text-[11px] font-black uppercase tracking-[0.18em]">Cargando disponibilidad</p>
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-8 md:px-10">
+        <main className="w-full">
+          <header className="mb-10 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <img src="/barberpro-logo-ui.png" alt="BarberPro" className="h-12 w-12 object-contain" />
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">Reservaciones</p>
+                <p className="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-400">{snapshot.barbershop?.name || 'BarberPro'}</p>
               </div>
-            ) : success ? (
-              <div className="col-span-full flex min-h-[34rem] items-center justify-center p-6">
-                <div className="w-full max-w-xl rounded-[1.5rem] border border-emerald-400/25 bg-emerald-400/10 p-8 text-center">
-                  <CheckCircle2 className="mx-auto text-emerald-300" size={58} />
-                  <h3 className="mt-4 text-3xl font-black uppercase italic text-white">Reserva recibida</h3>
-                  <p className="mt-3 text-sm font-bold leading-6 text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
-                  <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">{success.service} con {success.barber}</p>
-                  <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false })); }} className="mt-8 rounded-2xl bg-cyan-300 px-6 py-4 text-[11px] font-black uppercase tracking-[0.16em] text-slate-950">Hacer otra reserva</button>
+            </div>
+            <span className="hidden rounded-full border border-cyan-300/20 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200 sm:inline-flex">{snapshot.branch?.name || 'Sucursal principal'}</span>
+          </header>
+
+          {loading ? (
+            <section className="flex min-h-[28rem] flex-col items-center justify-center gap-4 border-y border-white/10 text-slate-400">
+              <Loader2 className="animate-spin text-cyan-300" size={42} />
+              <p className="text-[11px] font-black uppercase tracking-[0.22em]">Cargando disponibilidad</p>
+            </section>
+          ) : success ? (
+            <section className="max-w-3xl border-y border-white/10 py-12">
+              <CheckCircle2 className="text-cyan-300" size={56} />
+              <h1 className="mt-5 font-serif text-5xl font-black tracking-tight text-white md:text-6xl">Reserva recibida</h1>
+              <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-300">{success.name}, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
+              <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{success.service} con {success.barber}</p>
+              <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false, notes: '' })); }} className="mt-10 border-b border-cyan-300 pb-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">Hacer otra reserva</button>
+            </section>
+          ) : (
+            <form onSubmit={handleSubmit} className="max-w-4xl">
+              <p className="text-[12px] font-black uppercase tracking-[0.28em] text-slate-300">Reserva online</p>
+              <h1 className="mt-6 font-serif text-5xl font-black tracking-tight text-white md:text-6xl">Agenda tu corte</h1>
+              <p className="mt-5 max-w-2xl text-sm font-semibold leading-7 text-slate-400">Completa tus datos y elige servicio, barbero y horario disponible.</p>
+
+              {error && <div className="mt-8 border border-rose-400/30 bg-rose-500/10 px-5 py-4 text-sm font-bold text-rose-100">{error}</div>}
+
+              <div className="mt-12 grid gap-x-12 gap-y-10 md:grid-cols-2">
+                <label className="block border-b border-white/20 pb-5">
+                  <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Nombre completo</span>
+                  <input value={form.guestName} onChange={(event) => setForm((prev) => ({ ...prev, guestName: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Carlos Mendoza" />
+                </label>
+
+                <label className="block border-b border-white/20 pb-5">
+                  <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">WhatsApp</span>
+                  <input value={form.guestPhone} onChange={(event) => setForm((prev) => ({ ...prev, guestPhone: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="+505 8888 8888" />
+                </label>
+
+                <FieldButton label="Servicio" value={selectedService ? `${selectedService.name} - C$ ${Number(selectedService.price || 0).toLocaleString()}` : ''} placeholder="Selecciona un servicio" onClick={() => setPublicPicker('service')} />
+                <FieldButton label="Barbero" value={selectedBarber?.name || ''} placeholder="Selecciona un barbero" onClick={() => setPublicPicker('barber')} />
+
+                <label className="block border-b border-white/20 pb-5">
+                  <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Fecha preferida</span>
+                  <input type="date" min={today} max={maxDate} value={form.date} onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value, time: '' }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none [color-scheme:dark]" />
+                </label>
+
+                <FieldButton label="Hora preferida" value={form.time ? formatPublicTime(form.time) : ''} placeholder="Seleccionar hora" onClick={() => setPublicPicker('time')} />
+
+                <label className="block border-b border-white/20 pb-5 md:col-span-2">
+                  <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Notas adicionales (opcional)</span>
+                  <input value={form.notes || ''} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} className="mt-5 w-full bg-transparent text-xl font-semibold uppercase tracking-wide text-white outline-none placeholder:text-slate-500" placeholder="Algun requerimiento especial?" />
+                </label>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-5 border-b border-white/20 pb-8 md:flex-row md:items-center md:justify-between">
+                <label className="flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">
+                  <input type="checkbox" checked={form.claimsExistingClient} onChange={(event) => setForm((prev) => ({ ...prev, claimsExistingClient: event.target.checked }))} className="h-4 w-4 accent-cyan-300" />
+                  Ya soy cliente de esta barberia
+                </label>
+                <div className="text-sm font-bold text-slate-400 md:text-right">
+                  <p className="capitalize text-cyan-200">{selectedDateLabel || 'Selecciona una fecha'}</p>
+                  <p>{selectedService?.name || 'Servicio'} {form.time ? `· ${formatPublicTime(form.time)}` : ''}</p>
                 </div>
               </div>
-            ) : (
-              <>
-                <section className="border-b border-cyan-300/15 bg-[#050b1a] p-4 md:p-6 lg:border-b-0 lg:border-r">
-                  <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Elige tu cita</p>
-                      <h2 className="mt-1 text-3xl font-black uppercase italic tracking-tight text-white md:text-4xl">Reserva facil</h2>
-                    </div>
-                    <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-right">
-                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200">Disponible</p>
-                      <p className="text-lg font-black text-white">{availableTimes.length} horas</p>
-                    </div>
-                  </div>
 
-                  {error && <div className="mb-4 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-100">{error}</div>}
-
-                  <div className="space-y-5">
-                    <div>
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">1. Servicio</span>
-                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">{snapshot.services.length} opciones</span>
-                      </div>
-                      <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                        {snapshot.services.map((service) => {
-                          const active = String(form.serviceId) === String(service.id);
-                          return (
-                            <button key={service.id} type="button" onClick={() => setForm((prev) => ({ ...prev, serviceId: service.id }))} className={`rounded-2xl border p-4 text-left transition-all ${active ? 'border-cyan-300 bg-cyan-300 text-slate-950 shadow-[0_0_24px_rgba(77,225,255,0.25)]' : 'border-slate-700 bg-black/55 text-white hover:border-cyan-300/60'}`}>
-                              <p className="line-clamp-1 text-sm font-black uppercase italic">{service.name}</p>
-                              <p className={`mt-2 text-lg font-black ${active ? 'text-slate-950' : 'text-emerald-300'}`}>C$ {Number(service.price || 0).toLocaleString()}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">2. Barbero</span>
-                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">{snapshot.barbers.length} disponibles</span>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {snapshot.barbers.map((barber) => {
-                          const active = String(form.barberId) === String(barber.id);
-                          const initials = String(barber.name || 'BP').split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'BP';
-                          return (
-                            <button key={barber.id} type="button" onClick={() => setForm((prev) => ({ ...prev, barberId: barber.id, time: '' }))} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${active ? 'border-emerald-300 bg-emerald-300/15' : 'border-slate-700 bg-black/55 hover:border-emerald-300/50'}`}>
-                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-black text-white" style={{ background: barber.color || barber.bg || '#4de1ff' }}>{initials}</span>
-                              <span className="min-w-0">
-                                <span className="block truncate text-sm font-black uppercase italic text-white">{barber.name}</span>
-                                <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Seleccionar</span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="flex flex-col bg-slate-900/90 p-4 md:p-6">
-                  <div className="grid gap-4 sm:grid-cols-[0.95fr_1.05fr]">
-                    <label className="block">
-                      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">3. Fecha</span>
-                      <input type="date" min={today} max={maxDate} value={form.date} onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value, time: '' }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" />
-                    </label>
-                    <div className="rounded-2xl border border-slate-700 bg-black/60 px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Resumen</p>
-                      <p className="mt-1 line-clamp-1 text-sm font-black uppercase italic text-white">{selectedService?.name || 'Servicio'}</p>
-                      <p className="mt-1 text-xs font-bold capitalize text-cyan-200">{selectedDateLabel || 'Selecciona fecha'}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex-1 rounded-[1.35rem] border border-slate-700 bg-black/45 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">4. Hora disponible</span>
-                      {form.time && <span className="rounded-full bg-cyan-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-950">{formatPublicTime(form.time)}</span>}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {availableTimes.map((time) => <button key={time} type="button" onClick={() => setForm((prev) => ({ ...prev, time }))} className={`rounded-xl border px-3 py-3 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${form.time === time ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-cyan-300/50 hover:text-white'}`}>{formatPublicTime(time)}</button>)}
-                    </div>
-                    {availableTimes.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-center text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">No hay horarios disponibles ese dia.</p>}
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">5. Nombre</span><input value={form.guestName} onChange={(event) => setForm((prev) => ({ ...prev, guestName: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Tu nombre" /></label>
-                    <label className="block"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Telefono</span><input value={form.guestPhone} onChange={(event) => setForm((prev) => ({ ...prev, guestPhone: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Ej. 7731-3217" /></label>
-                  </div>
-
-                  <label className="mt-3 flex items-center gap-3 rounded-2xl border border-cyan-300/20 bg-black/70 px-4 py-3">
-                    <input type="checkbox" checked={form.claimsExistingClient} onChange={(event) => setForm((prev) => ({ ...prev, claimsExistingClient: event.target.checked }))} className="h-4 w-4 accent-cyan-300" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-200">Ya soy cliente de esta barberia</span>
-                  </label>
-
-                  <button type="submit" disabled={saving || !canSubmit} className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-300 px-6 py-4 text-[12px] font-black uppercase tracking-[0.18em] text-slate-950 transition-all hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
-                    {saving ? <Loader2 className="animate-spin" size={18} /> : <CalendarCheck size={18} />} Confirmar reserva
-                  </button>
-                </section>
-              </>
-            )}
-          </form>
+              <button type="submit" disabled={saving || !canSubmit} className="mt-8 inline-flex min-w-64 items-center justify-center gap-3 border border-cyan-300 bg-cyan-300 px-8 py-4 text-[12px] font-black uppercase tracking-[0.2em] text-slate-950 transition-all hover:bg-cyan-200 disabled:cursor-not-allowed disabled:border-slate-600 disabled:bg-transparent disabled:text-slate-500">
+                {saving ? <Loader2 className="animate-spin" size={18} /> : <CalendarCheck size={18} />} Confirmar reserva
+              </button>
+            </form>
+          )}
         </main>
       </div>
+
+      {publicPicker && !loading && !success && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md" onClick={() => setPublicPicker(null)}>
+          <section className="w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-cyan-300/20 bg-[#1f2427] shadow-[0_30px_90px_rgba(0,0,0,0.6)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Reservacion</p>
+                <h2 className="mt-1 text-2xl font-black italic text-white">{pickerTitle}</h2>
+              </div>
+              <button type="button" onClick={() => setPublicPicker(null)} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-slate-300 hover:border-cyan-300 hover:text-cyan-200"><X size={20} /></button>
+            </div>
+
+            <div className="max-h-[68vh] overflow-y-auto p-4">
+              {publicPicker === 'service' && <div className="grid gap-3 sm:grid-cols-2">{snapshot.services.map((service) => {
+                const active = String(form.serviceId) === String(service.id);
+                return <button key={service.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, serviceId: service.id })); setPublicPicker(null); }} className={`border p-4 text-left transition-all ${active ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 bg-black/30 text-white hover:border-cyan-300/60'}`}><p className="text-sm font-black uppercase italic">{service.name}</p><p className={`mt-2 text-lg font-black ${active ? 'text-slate-950' : 'text-emerald-300'}`}>C$ {Number(service.price || 0).toLocaleString()}</p></button>;
+              })}</div>}
+
+              {publicPicker === 'barber' && <div className="grid gap-3 sm:grid-cols-2">{snapshot.barbers.map((barber) => {
+                const active = String(form.barberId) === String(barber.id);
+                const initials = String(barber.name || 'BP').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'BP';
+                return <button key={barber.id} type="button" onClick={() => { setForm((prev) => ({ ...prev, barberId: barber.id, time: '' })); setPublicPicker(null); }} className={`flex items-center gap-3 border p-4 text-left transition-all ${active ? 'border-emerald-300 bg-emerald-300/15' : 'border-white/15 bg-black/30 hover:border-emerald-300/60'}`}><span className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: barber.color || barber.bg || '#4de1ff' }}>{initials}</span><span><span className="block text-sm font-black uppercase italic text-white">{barber.name}</span><span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Barbero disponible</span></span></button>;
+              })}</div>}
+
+              {publicPicker === 'time' && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{availableTimes.map((time) => <button key={time} type="button" onClick={() => { setForm((prev) => ({ ...prev, time })); setPublicPicker(null); }} className={`border px-4 py-4 text-sm font-black uppercase tracking-[0.1em] transition-all ${form.time === time ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 bg-black/30 text-white hover:border-cyan-300/60'}`}>{formatPublicTime(time)}</button>)}{availableTimes.length === 0 && <p className="col-span-full border border-dashed border-white/15 p-5 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">No hay horarios disponibles ese dia.</p>}</div>}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

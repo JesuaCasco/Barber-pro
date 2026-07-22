@@ -1804,7 +1804,7 @@ function PublicBookingView() {
               <h1 className="mt-5 text-5xl font-black uppercase italic tracking-tight text-white md:text-6xl">Reserva recibida</h1>
               <p className="mt-5 max-w-xl text-lg font-bold leading-8 text-slate-300"><span className="font-black text-white">{success.name}</span>, te esperamos el {success.date} a las {formatPublicTime(success.time)}.</p>
               <p className="mt-3 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{success.service} con {success.barber}</p>
-              <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false, notes: '' })); }} className="mt-10 border-b border-cyan-300 pb-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">Hacer otra reserva</button>
+              <button type="button" onClick={() => { setSuccess(null); setForm((prev) => ({ ...prev, time: '', guestName: '', guestPhone: '', claimsExistingClient: false, notes: '' })); }} className="group mt-10 inline-flex items-center justify-center gap-3 rounded-full border border-cyan-300/50 bg-cyan-300 px-7 py-4 text-[12px] font-black uppercase tracking-[0.18em] text-slate-950 shadow-[0_0_28px_rgba(103,232,249,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_0_42px_rgba(103,232,249,0.42)] focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:ring-offset-2 focus:ring-offset-slate-950 animate-pulse">Hacer otra reserva<span className="transition-transform duration-300 group-hover:translate-x-1">?</span></button>
             </section>
           ) : (
             <form onSubmit={handleSubmit} className="max-w-4xl">

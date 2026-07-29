@@ -23,6 +23,7 @@ import {
   openCashSession,
   resetManagedUserPassword,
   replaceUserRoles,
+  registerInventoryRestock,
   syncServiceComboItems,
   syncServiceInventoryUsage,
   upsertBarbershopCatalog,
@@ -1970,6 +1971,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
     ];
   });
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [inventoryMovements, setInventoryMovements] = useState([]);
   const [catalogSettings, setCatalogSettings] = useState({
     serviceCategories: CATEGORIES,
     inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
@@ -2347,6 +2349,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
           setCashSessions(snapshot.cashSessions || []);
           setCashMovements(snapshot.cashMovements || []);
           setInventoryItems(snapshot.inventoryItems || []);
+          setInventoryMovements(snapshot.inventoryMovements || []);
           setCatalogSettings({
             serviceCategories: snapshot.catalogs?.serviceCategories?.length ? snapshot.catalogs.serviceCategories : CATEGORIES,
             inventoryProductCategories: snapshot.catalogs?.inventoryProductCategories?.length ? snapshot.catalogs.inventoryProductCategories : INVENTORY_PRODUCT_CATEGORIES,
@@ -2357,6 +2360,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
             ...(snapshot.posSalesLoadError ? [snapshot.posSalesLoadError] : []),
             ...(snapshot.cashLoadError ? [snapshot.cashLoadError] : []),
             ...(snapshot.inventoryLoadError ? [snapshot.inventoryLoadError] : []),
+            ...(snapshot.inventoryMovementsLoadError ? [snapshot.inventoryMovementsLoadError] : []),
             ...(snapshot.payrollLoadWarnings || []),
           ]);
           if (snapshot.posSalesLoadError) {
@@ -4103,6 +4107,37 @@ const [activeTab, setActiveTab] = useState('dashboard');
     }
   };
 
+  const handleRestockInventoryProduct = async (payload = {}) => {
+    const quantity = Number(payload.quantity || 0);
+    if (!payload.inventoryItemId) {
+      notify('Selecciona un producto para rellenar inventario.', 'warning');
+      return false;
+    }
+    if (quantity <= 0) {
+      notify('La cantidad de relleno debe ser mayor a cero.', 'warning');
+      return false;
+    }
+    if (!hasSupabaseConfig || !bootstrapCompletedRef.current || !session?.user?.id) {
+      notify('No puedo registrar rellenos sin conexion activa a Supabase.', 'error');
+      return false;
+    }
+
+    try {
+      const result = await registerInventoryRestock(payload, session.user.id, superAdminScopeOverride);
+      if (result?.item) {
+        setInventoryItems((prev) => prev.map((item) => String(item.id) === String(result.item.id) ? result.item : item));
+      }
+      if (result?.movement) {
+        setInventoryMovements((prev) => [result.movement, ...prev].slice(0, 300));
+      }
+      notify('Relleno de inventario registrado.', 'success');
+      return true;
+    } catch (error) {
+      handleSyncError(error, 'No pude registrar el relleno de inventario en Supabase.');
+      return false;
+    }
+  };
+
   const handleDeleteInventoryProduct = async (productId) => {
     const confirmed = await confirmAction({
       title: 'Desactivar producto',
@@ -4996,10 +5031,12 @@ const [activeTab, setActiveTab] = useState('dashboard');
             >
               <InventoryView
                 inventoryItems={inventoryItems}
+                inventoryMovements={inventoryMovements}
                 productCategories={catalogSettings.inventoryProductCategories}
                 onSaveCatalog={(values) => handleSaveCatalogSettings('inventory_product_categories', values)}
                 onGoToProducts={() => setActiveTab('services')}
                 onSaveProduct={handleSaveInventoryProduct}
+                onRestockProduct={handleRestockInventoryProduct}
                 onDeleteProduct={handleDeleteInventoryProduct}
               />
             </AppSectionErrorBoundary>
@@ -5890,7 +5927,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
   );
 }
 
-function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PRODUCT_CATEGORIES, onSaveCatalog, onGoToProducts, onSaveProduct, onDeleteProduct }) {
+function InventoryView({ inventoryItems = [], inventoryMovements = [], productCategories = INVENTORY_PRODUCT_CATEGORIES, onSaveCatalog, onGoToProducts, onSaveProduct, onRestockProduct, onDeleteProduct }) {
   const emptyForm = {
     productName: '',
     productCategory: 'Reventa',
@@ -5913,6 +5950,10 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [restockProduct, setRestockProduct] = useState(null);
+  const [restockForm, setRestockForm] = useState({ quantity: '', unitCost: '', notes: '' });
+  const [movementSearch, setMovementSearch] = useState('');
   const visibleProductCategories = useMemo(() => {
     const source = Array.isArray(productCategories) && productCategories.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES;
     const normalized = source
@@ -6068,6 +6109,49 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
 
   const getUsageLabel = (usageType) => usageOptions.find((option) => option.value === usageType)?.label || 'Reventa';
   const getMargin = (item) => Number(item.salePrice || 0) - Number(item.costPrice || 0);
+  const safeInventoryMovements = useMemo(() => Array.isArray(inventoryMovements) ? inventoryMovements : [], [inventoryMovements]);
+  const itemNameById = useMemo(() => new Map(activeItems.map((item) => [String(item.id), item.productName || item.name || 'Producto'])), [activeItems]);
+  const filteredMovements = useMemo(() => {
+    try {
+      const term = movementSearch.trim().toLowerCase();
+      return safeInventoryMovements.filter((movement) => {
+        const productName = itemNameById.get(String(movement.inventoryItemId || '')) || '';
+        if (!term) return true;
+        return [productName, movement.reason, movement.notes, movement.movementType, movement.referenceType]
+          .some((value) => String(value || '').toLowerCase().includes(term));
+      }).slice(0, 80);
+    } catch (error) {
+      console.warn('No se pudieron filtrar movimientos de inventario:', error);
+      return [];
+    }
+  }, [safeInventoryMovements, movementSearch, itemNameById]);
+  const formatMovementDate = (value) => {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return 'Sin fecha';
+    return date.toLocaleString('es-NI', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+  const openRestockModal = (product) => {
+    setRestockProduct(product);
+    setRestockForm({ quantity: '', unitCost: product?.costPrice ?? '', notes: '' });
+    setIsRestockModalOpen(true);
+  };
+  const closeRestockModal = () => {
+    setIsRestockModalOpen(false);
+    setRestockProduct(null);
+    setRestockForm({ quantity: '', unitCost: '', notes: '' });
+  };
+  const submitRestock = async (event) => {
+    event.preventDefault();
+    const ok = await onRestockProduct?.({
+      inventoryItemId: restockProduct?.id,
+      barbershopId: restockProduct?.barbershopId || null,
+      branchId: restockProduct?.branchId ?? null,
+      quantity: Number(restockForm.quantity || 0),
+      unitCost: restockForm.unitCost,
+      notes: restockForm.notes,
+    });
+    if (ok !== false) closeRestockModal();
+  };
 
   return (
     <div className="p-4 md:p-10 space-y-6 md:space-y-8 h-full animate-in fade-in text-white no-print">
@@ -6173,6 +6257,9 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
                         <p className="text-sm font-black italic text-slate-400">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
                         <p className="text-sm font-black italic text-emerald-300">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
                         <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => openRestockModal(item)} className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[9px] font-black uppercase text-emerald-300 hover:bg-emerald-400/15">
+                            Rellenar
+                          </button>
                           <button type="button" onClick={() => openEditProduct(item)} className="rounded-xl border border-cyan-400/30 px-3 py-2 text-[9px] font-black uppercase text-cyan-300 hover:bg-slate-800">
                             Editar
                           </button>
@@ -6195,6 +6282,82 @@ function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PROD
           )}
         </section>
       </section>
+
+      <section className="rounded-[2rem] border border-cyan-400/25 bg-slate-950 overflow-hidden shadow-[0_18px_44px_rgba(34,211,238,0.08)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 px-5 md:px-7 py-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Movimientos</p>
+            <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Kardex operativo</h4>
+          </div>
+          <div className="relative w-full md:w-[360px]">
+            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar movimiento..." />
+          </div>
+        </div>
+        {filteredMovements.length > 0 ? (
+          <div className="overflow-x-auto custom-scrollbar">
+            <div className="min-w-[920px] divide-y divide-slate-800">
+              {filteredMovements.map((movement) => {
+                const isOut = movement.movementType === 'out';
+                const productName = itemNameById.get(String(movement.inventoryItemId || '')) || 'Producto no encontrado';
+                return (
+                  <div key={movement.id} className="grid grid-cols-[130px_minmax(220px,1fr)_140px_120px_minmax(180px,1fr)] gap-4 px-6 py-4 items-center text-xs">
+                    <span className="font-black uppercase text-slate-400">{formatMovementDate(movement.createdAt)}</span>
+                    <div>
+                      <p className="font-black uppercase italic text-white">{String(productName)}</p>
+                      <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{String(movement.reason || 'Movimiento')}</p>
+                    </div>
+                    <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${isOut ? 'border-rose-400/30 bg-rose-400/10 text-rose-300' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'}`}>{isOut ? 'Salida' : 'Entrada'}</span>
+                    <span className={`text-base font-black italic ${isOut ? 'text-rose-300' : 'text-emerald-300'}`}>{isOut ? '-' : '+'}{Number(movement.quantity || 0).toLocaleString('es-NI')}</span>
+                    <span className="truncate font-bold text-slate-400">{String(movement.notes || movement.referenceType || '-')}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 py-10 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay movimientos de inventario para mostrar</div>
+        )}
+      </section>
+
+      {isRestockModalOpen && (
+        <div className="fixed inset-0 z-[92] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <form onSubmit={submitRestock} className="w-full max-w-xl rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_28px_80px_rgba(0,0,0,0.55)]">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 px-6 py-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Relleno de stock</p>
+                <h4 className="mt-1 text-2xl font-black uppercase italic tracking-tighter text-white">{restockProduct?.productName || restockProduct?.name || 'Producto'}</h4>
+              </div>
+              <button type="button" onClick={closeRestockModal} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800" aria-label="Cerrar relleno">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-4 p-6">
+              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Stock actual</p>
+                <p className="mt-2 text-3xl font-black italic text-emerald-300">{Number(restockProduct?.currentStock || 0).toLocaleString('es-NI')}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Cantidad a ingresar</span>
+                  <input type="number" min="0" step="0.01" value={restockForm.quantity} onChange={(event) => setRestockForm((prev) => ({ ...prev, quantity: event.target.value }))} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="0" autoFocus />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Costo unitario</span>
+                  <input type="number" min="0" step="0.01" value={restockForm.unitCost} onChange={(event) => setRestockForm((prev) => ({ ...prev, unitCost: event.target.value }))} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="C$ 0" />
+                </label>
+              </div>
+              <label className="block space-y-2">
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Nota o soporte</span>
+                <input value={restockForm.notes} onChange={(event) => setRestockForm((prev) => ({ ...prev, notes: event.target.value }))} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 text-sm font-black text-white outline-none focus:border-cyan-300" placeholder="Ej. Compra proveedor, factura..." />
+              </label>
+              <button type="submit" className="w-full rounded-2xl bg-emerald-400 px-5 py-4 text-[11px] font-black uppercase italic tracking-[0.16em] text-slate-950 shadow-[0_14px_30px_rgba(16,185,129,0.24)] hover:bg-emerald-300">
+                Registrar relleno
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">

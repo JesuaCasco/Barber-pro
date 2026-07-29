@@ -260,6 +260,22 @@ const toUiInventoryItem = (row) => ({
   updatedAt: row.updated_at,
 });
 
+const toUiInventoryMovement = (row = {}) => ({
+  id: row.id || `${row.inventory_item_id || 'movement'}-${row.created_at || Date.now()}`,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  inventoryItemId: row.inventory_item_id || null,
+  movementType: ['in', 'out', 'adjustment'].includes(row.movement_type) ? row.movement_type : 'adjustment',
+  reason: row.reason || 'adjustment',
+  quantity: Number(row.quantity || 0),
+  unitCost: row.unit_cost == null ? null : Number(row.unit_cost),
+  referenceType: row.reference_type || '',
+  referenceId: row.reference_id || null,
+  notes: row.notes || '',
+  createdBy: row.created_by || null,
+  createdAt: row.created_at || new Date().toISOString(),
+});
+
 const inventoryItemToProductService = (item) => ({
   id: item.serviceId || `inventory:${item.id}`,
   inventoryItemId: item.id,
@@ -950,6 +966,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     payrollSettlementsResult,
     settlementAppointmentsResult,
     inventoryItemsResult,
+    inventoryMovementsResult,
     serviceInventoryUsageResult,
     catalogsResult,
   ] = await Promise.all([
@@ -1050,6 +1067,18 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
       [],
     ),
     settleQuery(
+      applyTenantScope(
+        supabase
+          .from('inventory_movements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(300),
+        scope,
+        { includeLegacyBarbershopRows: true },
+      ),
+      [],
+    ),
+    settleQuery(
       supabase
         .from('service_inventory_usage')
         .select('*')
@@ -1137,6 +1166,16 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   } else {
     inventoryItemsData = inventoryItemsResult?.data || [];
   }
+  let inventoryMovementsData = [];
+  let inventoryMovementsLoadError = null;
+  if (inventoryMovementsResult?.error) {
+    const normalizedError = normalizeError(inventoryMovementsResult.error, 'No se pudieron cargar los movimientos de inventario.');
+    inventoryMovementsLoadError = normalizedError.message;
+    console.warn('No se pudieron cargar los movimientos de inventario:', normalizedError);
+  } else {
+    inventoryMovementsData = inventoryMovementsResult?.data || [];
+  }
+
 
   let serviceInventoryUsageData = [];
   if (serviceInventoryUsageResult?.error) {
@@ -1175,6 +1214,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   }
 
   const inventoryItems = (inventoryItemsData || []).map(toUiInventoryItem);
+  const inventoryMovements = (inventoryMovementsData || []).map(toUiInventoryMovement);
   const inventoryServiceIds = new Set(
     inventoryItems
       .map((item) => item.serviceId)
@@ -1221,6 +1261,8 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     cashSessions,
     cashMovements,
     inventoryItems,
+    inventoryMovements,
+    inventoryMovementsLoadError,
     catalogs,
     cashWithdrawals,
     payrollSettlements,
@@ -1853,6 +1895,38 @@ export async function upsertInventoryProducts(products, currentUserId, scopeOver
   if (error) throw normalizeError(error, 'No se pudieron guardar los productos de inventario.');
 
   return (data || []).map(toUiInventoryItem);
+}
+
+export async function registerInventoryRestock(payload = {}, currentUserId, scopeOverride = {}) {
+  assertSupabase();
+  const scope = await resolveUserScope(currentUserId, scopeOverride);
+  const inventoryItemId = payload.inventoryItemId || payload.id || null;
+  const quantity = Number(payload.quantity || 0);
+  if (!inventoryItemId) throw normalizeError(null, 'Selecciona un producto para rellenar inventario.');
+  if (quantity <= 0) throw normalizeError(null, 'La cantidad de relleno debe ser mayor a cero.');
+
+  const resolvedBarbershopId = payload.barbershopId || scope.currentBarbershopId || null;
+  const resolvedBranchId = payload.branchId ?? scope.currentBranchId ?? null;
+
+  const { data, error } = await supabase.rpc('register_inventory_movement_atomic', {
+    p_inventory_item_id: inventoryItemId,
+    p_movement_type: 'in',
+    p_reason: payload.reason || 'restock',
+    p_quantity: quantity,
+    p_unit_cost: payload.unitCost == null || payload.unitCost === '' ? null : Number(payload.unitCost),
+    p_reference_type: payload.referenceType || 'inventory_restock',
+    p_reference_id: payload.referenceId || null,
+    p_notes: payload.notes || '',
+    p_created_by: currentUserId || null,
+    p_barbershop_id: resolvedBarbershopId,
+    p_branch_id: resolvedBranchId,
+  });
+  if (error) throw normalizeError(error, 'No se pudo registrar el relleno de inventario.');
+
+  return {
+    item: data?.item ? toUiInventoryItem(data.item) : null,
+    movement: data?.movement ? toUiInventoryMovement(data.movement) : null,
+  };
 }
 
 export async function upsertBarbershopCatalog(catalogKey, values, currentUserId, scopeOverride = {}) {

@@ -1166,12 +1166,20 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   let inventoryItemsData = [];
   let inventoryMovementsData = [];
   let inventoryLoadError = null;
-  if (inventoryItemsResult?.error || inventoryMovementsResult?.error) {
-    const normalizedError = normalizeError(inventoryItemsResult?.error || inventoryMovementsResult?.error, 'No se pudo cargar inventario.');
+  const inventoryLoadWarnings = [];
+  if (inventoryItemsResult?.error) {
+    const normalizedError = normalizeError(inventoryItemsResult.error, 'No se pudo cargar inventario.');
     inventoryLoadError = normalizedError.message;
+    inventoryLoadWarnings.push(normalizedError.message);
     console.warn('No se pudo cargar inventario:', normalizedError);
   } else {
     inventoryItemsData = inventoryItemsResult?.data || [];
+  }
+  if (inventoryMovementsResult?.error) {
+    const normalizedError = normalizeError(inventoryMovementsResult.error, 'No se pudo cargar el historial de movimientos de inventario.');
+    inventoryLoadWarnings.push(normalizedError.message);
+    console.warn('No se pudo cargar el historial de movimientos de inventario:', normalizedError);
+  } else {
     inventoryMovementsData = inventoryMovementsResult?.data || [];
   }
 
@@ -1265,7 +1273,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     payrollSettlements,
     posSalesLoadError,
     cashLoadError,
-    inventoryLoadError,
+    inventoryLoadError: inventoryLoadError || (inventoryLoadWarnings.length ? inventoryLoadWarnings.join('\n\n') : null),
     payrollLoadWarnings,
   };
 }

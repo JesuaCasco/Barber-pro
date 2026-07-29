@@ -4993,16 +4993,22 @@ const [activeTab, setActiveTab] = useState('dashboard');
           )}
           {activeTab === 'services' && <ServicesView services={serviceMenuItems} serviceCategories={catalogSettings.serviceCategories} onSaveCatalog={(values) => handleSaveCatalogSettings('service_categories', values)} onAdd={(cat) => { if (cat === 'Producto') { setActiveTab('inventario'); return; } setSelectedData({...selectedData, service: { category: cat }}); setModals({...modals, service: true}); }} onEdit={(s) => { if (s?.category === 'Producto') { setActiveTab('inventario'); return; } setSelectedData({...selectedData, service: s}); setModals({...modals, service: true}); }} onDelete={handleDeleteService} onDeleteProduct={handleDeleteInventoryProduct} onManageInventory={() => setActiveTab('inventario')} />}
           {activeTab === 'inventario' && (
-            <InventoryView
-              inventoryItems={inventoryItems}
-              inventoryMovements={inventoryMovements}
-              productCategories={catalogSettings.inventoryProductCategories}
-              onSaveCatalog={(values) => handleSaveCatalogSettings('inventory_product_categories', values)}
-              onGoToProducts={() => setActiveTab('services')}
-              onSaveProduct={handleSaveInventoryProduct}
-              onRestockProduct={handleRestockInventoryProduct}
-              onDeleteProduct={handleDeleteInventoryProduct}
-            />
+            <AppSectionErrorBoundary
+              label="inventario"
+              resetKey={activeTab}
+              onReset={() => setActiveTab('dashboard')}
+            >
+              <InventoryView
+                inventoryItems={inventoryItems}
+                inventoryMovements={inventoryMovements}
+                productCategories={catalogSettings.inventoryProductCategories}
+                onSaveCatalog={(values) => handleSaveCatalogSettings('inventory_product_categories', values)}
+                onGoToProducts={() => setActiveTab('services')}
+                onSaveProduct={handleSaveInventoryProduct}
+                onRestockProduct={handleRestockInventoryProduct}
+                onDeleteProduct={handleDeleteInventoryProduct}
+              />
+            </AppSectionErrorBoundary>
           )}
           {activeTab === 'caja' && (
             <AppSectionErrorBoundary

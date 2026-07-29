@@ -4951,7 +4951,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
         </header>
 
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
-          {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
+          {['dashboard', 'caja', 'reportes', 'inventario'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner(activeTab === 'inventario' ? 'Inventario cargado con advertencias' : 'Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={activePosSales} />}
           {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={openAppointmentActions} onTransferApt={openTransferAppointment} />}
@@ -5922,7 +5922,14 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [movementSearch, setMovementSearch] = useState('');
-  const visibleProductCategories = useMemo(() => Array.from(new Set(productCategories?.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES)), [productCategories]);
+  const visibleProductCategories = useMemo(() => {
+    const source = Array.isArray(productCategories) && productCategories.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES;
+    const normalized = source
+      .map((category) => (typeof category === 'string' ? category : category?.label || category?.name || category?.value || ''))
+      .map((category) => String(category || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set(normalized.length ? normalized : INVENTORY_PRODUCT_CATEGORIES));
+  }, [productCategories]);
   const usageOptions = [
     { value: 'retail', label: 'Reventa', helper: 'Se vende en caja' },
     { value: 'internal', label: 'Insumo', helper: 'Se usa en servicios' },

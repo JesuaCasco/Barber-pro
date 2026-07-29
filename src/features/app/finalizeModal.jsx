@@ -2,11 +2,14 @@ import React, { useMemo, useState } from 'react';
 import {
   CheckCircle2,
   ChevronDown,
+  CreditCard,
+  DollarSign,
   Package,
   Plus,
   Search,
   ShoppingBag,
   Star,
+  Wallet,
   X,
 } from 'lucide-react';
 
@@ -20,6 +23,9 @@ import {
   isPromotionService,
   makeId,
 } from './shared';
+
+const DEFAULT_EXCHANGE_RATE = 36.7;
+const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
 export function FinalizeModal({ onClose, onConfirm, services, clients, initial }) {
   const [billItems, setBillItems] = useState(() => {
@@ -35,6 +41,12 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
   const [selectedPromotionId, setSelectedPromotionId] = useState('');
   const [promotionPickerOpen, setPromotionPickerOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState('catalog');
+  const [desktopStep, setDesktopStep] = useState('services');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [cashPaymentCurrency, setCashPaymentCurrency] = useState('NIO');
+  const [saleExchangeRate, setSaleExchangeRate] = useState(String(DEFAULT_EXCHANGE_RATE));
+  const [nioReceived, setNioReceived] = useState('');
+  const [usdReceived, setUsdReceived] = useState('');
 
   const billingClient = useMemo(
     () => (clients || []).find((client) => String(client.id) === String(initial?.clientId || initial?.client?.id || '')) || null,
@@ -91,6 +103,15 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
   );
   const promotionDiscount = promotionPreview.amount;
   const total = Math.max(subtotal - promotionDiscount, 0);
+  const activeSaleExchangeRate = Math.max(Number(saleExchangeRate || 0), 0);
+  const nioReceivedAmount = Math.max(Number(nioReceived || 0), 0);
+  const nioChangeNio = Math.max(roundMoney(nioReceivedAmount - total), 0);
+  const nioPaymentIsEnough = cashPaymentCurrency !== 'NIO' || nioReceivedAmount + 0.01 >= total;
+  const usdReceivedAmount = Math.max(Number(usdReceived || 0), 0);
+  const usdReceivedEquivalent = roundMoney(usdReceivedAmount * activeSaleExchangeRate);
+  const usdChangeNio = Math.max(roundMoney(usdReceivedEquivalent - total), 0);
+  const usdPaymentIsEnough = cashPaymentCurrency !== 'USD' || usdReceivedEquivalent + 0.01 >= total;
+  const cashPaymentIsEnough = paymentMethod !== 'cash' || (cashPaymentCurrency === 'USD' ? usdPaymentIsEnough : nioPaymentIsEnough);
 
   const addToBill = (item) => {
     setBillItems((current) => [...current, { ...item, uniqueId: makeId() }]);
@@ -100,10 +121,30 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
     setBillItems((current) => current.filter((item) => item.uniqueId !== uniqueId));
   };
 
+  const goToDesktopCheckout = () => {
+    if (billItems.length === 0) return;
+    setDesktopStep('checkout');
+  };
+
   const confirmFinalCharge = () => {
     if (billItems.length === 0) return;
+    if (paymentMethod === 'cash' && !cashPaymentIsEnough) return;
 
     const serviceNames = billItems.map((item) => item.name).join(' + ');
+    const paymentMeta = paymentMethod === 'cash'
+      ? (cashPaymentCurrency === 'USD' ? {
+          currency: 'USD',
+          receivedUsd: usdReceivedAmount,
+          exchangeRate: activeSaleExchangeRate,
+          receivedEquivalentNio: usdReceivedEquivalent,
+          changeNio: usdChangeNio,
+        } : {
+          currency: 'NIO',
+          receivedNio: nioReceivedAmount,
+          changeNio: nioChangeNio,
+        })
+      : { currency: 'NIO' };
+
     onConfirm({
       serviceName: serviceNames,
       items: billItems.map((item) => ({
@@ -121,6 +162,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
       grossAmount: subtotal,
       promotionName: selectedPromotion?.name || '',
       discountAmount: promotionDiscount,
+      paymentMethod,
+      notes: JSON.stringify({ paymentMeta }),
     });
   };
 
@@ -394,88 +437,159 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         </div>
 
-        <div className="p-2.5 md:p-4 bg-black border-t border-slate-900 flex flex-col md:grid md:grid-cols-[240px_minmax(260px,1fr)_240px] items-stretch gap-2 md:gap-3 shrink-0">
-          <div className="w-full bg-slate-950/50 border border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-[1.2rem] md:rounded-[1.35rem] flex flex-col items-center justify-center shrink-0">
-            <p className="text-[8px] md:text-[10px] font-black text-amber-500 uppercase italic tracking-[0.14em] md:tracking-[0.2em] mb-1.5 md:mb-3 leading-none">Califica la experiencia</p>
-            <div className="flex gap-1.5 md:gap-4">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
-                >
-                  <Star size={16} className="md:w-8 md:h-8" fill={star <= rating ? 'currentColor' : 'none'} />
-                </button>
-              ))}
+        {desktopStep === 'services' ? (
+          <div className="p-2.5 md:p-4 bg-black border-t border-slate-900 flex flex-col md:grid md:grid-cols-[240px_minmax(260px,1fr)_240px] items-stretch gap-2 md:gap-3 shrink-0">
+            <div className="w-full bg-slate-950/50 border border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-[1.2rem] md:rounded-[1.35rem] flex flex-col items-center justify-center shrink-0">
+              <p className="text-[8px] md:text-[10px] font-black text-amber-500 uppercase italic tracking-[0.14em] md:tracking-[0.2em] mb-1.5 md:mb-3 leading-none">Califica la experiencia</p>
+              <div className="flex gap-1.5 md:gap-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
+                  >
+                    <Star size={16} className="md:w-8 md:h-8" fill={star <= rating ? 'currentColor' : 'none'} />
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div className="w-full rounded-[1.35rem] border border-slate-800 bg-slate-950/70 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Total seleccionado</p>
+              <div className="mt-2 flex items-end justify-between gap-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600">{billItems.length} ítem{billItems.length === 1 ? '' : 's'}</span>
+                <span className="whitespace-nowrap text-[28px] font-black italic tracking-tighter leading-none text-emerald-400">
+                  C$ {total.toLocaleString('es-NI')}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={billItems.length === 0}
+              onClick={goToDesktopCheckout}
+              className="w-full rounded-[1.2rem] bg-emerald-600 px-5 py-3.5 text-[10px] font-black uppercase italic tracking-[0.12em] text-white shadow-xl shadow-emerald-950/20 transition-all hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
+            >
+              Continuar al cobro
+            </button>
           </div>
-
-          <div className="flex w-full flex-col gap-3 md:contents">
-            <div className="md:hidden w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-3 py-2.5 shadow-[0_10px_22px_rgba(0,0,0,0.18)]">
-              <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">Resumen</p>
-              <div className="mt-1.5 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Subtotal</span>
-                  <span className="text-[15px] font-black italic text-white leading-none">C$ {subtotal.toLocaleString('es-NI')}</span>
+        ) : (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm md:p-6">
+            <div className="grid max-h-[88vh] w-[min(94vw,72rem)] grid-cols-1 items-stretch gap-3 overflow-y-auto rounded-[2rem] border border-cyan-300/20 bg-black p-4 shadow-[0_30px_120px_rgba(0,0,0,0.65)] custom-scrollbar md:grid-cols-[230px_minmax(320px,1fr)_270px]">
+              <div className="rounded-[1.35rem] border border-slate-800 bg-slate-950/70 px-4 py-3 flex flex-col items-center justify-center">
+                <p className="text-[10px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-4 leading-none">Califica la experiencia</p>
+                <div className="flex gap-3">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className={`transition-all ${star <= rating ? 'text-amber-500 scale-125 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-slate-800 hover:text-slate-600'}`}
+                    >
+                      <Star size={28} fill={star <= rating ? 'currentColor' : 'none'} />
+                    </button>
+                  ))}
                 </div>
-                {selectedPromotion ? (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Descuento</span>
-                    <span className="text-[13px] font-black italic text-emerald-300 leading-none">- C$ {promotionDiscount.toLocaleString('es-NI')}</span>
+              </div>
+
+              <div className="rounded-[1.35rem] border border-slate-800 bg-slate-950/70 px-5 py-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-3">
+                    <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Subtotal</span>
+                    <span className="text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
                   </div>
-                ) : null}
-              </div>
-              <div className="mt-2 border-t border-slate-800 pt-2">
-                <div className="flex items-end justify-between gap-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white">Total</span>
-                  <span className="whitespace-nowrap text-[22px] font-black italic tracking-tighter leading-none text-emerald-400">
-                    C$ {total.toLocaleString('es-NI')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden md:block w-full rounded-[1.35rem] border border-slate-800 bg-slate-950/70 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Subtotal</span>
-                  <span className="text-lg font-black italic text-white">C$ {subtotal.toLocaleString('es-NI')}</span>
-                </div>
-                {selectedPromotion ? (
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">Descuento</p>
-                      <p className="mt-1 truncate text-[10px] font-black uppercase italic tracking-[0.12em] text-slate-500">
-                        {selectedPromotion.name}
-                      </p>
+                  {selectedPromotion ? (
+                    <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">Descuento</p>
+                        <p className="mt-1 truncate text-[10px] font-black uppercase italic tracking-[0.12em] text-slate-500">{selectedPromotion.name}</p>
+                      </div>
+                      <span className="shrink-0 text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span>
                     </div>
-                    <span className="shrink-0 text-base font-black italic text-emerald-300">- C$ {promotionDiscount.toLocaleString('es-NI')}</span>
+                  ) : null}
+                  <div className="flex items-end justify-between gap-4 pt-2">
+                    <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Total final</span>
+                    <span className="whitespace-nowrap text-[34px] font-black italic tracking-tighter leading-none text-emerald-400">
+                      C$ {total.toLocaleString('es-NI')}
+                    </span>
                   </div>
-                ) : null}
-              </div>
-              <div className="mt-2 border-t border-slate-800 pt-2">
-                <div className="flex items-end justify-between gap-4">
-                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Total final</span>
-                  <span className="whitespace-nowrap text-[28px] font-black italic tracking-tighter leading-none text-emerald-400">
-                    C$ {total.toLocaleString('es-NI')}
-                  </span>
                 </div>
               </div>
-            </div>
 
-            <div className="flex w-full flex-col gap-2 md:h-full">
-              <button
-                disabled={billItems.length === 0}
-                onClick={confirmFinalCharge}
-                className="w-full flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3.5 md:py-3 rounded-[1.2rem] md:rounded-[1.35rem] font-black uppercase italic text-[10px] tracking-[0.1em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 leading-tight"
-              >
-                <CheckCircle2 size={18} strokeWidth={3} /> Confirmar cobro
-              </button>
-              <button onClick={onClose} className="hidden md:block w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-5 py-2.5 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Cerrar</button>
+              <div className="flex w-full flex-col gap-2">
+                <div className="grid grid-cols-3 gap-1.5 rounded-[1.15rem] border border-slate-800 bg-slate-950/70 p-1.5">
+                  {[
+                    { id: 'cash', label: 'Efectivo', icon: DollarSign },
+                    { id: 'card', label: 'Tarjeta', icon: CreditCard },
+                    { id: 'transfer', label: 'Transfer', icon: Wallet },
+                  ].map((method) => {
+                    const Icon = method.icon;
+                    const active = paymentMethod === method.id;
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setPaymentMethod(method.id)}
+                        className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[7px] font-black uppercase tracking-[0.08em] transition-all ${active ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}
+                      >
+                        <Icon size={13} />
+                        {method.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="min-h-[7.7rem] rounded-[1.15rem] border border-slate-800 bg-slate-950/70 p-2">
+                  {paymentMethod === 'cash' ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setCashPaymentCurrency('NIO')} className={`rounded-xl px-3 py-2 text-[8px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'NIO' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-500 hover:text-white'}`}>Paga C$</button>
+                        <button type="button" onClick={() => setCashPaymentCurrency('USD')} className={`rounded-xl px-3 py-2 text-[8px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'USD' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-500 hover:text-white'}`}>Paga US$</button>
+                      </div>
+
+                      {cashPaymentCurrency === 'NIO' ? (
+                        <div className="mt-2 grid grid-cols-1 gap-2">
+                          <input type="number" min="0" step="0.01" value={nioReceived} onChange={(event) => setNioReceived(event.target.value)} placeholder="C$ recibido" className="rounded-xl border border-slate-800 bg-black px-3 py-2 text-[10px] font-black text-white outline-none focus:border-emerald-500" />
+                          <div className={`rounded-xl border px-3 py-2 text-[8px] font-black uppercase tracking-[0.1em] ${nioPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
+                            <p>Cliente paga: C$ {nioReceivedAmount.toLocaleString('es-NI')}</p>
+                            <p>{nioPaymentIsEnough ? `Vuelto C$: ${nioChangeNio.toLocaleString('es-NI')}` : `Faltan C$: ${Math.max(total - nioReceivedAmount, 0).toLocaleString('es-NI')}`}</p>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {cashPaymentCurrency === 'USD' ? (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <input type="number" min="0" step="0.01" value={usdReceived} onChange={(event) => setUsdReceived(event.target.value)} placeholder="US$ recibido" className="rounded-xl border border-slate-800 bg-black px-3 py-2 text-[10px] font-black text-white outline-none focus:border-emerald-500" />
+                          <input type="number" min="0" step="0.01" value={saleExchangeRate} onChange={(event) => setSaleExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-xl border border-slate-800 bg-black px-3 py-2 text-[10px] font-black text-white outline-none focus:border-emerald-500" />
+                          <div className={`col-span-2 rounded-xl border px-3 py-2 text-[8px] font-black uppercase tracking-[0.1em] ${usdPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
+                            <p>Equivalente: C$ {usdReceivedEquivalent.toLocaleString('es-NI')}</p>
+                            <p>{usdPaymentIsEnough ? `Vuelto C$: ${usdChangeNio.toLocaleString('es-NI')}` : 'No cubre el total'}</p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="flex min-h-[6.45rem] flex-col items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/5 px-3 text-center">
+                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-cyan-200">
+                        {paymentMethod === 'card' ? 'Pago con tarjeta' : 'Pago por transferencia'}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black italic text-emerald-300">Sin cálculo de vuelto</p>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  disabled={billItems.length === 0 || !cashPaymentIsEnough}
+                  onClick={confirmFinalCharge}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3.5 rounded-[1.2rem] font-black uppercase italic text-[10px] tracking-[0.1em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 leading-tight"
+                >
+                  <CheckCircle2 size={18} strokeWidth={3} /> Confirmar cobro
+                </button>
+                <button onClick={() => setDesktopStep('services')} className="w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-5 py-2.5 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Volver a servicios</button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {promotionPickerOpen ? (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">

@@ -272,6 +272,11 @@ const toUiInventoryMovement = (row = {}) => ({
   referenceType: row.reference_type || '',
   referenceId: row.reference_id || null,
   notes: row.notes || '',
+  metadata: row.metadata || {},
+  cashSessionId: row.cash_session_id || null,
+  posSaleId: row.pos_sale_id || null,
+  purchaseId: row.purchase_id || null,
+  unitPrice: row.unit_price == null ? null : Number(row.unit_price),
   createdBy: row.created_by || null,
   createdAt: row.created_at || new Date().toISOString(),
 });

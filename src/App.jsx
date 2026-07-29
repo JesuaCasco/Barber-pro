@@ -5954,6 +5954,8 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
   const [restockProduct, setRestockProduct] = useState(null);
   const [restockForm, setRestockForm] = useState({ quantity: '', unitCost: '', notes: '' });
   const [movementSearch, setMovementSearch] = useState('');
+  const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
+  const [selectedInventoryMovement, setSelectedInventoryMovement] = useState(null);
   const visibleProductCategories = useMemo(() => {
     const source = Array.isArray(productCategories) && productCategories.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES;
     const normalized = source
@@ -6130,6 +6132,23 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
     if (!date || Number.isNaN(date.getTime())) return 'Sin fecha';
     return date.toLocaleString('es-NI', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
+  const movementReasonLabel = (reason) => ({
+    service_use: 'Uso en servicio',
+    service_use_void: 'Devolucion por anulacion',
+    sale: 'Venta de producto',
+    sale_void: 'Devolucion por anulacion',
+    restock: 'Relleno de inventario',
+    adjustment: 'Ajuste de inventario',
+  }[reason] || String(reason || 'Movimiento'));
+  const movementSources = (movement) => Array.isArray(movement?.metadata?.sources) ? movement.metadata.sources : [];
+  const movementGeneratedBy = (movement) => {
+    const sources = movementSources(movement);
+    if (sources.length) {
+      return sources.map((source) => String(source.name || 'Item') + ' x' + Number(source.qty || 1).toLocaleString('es-NI')).join(' + ');
+    }
+    return movement?.notes || movement?.referenceType || 'Movimiento manual';
+  };
+  const openMovementDetail = (movement) => setSelectedInventoryMovement(movement);
   const openRestockModal = (product) => {
     setRestockProduct(product);
     setRestockForm({ quantity: '', unitCost: product?.costPrice ?? '', notes: '' });
@@ -6224,7 +6243,7 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
           {filteredItems.length > 0 ? (
             <div className="overflow-x-auto custom-scrollbar">
               <div className="min-w-[1080px]">
-                <div className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                <div className="grid grid-cols-[minmax(260px,1fr)_120px_140px_150px_110px_120px_120px_210px] gap-5 px-7 py-4 border-b border-slate-800 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
                   <span>Producto</span>
                   <span>Uso</span>
                   <span>Categoria</span>
@@ -6232,14 +6251,14 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
                   <span>Stock</span>
                   <span>Costo</span>
                   <span>Venta</span>
-                  <span>Acción</span>
+                  <span className="text-center">Acción</span>
                 </div>
                 <div className="divide-y divide-slate-800">
                   {filteredItems.map((item) => {
                     const margin = getMargin(item);
                     const isLowStock = Number(item.minStock || 0) > 0 && Number(item.currentStock || 0) <= Number(item.minStock || 0);
                     return (
-                      <div key={item.id} className="grid grid-cols-[minmax(220px,1fr)_120px_130px_130px_110px_120px_120px_120px] gap-4 px-6 py-4 items-center">
+                      <div key={item.id} className="grid grid-cols-[minmax(260px,1fr)_120px_140px_150px_110px_120px_120px_210px] gap-5 px-7 py-4 items-center">
                         <div>
                           <p className="truncate whitespace-nowrap text-sm font-black uppercase italic text-white">{item.productName || item.name}</p>
                           <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{item.sku || 'Sin SKU'} �- Margen C$ {margin.toLocaleString('es-NI')}</p>
@@ -6256,7 +6275,7 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
                         <span className={`text-base font-black italic ${isLowStock ? 'text-cyan-300' : 'text-emerald-300'}`}>{Number(item.currentStock || 0).toLocaleString('es-NI')}</span>
                         <p className="text-sm font-black italic text-slate-400">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
                         <p className="text-sm font-black italic text-emerald-300">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-end gap-2 pr-3">
                           <button type="button" onClick={() => openRestockModal(item)} className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[9px] font-black uppercase text-emerald-300 hover:bg-emerald-400/15">
                             Rellenar
                           </button>
@@ -6284,41 +6303,137 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
       </section>
 
       <section className="rounded-[2rem] border border-cyan-400/25 bg-slate-950 overflow-hidden shadow-[0_18px_44px_rgba(34,211,238,0.08)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 px-5 md:px-7 py-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 md:px-7 py-5">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Movimientos</p>
             <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Kardex operativo</h4>
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Entradas, salidas y consumo de insumos</p>
           </div>
-          <div className="relative w-full md:w-[360px]">
-            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar movimiento..." />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="rounded-2xl border border-slate-800 bg-black px-5 py-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Registros</p>
+              <p className="mt-1 text-2xl font-black italic text-cyan-300">{safeInventoryMovements.length}</p>
+            </div>
+            <button type="button" onClick={() => setIsKardexModalOpen(true)} className="rounded-2xl border border-cyan-400/35 bg-cyan-400/10 px-6 py-4 text-[10px] font-black uppercase italic tracking-[0.16em] text-cyan-200 transition-all hover:bg-cyan-400/20 flex items-center justify-center gap-2">
+              <History size={17} />
+              Ver movimientos
+            </button>
           </div>
         </div>
-        {filteredMovements.length > 0 ? (
-          <div className="overflow-x-auto custom-scrollbar">
-            <div className="min-w-[920px] divide-y divide-slate-800">
-              {filteredMovements.map((movement) => {
-                const isOut = movement.movementType === 'out';
-                const productName = itemNameById.get(String(movement.inventoryItemId || '')) || 'Producto no encontrado';
-                return (
-                  <div key={movement.id} className="grid grid-cols-[130px_minmax(220px,1fr)_140px_120px_minmax(180px,1fr)] gap-4 px-6 py-4 items-center text-xs">
-                    <span className="font-black uppercase text-slate-400">{formatMovementDate(movement.createdAt)}</span>
-                    <div>
-                      <p className="font-black uppercase italic text-white">{String(productName)}</p>
-                      <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{String(movement.reason || 'Movimiento')}</p>
-                    </div>
-                    <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${isOut ? 'border-rose-400/30 bg-rose-400/10 text-rose-300' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'}`}>{isOut ? 'Salida' : 'Entrada'}</span>
-                    <span className={`text-base font-black italic ${isOut ? 'text-rose-300' : 'text-emerald-300'}`}>{isOut ? '-' : '+'}{Number(movement.quantity || 0).toLocaleString('es-NI')}</span>
-                    <span className="truncate font-bold text-slate-400">{String(movement.notes || movement.referenceType || '-')}</span>
+      </section>
+
+      {isKardexModalOpen && (
+        <div className="fixed inset-0 z-[91] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="flex h-[min(86vh,760px)] w-full max-w-6xl flex-col overflow-hidden rounded-[1.8rem] border border-cyan-400/30 bg-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.65)]">
+            <div className="flex flex-col gap-4 border-b border-slate-800 px-5 md:px-7 py-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Kardex de inventario</p>
+                <h4 className="mt-1 text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Movimientos de stock</h4>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative w-[280px] max-w-[55vw]">
+                  <Search size={17} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-10 text-xs font-black text-white outline-none focus:border-cyan-300" placeholder="Buscar movimiento..." />
+                </div>
+                <button type="button" onClick={() => { setIsKardexModalOpen(false); setSelectedInventoryMovement(null); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-cyan-200 hover:bg-slate-800" aria-label="Cerrar kardex">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="min-h-0 overflow-auto custom-scrollbar">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-[120px_140px_minmax(230px,1fr)_130px_110px_170px] gap-4 border-b border-slate-800 px-6 py-4 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                    <span>Fecha</span>
+                    <span>Tipo</span>
+                    <span>Que genero</span>
+                    <span>Referencia</span>
+                    <span>Cantidad</span>
+                    <span>Detalle</span>
                   </div>
-                );
-              })}
+                  <div className="divide-y divide-slate-800">
+                    {filteredMovements.length > 0 ? filteredMovements.map((movement) => {
+                      const isOut = movement.movementType === 'out';
+                      const productName = itemNameById.get(String(movement.inventoryItemId || '')) || 'Producto no encontrado';
+                      const isSelected = String(selectedInventoryMovement?.id || '') === String(movement.id || '');
+                      return (
+                        <button key={movement.id} type="button" onClick={() => openMovementDetail(movement)} className={(isSelected ? 'bg-cyan-400/10 ' : '') + 'grid w-full grid-cols-[120px_140px_minmax(230px,1fr)_130px_110px_170px] gap-4 px-6 py-4 text-left text-xs transition-all hover:bg-cyan-400/5'}>
+                          <span className="font-black uppercase text-slate-400">{formatMovementDate(movement.createdAt)}</span>
+                          <span className={(isOut ? 'border-rose-400/30 bg-rose-400/10 text-rose-300' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300') + ' w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase'}>{movementReasonLabel(movement.reason)}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-black uppercase italic text-white">{String(productName)}</span>
+                            <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">{movementGeneratedBy(movement)}</span>
+                          </span>
+                          <span className="font-black uppercase text-cyan-300">{movement.posSaleId ? 'POS ' + String(movement.posSaleId).slice(0, 8) : movement.referenceId ? String(movement.referenceId).slice(0, 8) : '-'}</span>
+                          <span className={(isOut ? 'text-rose-300' : 'text-emerald-300') + ' text-base font-black italic'}>{isOut ? '-' : '+'}{Number(movement.quantity || 0).toLocaleString('es-NI')}</span>
+                          <span className="font-bold text-slate-400 truncate">{String(movement.notes || '-')}</span>
+                        </button>
+                      );
+                    }) : (
+                      <div className="px-6 py-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay movimientos de inventario para mostrar</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <aside className="border-t border-slate-800 bg-slate-900/45 p-5 lg:border-l lg:border-t-0 overflow-auto custom-scrollbar">
+                {selectedInventoryMovement ? (() => {
+                  const movement = selectedInventoryMovement;
+                  const isOut = movement.movementType === 'out';
+                  const sources = movementSources(movement);
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Detalle del movimiento</p>
+                        <h5 className="mt-2 text-xl font-black uppercase italic text-white">{itemNameById.get(String(movement.inventoryItemId || '')) || 'Producto no encontrado'}</h5>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-slate-700 bg-black p-4">
+                          <p className="text-[9px] font-black uppercase text-slate-500">Tipo</p>
+                          <p className={(isOut ? 'text-rose-300' : 'text-emerald-300') + ' mt-2 text-sm font-black uppercase'}>{movementReasonLabel(movement.reason)}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-700 bg-black p-4">
+                          <p className="text-[9px] font-black uppercase text-slate-500">Cantidad</p>
+                          <p className={(isOut ? 'text-rose-300' : 'text-emerald-300') + ' mt-2 text-2xl font-black italic'}>{isOut ? '-' : '+'}{Number(movement.quantity || 0).toLocaleString('es-NI')}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">Origen</p>
+                        <p className="mt-2 text-sm font-black uppercase italic text-white">{movementGeneratedBy(movement)}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-700 bg-black p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Referencia</p>
+                        <p className="mt-2 text-xs font-black uppercase text-slate-300">{movement.referenceType || '-'}</p>
+                        <p className="mt-1 break-all text-[11px] font-bold text-slate-500">{movement.posSaleId || movement.referenceId || '-'}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-700 bg-black p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Servicios / productos involucrados</p>
+                        <div className="mt-3 space-y-2">
+                          {sources.length ? sources.map((source, index) => (
+                            <div key={(source.name || 'source') + '-' + index} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
+                              <p className="text-xs font-black uppercase italic text-white">{source.name || 'Item'}</p>
+                              <p className="mt-1 text-[10px] font-bold uppercase text-slate-500">{source.type || 'origen'} x{Number(source.qty || 1).toLocaleString('es-NI')}</p>
+                            </div>
+                          )) : <p className="text-xs font-bold text-slate-500">Sin desglose guardado.</p>}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-700 bg-black p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Nota</p>
+                        <p className="mt-2 text-xs font-bold text-slate-300">{movement.notes || '-'}</p>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="flex h-full min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 p-6 text-center">
+                    <Info size={28} className="text-cyan-300" />
+                    <p className="mt-4 text-sm font-black uppercase italic text-white">Selecciona un movimiento</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Aqui veras servicio, referencia y soporte del movimiento</p>
+                  </div>
+                )}
+              </aside>
             </div>
           </div>
-        ) : (
-          <div className="px-6 py-10 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">No hay movimientos de inventario para mostrar</div>
-        )}
-      </section>
+        </div>
+      )}
 
       {isRestockModalOpen && (
         <div className="fixed inset-0 z-[92] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">

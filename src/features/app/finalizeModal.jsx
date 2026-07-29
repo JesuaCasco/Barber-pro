@@ -475,8 +475,8 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         ) : (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm md:p-6">
-            <div className="grid max-h-[90vh] w-[min(96vw,86rem)] grid-cols-1 items-stretch gap-4 overflow-y-auto rounded-[2.2rem] border border-cyan-300/20 bg-black p-5 shadow-[0_30px_120px_rgba(0,0,0,0.65)] custom-scrollbar md:grid-cols-[260px_minmax(360px,1fr)_360px]">
-              <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 px-5 py-5 flex flex-col items-center justify-center">
+            <div className="grid max-h-[90vh] w-[min(96vw,82rem)] grid-cols-1 items-stretch gap-4 overflow-y-auto rounded-[2.2rem] border border-cyan-300/20 bg-black p-5 shadow-[0_30px_120px_rgba(0,0,0,0.65)] custom-scrollbar md:grid-cols-[minmax(280px,0.72fr)_minmax(540px,1.28fr)]">
+              <div className="order-2 rounded-[1.5rem] border border-slate-800 bg-slate-950/70 px-5 py-5 flex flex-col items-center justify-center md:order-2">
                 <p className="text-[11px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-5 leading-none">Califica la experiencia</p>
                 <div className="flex gap-4">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -491,7 +491,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 px-6 py-5">
+              <div className="order-1 rounded-[1.5rem] border border-slate-800 bg-slate-950/70 px-6 py-5 md:order-1">
                 <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">Resumen de cobro</p>
                 <div className="mt-5 space-y-4">
                   <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -516,8 +516,19 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-2">
-                <div className="grid grid-cols-3 gap-2 rounded-[1.35rem] border border-slate-800 bg-slate-950/70 p-2">
+              <div className="order-3 flex w-full flex-col gap-4 rounded-[1.8rem] border border-cyan-300/25 bg-slate-950 px-6 py-6 shadow-[0_24px_70px_rgba(34,211,238,0.08)] md:order-3 md:col-start-2 md:row-span-2 md:row-start-1">
+                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-300">Procesar pago</p>
+                    <h4 className="mt-2 text-2xl font-black uppercase italic leading-none text-white">Método y recibido</h4>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Total a pagar</p>
+                    <p className="mt-1 text-[34px] font-black italic leading-none text-emerald-400">C$ {total.toLocaleString('es-NI')}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'cash', label: 'Efectivo', icon: DollarSign },
                     { id: 'card', label: 'Tarjeta', icon: CreditCard },
@@ -530,27 +541,27 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                         key={method.id}
                         type="button"
                         onClick={() => setPaymentMethod(method.id)}
-                        className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-3 text-[8px] font-black uppercase tracking-[0.08em] transition-all ${active ? 'bg-emerald-600 text-white shadow-[0_12px_28px_rgba(16,185,129,0.18)]' : 'text-slate-500 hover:bg-slate-900 hover:text-white'}`}
+                        className={`flex min-h-[5.25rem] flex-col items-center justify-center gap-2 rounded-[1.25rem] border px-3 py-4 text-[9px] font-black uppercase tracking-[0.08em] transition-all ${active ? 'border-emerald-400 bg-emerald-600 text-white shadow-[0_16px_34px_rgba(16,185,129,0.2)]' : 'border-slate-800 bg-black text-slate-500 hover:border-cyan-300/40 hover:text-white'}`}
                       >
-                        <Icon size={16} />
+                        <Icon size={18} />
                         {method.label}
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="min-h-[11rem] rounded-[1.35rem] border border-slate-800 bg-slate-950/70 p-3">
+                <div className="min-h-[16rem]">
                   {paymentMethod === 'cash' ? (
                     <>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => setCashPaymentCurrency('NIO')} className={`rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'NIO' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-500 hover:text-white'}`}>Paga C$</button>
-                        <button type="button" onClick={() => setCashPaymentCurrency('USD')} className={`rounded-2xl px-4 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'USD' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-500 hover:text-white'}`}>Paga US$</button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button type="button" onClick={() => setCashPaymentCurrency('NIO')} className={`rounded-[1.2rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'NIO' ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-slate-800 bg-black text-slate-500 hover:text-white'}`}>Paga C$</button>
+                        <button type="button" onClick={() => setCashPaymentCurrency('USD')} className={`rounded-[1.2rem] border px-5 py-4 text-[10px] font-black uppercase tracking-[0.1em] transition-all ${cashPaymentCurrency === 'USD' ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-slate-800 bg-black text-slate-500 hover:text-white'}`}>Paga US$</button>
                       </div>
 
                       {cashPaymentCurrency === 'NIO' ? (
-                        <div className="mt-3 grid grid-cols-1 gap-3">
-                          <input type="number" min="0" step="0.01" value={nioReceived} onChange={(event) => setNioReceived(event.target.value)} placeholder="C$ recibido" className="rounded-2xl border border-slate-800 bg-black px-4 py-3.5 text-sm font-black text-white outline-none focus:border-emerald-500" />
-                          <div className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] ${nioPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
+                        <div className="mt-4 grid grid-cols-1 gap-4">
+                          <input type="number" min="0" step="0.01" value={nioReceived} onChange={(event) => setNioReceived(event.target.value)} placeholder="C$ recibido" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
+                          <div className={`rounded-[1.25rem] border px-5 py-4 text-[12px] font-black uppercase tracking-[0.1em] ${nioPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
                             <p>Cliente paga: C$ {nioReceivedAmount.toLocaleString('es-NI')}</p>
                             <p>{nioPaymentIsEnough ? `Vuelto C$: ${nioChangeNio.toLocaleString('es-NI')}` : `Faltan C$: ${Math.max(total - nioReceivedAmount, 0).toLocaleString('es-NI')}`}</p>
                           </div>
@@ -558,10 +569,10 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                       ) : null}
 
                       {cashPaymentCurrency === 'USD' ? (
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <input type="number" min="0" step="0.01" value={usdReceived} onChange={(event) => setUsdReceived(event.target.value)} placeholder="US$ recibido" className="rounded-2xl border border-slate-800 bg-black px-4 py-3.5 text-sm font-black text-white outline-none focus:border-emerald-500" />
-                          <input type="number" min="0" step="0.01" value={saleExchangeRate} onChange={(event) => setSaleExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-2xl border border-slate-800 bg-black px-4 py-3.5 text-sm font-black text-white outline-none focus:border-emerald-500" />
-                          <div className={`col-span-2 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] ${usdPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <input type="number" min="0" step="0.01" value={usdReceived} onChange={(event) => setUsdReceived(event.target.value)} placeholder="US$ recibido" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
+                          <input type="number" min="0" step="0.01" value={saleExchangeRate} onChange={(event) => setSaleExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
+                          <div className={`col-span-2 rounded-[1.25rem] border px-5 py-4 text-[12px] font-black uppercase tracking-[0.1em] ${usdPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
                             <p>Equivalente: C$ {usdReceivedEquivalent.toLocaleString('es-NI')}</p>
                             <p>{usdPaymentIsEnough ? `Vuelto C$: ${usdChangeNio.toLocaleString('es-NI')}` : 'No cubre el total'}</p>
                           </div>
@@ -569,23 +580,25 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                       ) : null}
                     </>
                   ) : (
-                    <div className="flex min-h-[9.5rem] flex-col items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/5 px-4 text-center">
-                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
+                    <div className="flex min-h-[15.5rem] flex-col items-center justify-center rounded-[1.4rem] border border-cyan-300/25 bg-cyan-300/5 px-6 text-center">
+                      <p className="text-[12px] font-black uppercase tracking-[0.14em] text-cyan-200">
                         {paymentMethod === 'card' ? 'Pago con tarjeta' : 'Pago por transferencia'}
                       </p>
-                      <p className="mt-2 text-sm font-black italic text-emerald-300">Sin cálculo de vuelto</p>
+                      <p className="mt-3 text-lg font-black italic text-emerald-300">Sin cálculo de vuelto</p>
                     </div>
                   )}
                 </div>
 
-                <button
-                  disabled={billItems.length === 0 || !cashPaymentIsEnough}
-                  onClick={confirmFinalCharge}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-[1.125rem] rounded-[1.3rem] font-black uppercase italic text-[11px] tracking-[0.1em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2.5 leading-tight"
-                >
-                  <CheckCircle2 size={18} strokeWidth={3} /> Confirmar cobro
-                </button>
-                <button onClick={() => setDesktopStep('services')} className="w-full rounded-[1.15rem] border border-slate-800 bg-slate-950/70 px-5 py-2.5 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Volver a servicios</button>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+                  <button
+                    disabled={billItems.length === 0 || !cashPaymentIsEnough}
+                    onClick={confirmFinalCharge}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-5 rounded-[1.35rem] font-black uppercase italic text-[12px] tracking-[0.12em] disabled:opacity-20 shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3 leading-tight"
+                  >
+                    <CheckCircle2 size={20} strokeWidth={3} /> Confirmar cobro
+                  </button>
+                  <button onClick={() => setDesktopStep('services')} className="w-full rounded-[1.35rem] border border-slate-800 bg-black px-5 py-4 text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-600 italic transition-colors leading-none">Volver</button>
+                </div>
               </div>
             </div>
           </div>

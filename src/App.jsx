@@ -21,7 +21,6 @@ import {
   fetchScopedBarbers,
   fetchScopedClients,
   openCashSession,
-  registerInventoryRestock,
   resetManagedUserPassword,
   replaceUserRoles,
   syncServiceComboItems,
@@ -1971,7 +1970,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
     ];
   });
   const [inventoryItems, setInventoryItems] = useState([]);
-  const [inventoryMovements, setInventoryMovements] = useState([]);
   const [catalogSettings, setCatalogSettings] = useState({
     serviceCategories: CATEGORIES,
     inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
@@ -2115,7 +2113,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
     setAppointments([]);
     setServices([]);
     setInventoryItems([]);
-    setInventoryMovements([]);
     setCatalogSettings({
       serviceCategories: CATEGORIES,
       inventoryProductCategories: INVENTORY_PRODUCT_CATEGORIES,
@@ -2350,7 +2347,6 @@ const [activeTab, setActiveTab] = useState('dashboard');
           setCashSessions(snapshot.cashSessions || []);
           setCashMovements(snapshot.cashMovements || []);
           setInventoryItems(snapshot.inventoryItems || []);
-          setInventoryMovements(snapshot.inventoryMovements || []);
           setCatalogSettings({
             serviceCategories: snapshot.catalogs?.serviceCategories?.length ? snapshot.catalogs.serviceCategories : CATEGORIES,
             inventoryProductCategories: snapshot.catalogs?.inventoryProductCategories?.length ? snapshot.catalogs.inventoryProductCategories : INVENTORY_PRODUCT_CATEGORIES,
@@ -4951,7 +4947,7 @@ const [activeTab, setActiveTab] = useState('dashboard');
         </header>
 
         <div className="mobile-main-scroll flex-1 overflow-auto overflow-x-hidden custom-scrollbar">
-          {['dashboard', 'caja', 'reportes', 'inventario'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner(activeTab === 'inventario' ? 'Inventario cargado con advertencias' : 'Datos operativos con advertencias', operationalWarnings)}
+          {['dashboard', 'caja', 'reportes'].includes(activeTab) && operationalWarnings.length > 0 && renderPersistentWarningBanner('Datos operativos con advertencias', operationalWarnings)}
           {activeTab === 'clientes' && clientDirectoryWarnings.length > 0 && renderPersistentWarningBanner('Clientes cargados parcialmente', clientDirectoryWarnings)}
           {activeTab === 'dashboard' && <DashboardView appointments={appointments} clients={clients} onUpdate={handleUpdateStatus} onOpenAppointment={openAppointmentActions} barbers={barbers} onNewWalkin={triggerWalkIn} onQuickAppointment={triggerQuickAppointment} onCashWithdrawal={openCashWithdrawal} posSales={activePosSales} />}
           {activeTab === 'agenda' && <AgendaView viewDate={viewDate} setViewDate={setViewDate} appointments={appointments} clients={clients} barbers={barbers} onSlotClick={(h, b) => { setSelectedData({ ...selectedData, appointment: { date: viewDate, time: h, barberId: b } }); setModals({ ...modals, appointment: true }); }} onAptClick={openAppointmentActions} onTransferApt={openTransferAppointment} />}
@@ -5000,12 +4996,10 @@ const [activeTab, setActiveTab] = useState('dashboard');
             >
               <InventoryView
                 inventoryItems={inventoryItems}
-                inventoryMovements={inventoryMovements}
                 productCategories={catalogSettings.inventoryProductCategories}
                 onSaveCatalog={(values) => handleSaveCatalogSettings('inventory_product_categories', values)}
                 onGoToProducts={() => setActiveTab('services')}
                 onSaveProduct={handleSaveInventoryProduct}
-                onRestockProduct={handleRestockInventoryProduct}
                 onDeleteProduct={handleDeleteInventoryProduct}
               />
             </AppSectionErrorBoundary>
@@ -5896,7 +5890,7 @@ function ServicesView({ services, serviceCategories = CATEGORIES, onSaveCatalog,
   );
 }
 
-function InventoryView({ inventoryItems = [], inventoryMovements = [], productCategories = INVENTORY_PRODUCT_CATEGORIES, onSaveCatalog, onGoToProducts, onSaveProduct, onRestockProduct, onDeleteProduct }) {
+function InventoryView({ inventoryItems = [], productCategories = INVENTORY_PRODUCT_CATEGORIES, onSaveCatalog, onGoToProducts, onSaveProduct, onDeleteProduct }) {
   const emptyForm = {
     productName: '',
     productCategory: 'Reventa',
@@ -5917,11 +5911,8 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [restockProduct, setRestockProduct] = useState(null);
-  const [restockForm, setRestockForm] = useState({ quantity: '', unitCost: '', notes: '' });
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [movementSearch, setMovementSearch] = useState('');
   const visibleProductCategories = useMemo(() => {
     const source = Array.isArray(productCategories) && productCategories.length ? productCategories : INVENTORY_PRODUCT_CATEGORIES;
     const normalized = source
@@ -5972,35 +5963,6 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
       item.usageType,
     ].some((value) => String(value || '').toLowerCase().includes(term)));
   }, [activeItems, search]);
-  const productById = useMemo(
-    () => new Map(activeItems.map((item) => [String(item.id), item])),
-    [activeItems],
-  );
-  const reasonLabels = {
-    restock: 'Relleno de inventario',
-    purchase: 'Compra',
-    sale: 'Venta directa',
-    service_use: 'Uso en servicio',
-    sale_void: 'Devolucion por anulacion',
-    service_use_void: 'Insumo devuelto',
-    adjustment: 'Ajuste de stock',
-  };
-  const filteredMovements = useMemo(() => {
-    const term = movementSearch.trim().toLowerCase();
-    return (inventoryMovements || [])
-      .map((movement) => ({ ...movement, product: productById.get(String(movement.inventoryItemId || '')) }))
-      .filter((movement) => {
-        if (!term) return true;
-        return [
-          movement.product?.productName,
-          movement.product?.name,
-          movement.reason,
-          movement.notes,
-          movement.movementType,
-        ].some((value) => String(value || '').toLowerCase().includes(term));
-      })
-      .slice(0, 80);
-  }, [inventoryMovements, movementSearch, productById]);
   const stockProducts = activeItems.filter((item) => item.trackStock !== false);
   const sellableProducts = activeItems.filter((item) => ['retail', 'both'].includes(item.usageType || 'retail'));
   const internalProducts = activeItems.filter((item) => ['internal', 'both'].includes(item.usageType || 'retail'));
@@ -6076,28 +6038,6 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
     setIsProductModalOpen(false);
     setEditingProduct(null);
     setForm(emptyForm);
-  };
-
-  const openRestockProduct = (product) => {
-    setRestockProduct(product);
-    setRestockForm({ quantity: '', unitCost: product?.costPrice ? String(product.costPrice) : '', notes: '' });
-  };
-
-  const closeRestockModal = () => {
-    setRestockProduct(null);
-    setRestockForm({ quantity: '', unitCost: '', notes: '' });
-  };
-
-  const handleRestockSubmit = async (event) => {
-    event.preventDefault();
-    if (!restockProduct) return;
-    await onRestockProduct?.({
-      inventoryItemId: restockProduct.id,
-      quantity: restockForm.quantity,
-      unitCost: restockForm.unitCost,
-      notes: restockForm.notes || ('Relleno de ' + (restockProduct.productName || restockProduct.name)),
-    });
-    closeRestockModal();
   };
 
   const updateForm = (field, value) => setForm((prev) => {
@@ -6191,14 +6131,9 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Catálogo maestro</p>
               <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Productos de inventario</h4>
             </div>
-            <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-              <button type="button" onClick={() => activeItems[0] ? openRestockProduct(activeItems[0]) : openNewProduct()} className="w-full rounded-2xl border border-emerald-400/35 bg-emerald-400/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200 transition-all hover:bg-emerald-400/20 md:w-auto">
-                Rellenar stock
-              </button>
-              <div className="relative w-full md:w-[320px]">
-                <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar producto..." />
-              </div>
+            <div className="relative w-full md:w-[320px]">
+              <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar producto..." />
             </div>
           </div>
 
@@ -6238,9 +6173,6 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
                         <p className="text-sm font-black italic text-slate-400">C$ {Number(item.costPrice || 0).toLocaleString('es-NI')}</p>
                         <p className="text-sm font-black italic text-emerald-300">C$ {Number(item.salePrice || 0).toLocaleString('es-NI')}</p>
                         <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => openRestockProduct(item)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-[9px] font-black uppercase text-emerald-300 hover:bg-emerald-400/10">
-                            Rellenar
-                          </button>
                           <button type="button" onClick={() => openEditProduct(item)} className="rounded-xl border border-cyan-400/30 px-3 py-2 text-[9px] font-black uppercase text-cyan-300 hover:bg-slate-800">
                             Editar
                           </button>
@@ -6262,46 +6194,6 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
             </div>
           )}
         </section>
-      </section>
-
-      <section className="rounded-[2rem] border border-slate-800 bg-slate-950 overflow-hidden shadow-[0_18px_44px_rgba(15,23,42,0.28)]">
-        <div className="flex flex-col gap-3 border-b border-slate-800 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-7">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Kardex operativo</p>
-            <h4 className="mt-1 text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Movimientos de inventario</h4>
-          </div>
-          <div className="relative w-full md:w-[360px]">
-            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-3 pr-11 text-xs font-black text-white outline-none" placeholder="Buscar movimiento, producto o motivo..." />
-          </div>
-        </div>
-        <div className="overflow-x-auto custom-scrollbar">
-          <div className="min-w-[980px]">
-            <div className="grid grid-cols-[140px_minmax(220px,1fr)_130px_170px_120px_170px] gap-4 border-b border-slate-800 px-6 py-4 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-              <span>Fecha</span><span>Producto</span><span>Tipo</span><span>Motivo</span><span>Cantidad</span><span>Stock</span>
-            </div>
-            {filteredMovements.length > 0 ? (
-              <div className="divide-y divide-slate-800">
-                {filteredMovements.map((movement) => {
-                  const isIn = movement.movementType === 'in';
-                  const isOut = movement.movementType === 'out';
-                  return (
-                    <div key={movement.id} className={`grid grid-cols-[140px_minmax(220px,1fr)_130px_170px_120px_170px] gap-4 px-6 py-4 items-center ${isIn ? 'bg-emerald-400/[0.04]' : isOut ? 'bg-rose-500/[0.05]' : 'bg-cyan-400/[0.04]'}`}>
-                      <span className="text-[10px] font-black uppercase text-slate-400">{new Date(movement.createdAt || Date.now()).toLocaleString('es-NI', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                      <div><p className="truncate text-sm font-black uppercase italic text-white">{movement.product?.productName || movement.product?.name || 'Producto no disponible'}</p><p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{movement.notes || 'Sin nota'}</p></div>
-                      <span className={`w-fit rounded-full border px-3 py-1.5 text-[9px] font-black uppercase ${isIn ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : isOut ? 'border-rose-400/30 bg-rose-400/10 text-rose-300' : 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300'}`}>{isIn ? 'Entrada' : isOut ? 'Salida' : 'Ajuste'}</span>
-                      <span className="text-[10px] font-black uppercase text-slate-300">{reasonLabels[movement.reason] || movement.reason || 'Movimiento'}</span>
-                      <span className={`text-base font-black italic ${isIn ? 'text-emerald-300' : isOut ? 'text-rose-300' : 'text-cyan-300'}`}>{isOut ? '-' : '+'}{Number(movement.quantity || 0).toLocaleString('es-NI')}</span>
-                      <span className="text-[11px] font-black uppercase text-slate-300">{Number(movement.stockBefore || 0).toLocaleString('es-NI')} -&gt; {Number(movement.stockAfter || 0).toLocaleString('es-NI')}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="px-6 py-10 text-center"><Repeat size={34} className="mx-auto mb-3 text-cyan-300" /><p className="text-sm font-black uppercase italic text-white">Aun no hay movimientos de inventario</p><p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Los rellenos, ventas y consumos de servicio apareceran aqui.</p></div>
-            )}
-          </div>
-        </div>
       </section>
 
       {isProductModalOpen && (
@@ -6426,29 +6318,6 @@ function InventoryView({ inventoryItems = [], inventoryMovements = [], productCa
           </form>
         </div>
       )}
-      {restockProduct && (
-        <div className="fixed inset-0 z-[92] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <form onSubmit={handleRestockSubmit} className="w-full max-w-2xl overflow-hidden rounded-[1.8rem] border border-emerald-400/30 bg-slate-950 shadow-[0_28px_80px_rgba(0,0,0,0.6)]">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-6 py-5">
-              <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Relleno de inventario</p><h4 className="mt-1 text-2xl font-black uppercase italic tracking-tighter text-white">{restockProduct.productName || restockProduct.name}</h4></div>
-              <button type="button" onClick={closeRestockModal} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800" aria-label="Cerrar relleno"><X size={20} /></button>
-            </div>
-            <div className="grid gap-5 p-6 md:grid-cols-[1fr_220px]">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3"><div className="rounded-2xl border border-slate-800 bg-black p-4"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Stock actual</p><p className="mt-2 text-2xl font-black italic text-cyan-300">{Number(restockProduct.currentStock || 0).toLocaleString('es-NI')}</p></div><div className="rounded-2xl border border-slate-800 bg-black p-4"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Medida</p><p className="mt-2 text-sm font-black uppercase text-white">{restockProduct.unitName || 'unidad'}</p></div></div>
-                <label className="block space-y-2"><span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Cantidad que entra</span><input autoFocus type="number" min="0" step="0.01" value={restockForm.quantity} onChange={(event) => setRestockForm((prev) => ({ ...prev, quantity: event.target.value }))} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-lg font-black text-white outline-none focus:border-emerald-300" placeholder="0" /></label>
-                <label className="block space-y-2"><span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Nota / soporte</span><input value={restockForm.notes} onChange={(event) => setRestockForm((prev) => ({ ...prev, notes: event.target.value }))} className="w-full rounded-2xl border border-slate-700 bg-black px-4 py-4 text-sm font-bold text-white outline-none focus:border-emerald-300" placeholder="Ej. Compra proveedor, factura #..." /></label>
-              </div>
-              <div className="flex flex-col justify-between rounded-[1.4rem] border border-emerald-400/25 bg-emerald-400/10 p-4">
-                <label className="block space-y-2"><span className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Costo unitario</span><input type="number" min="0" step="0.01" value={restockForm.unitCost} onChange={(event) => setRestockForm((prev) => ({ ...prev, unitCost: event.target.value }))} className="w-full rounded-2xl border border-emerald-400/30 bg-black px-4 py-3 text-sm font-black text-white outline-none" placeholder="C$ 0" /></label>
-                <div className="my-5 border-t border-emerald-400/20 pt-4"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">Stock final</p><p className="mt-2 text-3xl font-black italic text-emerald-300">{(Number(restockProduct.currentStock || 0) + Number(restockForm.quantity || 0)).toLocaleString('es-NI')}</p></div>
-                <button type="submit" className="rounded-2xl bg-emerald-400 px-5 py-4 text-[11px] font-black uppercase italic tracking-[0.16em] text-slate-950 shadow-[0_14px_30px_rgba(16,185,129,0.24)] hover:bg-emerald-300">Registrar relleno</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
       {isCatalogModalOpen && (
         <CatalogSettingsModal
           title="Clasificaciones de productos"

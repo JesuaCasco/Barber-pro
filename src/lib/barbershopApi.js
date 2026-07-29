@@ -260,6 +260,29 @@ const toUiInventoryItem = (row) => ({
   updatedAt: row.updated_at,
 });
 
+const toUiInventoryMovement = (row) => ({
+  id: row.id,
+  inventoryItemId: row.inventory_item_id || null,
+  barbershopId: row.barbershop_id || null,
+  branchId: row.branch_id || null,
+  movementType: row.movement_type || 'adjustment',
+  reason: row.reason || 'adjustment',
+  quantity: Number(row.quantity || 0),
+  stockBefore: Number(row.stock_before || 0),
+  stockAfter: Number(row.stock_after || 0),
+  unitCost: Number(row.unit_cost || 0),
+  unitPrice: Number(row.unit_price || 0),
+  referenceType: row.reference_type || null,
+  referenceId: row.reference_id || null,
+  cashSessionId: row.cash_session_id || null,
+  posSaleId: row.pos_sale_id || null,
+  purchaseId: row.purchase_id || null,
+  notes: row.notes || '',
+  metadata: row.metadata || {},
+  createdBy: row.created_by || null,
+  createdAt: row.created_at,
+});
+
 const inventoryItemToProductService = (item) => ({
   id: item.serviceId || `inventory:${item.id}`,
   inventoryItemId: item.id,
@@ -950,6 +973,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     payrollSettlementsResult,
     settlementAppointmentsResult,
     inventoryItemsResult,
+    inventoryMovementsResult,
     serviceInventoryUsageResult,
     catalogsResult,
   ] = await Promise.all([
@@ -1050,6 +1074,17 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
       [],
     ),
     settleQuery(
+      applyTenantScope(
+        supabase
+          .from('inventory_movements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(300),
+        scope,
+      ),
+      [],
+    ),
+    settleQuery(
       supabase
         .from('service_inventory_usage')
         .select('*')
@@ -1129,13 +1164,15 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   }
 
   let inventoryItemsData = [];
+  let inventoryMovementsData = [];
   let inventoryLoadError = null;
-  if (inventoryItemsResult?.error) {
-    const normalizedError = normalizeError(inventoryItemsResult.error, 'No se pudo cargar inventario.');
+  if (inventoryItemsResult?.error || inventoryMovementsResult?.error) {
+    const normalizedError = normalizeError(inventoryItemsResult?.error || inventoryMovementsResult?.error, 'No se pudo cargar inventario.');
     inventoryLoadError = normalizedError.message;
     console.warn('No se pudo cargar inventario:', normalizedError);
   } else {
     inventoryItemsData = inventoryItemsResult?.data || [];
+    inventoryMovementsData = inventoryMovementsResult?.data || [];
   }
 
   let serviceInventoryUsageData = [];
@@ -1175,6 +1212,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
   }
 
   const inventoryItems = (inventoryItemsData || []).map(toUiInventoryItem);
+  const inventoryMovements = (inventoryMovementsData || []).map(toUiInventoryMovement);
   const inventoryServiceIds = new Set(
     inventoryItems
       .map((item) => item.serviceId)
@@ -1221,6 +1259,7 @@ export async function fetchBarbershopSnapshot(currentUserId, scopeOverride = {})
     cashSessions,
     cashMovements,
     inventoryItems,
+    inventoryMovements,
     catalogs,
     cashWithdrawals,
     payrollSettlements,
@@ -1883,6 +1922,42 @@ export async function deleteInventoryProduct(productId) {
     .update({ is_active: false })
     .eq('id', productId);
   if (error) throw normalizeError(error, 'No se pudo desactivar el producto de inventario.');
+}
+
+export async function registerInventoryRestock(payload = {}, currentUserId) {
+  assertSupabase();
+  const quantity = Number(payload.quantity || 0);
+  if (!payload.inventoryItemId) throw normalizeError(null, 'Selecciona un producto de inventario.');
+  if (quantity <= 0) throw normalizeError(null, 'La cantidad a rellenar debe ser mayor a cero.');
+
+  const { data, error } = await supabase.rpc('register_inventory_movement_atomic', {
+    p_inventory_item_id: payload.inventoryItemId,
+    p_movement_type: 'in',
+    p_reason: payload.reason || 'restock',
+    p_quantity: quantity,
+    p_unit_cost: payload.unitCost === '' || payload.unitCost == null ? null : Number(payload.unitCost || 0),
+    p_unit_price: null,
+    p_reference_type: payload.referenceType || 'inventory_restock',
+    p_reference_id: payload.referenceId || null,
+    p_cash_session_id: null,
+    p_pos_sale_id: null,
+    p_purchase_id: null,
+    p_notes: payload.notes || 'Relleno manual de inventario',
+    p_metadata: {
+      source: 'inventory_restock',
+      productName: payload.productName || '',
+      presentationName: payload.presentationName || '',
+      unitName: payload.unitName || '',
+    },
+    p_created_by: currentUserId || null,
+  });
+
+  if (error) throw normalizeError(error, 'No se pudo registrar el relleno de inventario.');
+
+  return {
+    item: data?.item ? toUiInventoryItem(data.item) : null,
+    movement: data?.movement ? toUiInventoryMovement(data.movement) : null,
+  };
 }
 
 export async function syncServiceComboItems(services) {

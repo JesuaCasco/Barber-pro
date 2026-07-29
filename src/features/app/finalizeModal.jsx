@@ -475,7 +475,7 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
           </div>
         ) : (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm md:p-6">
-            <div className="grid max-h-[90vh] w-[min(96vw,82rem)] grid-cols-1 items-stretch gap-4 overflow-y-auto rounded-[2.2rem] border border-cyan-300/20 bg-black p-5 shadow-[0_30px_120px_rgba(0,0,0,0.65)] custom-scrollbar md:grid-cols-[minmax(280px,0.72fr)_minmax(540px,1.28fr)]">
+            <div className="grid max-h-[90vh] w-[min(96vw,82rem)] grid-cols-1 items-stretch gap-4 overflow-y-auto custom-scrollbar md:grid-cols-[minmax(280px,0.72fr)_minmax(540px,1.28fr)]">
               <div className="order-2 rounded-[1.5rem] border border-slate-800 bg-slate-950/70 px-5 py-5 flex flex-col items-center justify-center md:order-2">
                 <p className="text-[11px] font-black text-amber-500 uppercase italic tracking-[0.2em] mb-5 leading-none">Califica la experiencia</p>
                 <div className="flex gap-4">
@@ -561,9 +561,17 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                       {cashPaymentCurrency === 'NIO' ? (
                         <div className="mt-4 grid grid-cols-1 gap-4">
                           <input type="number" min="0" step="0.01" value={nioReceived} onChange={(event) => setNioReceived(event.target.value)} placeholder="C$ recibido" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
-                          <div className={`rounded-[1.25rem] border px-5 py-4 text-[12px] font-black uppercase tracking-[0.1em] ${nioPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
-                            <p>Cliente paga: C$ {nioReceivedAmount.toLocaleString('es-NI')}</p>
-                            <p>{nioPaymentIsEnough ? `Vuelto C$: ${nioChangeNio.toLocaleString('es-NI')}` : `Faltan C$: ${Math.max(total - nioReceivedAmount, 0).toLocaleString('es-NI')}`}</p>
+                          <div className={`rounded-[1.35rem] border px-6 py-5 ${nioPaymentIsEnough ? 'border-emerald-400/35 bg-emerald-500/10 text-emerald-100' : 'border-rose-500/35 bg-rose-500/10 text-rose-100'}`}>
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Cliente paga</span>
+                              <span className="text-xl font-black italic text-white">C$ {nioReceivedAmount.toLocaleString('es-NI')}</span>
+                            </div>
+                            <div className="mt-4 border-t border-white/10 pt-4">
+                              <p className="text-[11px] font-black uppercase tracking-[0.18em]">{nioPaymentIsEnough ? 'Vuelto a entregar' : 'Monto pendiente'}</p>
+                              <p className={`mt-2 text-[34px] font-black italic leading-none tracking-tight ${nioPaymentIsEnough ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                C$ {(nioPaymentIsEnough ? nioChangeNio : Math.max(total - nioReceivedAmount, 0)).toLocaleString('es-NI')}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       ) : null}
@@ -572,9 +580,17 @@ export function FinalizeModal({ onClose, onConfirm, services, clients, initial }
                         <div className="mt-4 grid grid-cols-2 gap-4">
                           <input type="number" min="0" step="0.01" value={usdReceived} onChange={(event) => setUsdReceived(event.target.value)} placeholder="US$ recibido" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
                           <input type="number" min="0" step="0.01" value={saleExchangeRate} onChange={(event) => setSaleExchangeRate(event.target.value)} placeholder="Tasa" className="rounded-[1.25rem] border border-slate-800 bg-black px-5 py-5 text-xl font-black text-white outline-none focus:border-emerald-500" />
-                          <div className={`col-span-2 rounded-[1.25rem] border px-5 py-4 text-[12px] font-black uppercase tracking-[0.1em] ${usdPaymentIsEnough ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-200'}`}>
-                            <p>Equivalente: C$ {usdReceivedEquivalent.toLocaleString('es-NI')}</p>
-                            <p>{usdPaymentIsEnough ? `Vuelto C$: ${usdChangeNio.toLocaleString('es-NI')}` : 'No cubre el total'}</p>
+                          <div className={`col-span-2 rounded-[1.35rem] border px-6 py-5 ${usdPaymentIsEnough ? 'border-emerald-400/35 bg-emerald-500/10 text-emerald-100' : 'border-rose-500/35 bg-rose-500/10 text-rose-100'}`}>
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Equivalente</span>
+                              <span className="text-xl font-black italic text-white">C$ {usdReceivedEquivalent.toLocaleString('es-NI')}</span>
+                            </div>
+                            <div className="mt-4 border-t border-white/10 pt-4">
+                              <p className="text-[11px] font-black uppercase tracking-[0.18em]">{usdPaymentIsEnough ? 'Vuelto a entregar' : 'Monto pendiente'}</p>
+                              <p className={`mt-2 text-[34px] font-black italic leading-none tracking-tight ${usdPaymentIsEnough ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                {usdPaymentIsEnough ? `C$ ${usdChangeNio.toLocaleString('es-NI')}` : 'No cubre el total'}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       ) : null}
